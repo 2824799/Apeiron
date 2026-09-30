@@ -33,4 +33,7 @@
  *
  * For more details, see https://docs.gradle.org/8.0.1/userguide/java_library_plugin.html#sec:java_library_configurations_graph
  */
-dependencies {}
+dependencies {
+    api("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-1076-GTNH:dev")
+    testImplementation("junit:junit:4.13.2")
+}

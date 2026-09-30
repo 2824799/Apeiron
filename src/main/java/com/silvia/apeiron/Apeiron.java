@@ -3,6 +3,8 @@ package com.silvia.apeiron;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.silvia.apeiron.ae.smoke.AEInventorySmoke;
+import com.silvia.apeiron.ae.smoke.AEItemStackSmoke;
 import com.silvia.apeiron.common.lifecycle.CommonProxy;
 
 import cpw.mods.fml.common.Mod;
@@ -11,7 +13,12 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 
-@Mod(modid = Apeiron.MODID, name = Apeiron.NAME, version = Tags.VERSION, acceptedMinecraftVersions = "[1.7.10]")
+@Mod(
+    modid = Apeiron.MODID,
+    name = Apeiron.NAME,
+    version = Tags.VERSION,
+    acceptedMinecraftVersions = "[1.7.10]",
+    dependencies = "required-after:appliedenergistics2")
 public final class Apeiron {
 
     public static final String MODID = "apeiron";
@@ -36,5 +43,13 @@ public final class Apeiron {
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
+        if ("1".equals(System.getenv("APEIRON_VERIFY_STACK"))) {
+            AEItemStackSmoke.verify();
+            AEInventorySmoke.verify();
+            com.silvia.apeiron.ae.smoke.AEBackendSmoke.verify();
+            if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) {
+                cpw.mods.fml.common.FMLCommonHandler.instance().exitJava(0, false);
+            }
+        }
     }
 }

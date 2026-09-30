@@ -4,6 +4,7 @@
 /.vscode/
 /run/
 /build/
+/benchmarks/build/
 /eclipse/
 .classpath
 .project
