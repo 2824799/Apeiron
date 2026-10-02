@@ -3,11 +3,9 @@ package com.silvia.apeiron.mixin.ae.crafting.core;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
-import java.util.Set;
 import java.util.TreeSet;
 
 import org.spongepowered.asm.mixin.Final;
@@ -15,9 +13,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingDiagnosticsValues;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingTimingRecord;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.api.storage.data.IAEStack;
 import appeng.me.cluster.implementations.CraftingCpuDiagnostics;
@@ -39,10 +37,12 @@ public abstract class CraftingCpuDiagnosticsMixin {
         final IAEStack<?> key = CraftingCpuDiagnostics.normalizeTrackingStack(output);
         if (key == null) return;
         final NavigableSet<CraftingCpuDiagnostics.CraftingTimingRecord> records = this.outputTimingRecords
-                .computeIfAbsent(key, ignored -> new TreeSet<>());
+            .computeIfAbsent(key, ignored -> new TreeSet<>());
         BigCraftingDiagnosticsValues.captureTiming(exact);
         final CraftingCpuDiagnostics.CraftingTimingRecord probe = new CraftingCpuDiagnostics.CraftingTimingRecord(
-                BigAEStackValues.saturatedLong(exact), outputObservedAtTick, diagnosticSessionId);
+            BigAEStackValues.saturatedLong(exact),
+            outputObservedAtTick,
+            diagnosticSessionId);
         final CraftingCpuDiagnostics.CraftingTimingRecord existing = records.ceiling(probe);
         if (existing != null && existing.compareTo(probe) == 0) {
             ((BigCraftingTimingRecord) (Object) existing).addProducedBig(exact);
@@ -71,11 +71,13 @@ public abstract class CraftingCpuDiagnosticsMixin {
             ((BigCraftingTimingRecord) (Object) record).addRemainingToProduceBig(consumed.negate());
             remainingReturned = remainingReturned.subtract(consumed);
 
-            if (BigCraftingTimingRecord.remaining(record).signum() <= 0) {
+            if (BigCraftingTimingRecord.remaining(record)
+                .signum() <= 0) {
                 ((BigCraftingTimingRecord) (Object) record).setEndTickBig(endTick);
                 final BigInteger produced = BigCraftingTimingRecord.original(record);
                 BigCraftingDiagnosticsValues.captureCompleted(produced);
-                completed.add(new CraftingCpuDiagnostics.CompletedDiagnosticRecord(
+                completed.add(
+                    new CraftingCpuDiagnostics.CompletedDiagnosticRecord(
                         returnedStack,
                         record.getDiagnosticSessionId(),
                         BigAEStackValues.saturatedLong(produced),

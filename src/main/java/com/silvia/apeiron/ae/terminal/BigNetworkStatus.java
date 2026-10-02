@@ -6,20 +6,32 @@ import java.math.BigInteger;
 public interface BigNetworkStatus {
 
     BigInteger getItemBytesTotalBig();
+
     BigInteger getItemBytesUsedBig();
+
     BigInteger getItemTypesTotalBig();
+
     BigInteger getItemTypesUsedBig();
+
     BigInteger getItemCellCountBig();
 
     BigInteger getFluidBytesTotalBig();
+
     BigInteger getFluidBytesUsedBig();
+
     BigInteger getFluidTypesTotalBig();
+
     BigInteger getFluidTypesUsedBig();
+
     BigInteger getFluidCellCountBig();
 
     BigInteger getEssentiaBytesTotalBig();
+
     BigInteger getEssentiaBytesUsedBig();
+
     BigInteger getEssentiaTypesTotalBig();
+
     BigInteger getEssentiaTypesUsedBig();
+
     BigInteger getEssentiaCellCountBig();
 }

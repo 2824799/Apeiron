@@ -36,8 +36,8 @@ public abstract class PlatformMixin {
         final int multiplier = request.getAmountPerUnit();
         final BigInteger requested = BigAEStackValues.get(request);
         final BigInteger units = apeiron$ceilDiv(requested, multiplier);
-        final double availablePower = energy.extractAEPower(
-            units.doubleValue(), Actionable.SIMULATE, PowerMultiplier.CONFIG);
+        final double availablePower = energy
+            .extractAEPower(units.doubleValue(), Actionable.SIMULATE, PowerMultiplier.CONFIG);
         final BigInteger itemToExtract = apeiron$powerBound(availablePower, multiplier, requested);
         if (itemToExtract.signum() <= 0) {
             cir.setReturnValue(null);
@@ -60,16 +60,15 @@ public abstract class PlatformMixin {
         at = @At("HEAD"),
         cancellable = true)
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    private static void apeiron$poweredInsert(final IEnergySource energy, final IMEInventory cell,
-        final IAEStack input, final BaseActionSource source, final Actionable mode,
-        final CallbackInfoReturnable<IAEStack> cir) {
+    private static void apeiron$poweredInsert(final IEnergySource energy, final IMEInventory cell, final IAEStack input,
+        final BaseActionSource source, final Actionable mode, final CallbackInfoReturnable<IAEStack> cir) {
         if (!BigAEStackValues.isBig(input)) return;
 
         final int multiplier = input.getAmountPerUnit();
         final BigInteger requested = BigAEStackValues.get(input);
         final BigInteger units = apeiron$ceilDiv(requested, multiplier);
-        final double availablePower = energy.extractAEPower(
-            units.doubleValue(), Actionable.SIMULATE, PowerMultiplier.CONFIG);
+        final double availablePower = energy
+            .extractAEPower(units.doubleValue(), Actionable.SIMULATE, PowerMultiplier.CONFIG);
         final BigInteger itemToAdd = apeiron$powerBound(availablePower, multiplier, requested);
         if (itemToAdd.signum() <= 0) {
             cir.setReturnValue(input);
@@ -78,7 +77,8 @@ public abstract class PlatformMixin {
 
         final IAEStack toInsert = BigAEStackValues.set(input.copy(), itemToAdd);
         final IAEStack leftover = BigMEInventories.injectItemsBig(cell, toInsert, mode, source);
-        final BigInteger inserted = itemToAdd.subtract(leftover == null ? BigInteger.ZERO : BigAEStackValues.get(leftover));
+        final BigInteger inserted = itemToAdd
+            .subtract(leftover == null ? BigInteger.ZERO : BigAEStackValues.get(leftover));
         if (inserted.signum() <= 0) {
             cir.setReturnValue(input);
             return;
@@ -101,7 +101,8 @@ public abstract class PlatformMixin {
     }
 
     private static BigInteger apeiron$ceilDiv(final BigInteger value, final int divisor) {
-        return value.add(BigInteger.valueOf(divisor - 1L)).divide(BigInteger.valueOf(divisor));
+        return value.add(BigInteger.valueOf(divisor - 1L))
+            .divide(BigInteger.valueOf(divisor));
     }
 
     private static BigInteger apeiron$powerBound(final double availablePower, final int multiplier,
@@ -112,6 +113,7 @@ public abstract class PlatformMixin {
             .multiply(BigDecimal.valueOf(multiplier))
             .add(BigDecimal.valueOf(0.9));
         if (poweredItems.signum() <= 0) return BigInteger.ZERO;
-        return poweredItems.toBigInteger().min(requested);
+        return poweredItems.toBigInteger()
+            .min(requested);
     }
 }

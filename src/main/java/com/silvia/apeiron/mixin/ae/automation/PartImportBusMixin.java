@@ -33,8 +33,10 @@ public abstract class PartImportBusMixin extends PartBaseImportBus<IAEItemStack>
         super(stack);
     }
 
-    @Inject(method = "importStuff(Ljava/lang/Object;Lappeng/api/storage/data/IAEItemStack;Lappeng/api/storage/IMEMonitor;Lappeng/api/networking/energy/IEnergySource;Lappeng/api/config/FuzzyMode;)Z",
-        at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "importStuff(Ljava/lang/Object;Lappeng/api/storage/data/IAEItemStack;Lappeng/api/storage/IMEMonitor;Lappeng/api/networking/energy/IEnergySource;Lappeng/api/config/FuzzyMode;)Z",
+        at = @At("HEAD"),
+        cancellable = true)
     private void apeiron$importExact(final Object target, final IAEItemStack filter,
         final IMEMonitor<IAEItemStack> monitor, final IEnergySource energy, final FuzzyMode fuzzyMode,
         final CallbackInfoReturnable<Boolean> cir) {
@@ -52,16 +54,18 @@ public abstract class PartImportBusMixin extends PartBaseImportBus<IAEItemStack>
             cir.setReturnValue(true);
             return;
         }
-        final ItemStack available = fuzzy ? adaptor.simulateSimilarRemove(requested, template, fuzzyMode,
-            destinationFilter) : adaptor.simulateRemove(requested, template, destinationFilter);
+        final ItemStack available = fuzzy
+            ? adaptor.simulateSimilarRemove(requested, template, fuzzyMode, destinationFilter)
+            : adaptor.simulateRemove(requested, template, destinationFilter);
         if (available == null || available.stackSize <= 0) {
             cir.setReturnValue(true);
             return;
         }
         final IAEItemStack offered = AEItemStack.create(available);
-        final IAEItemStack simulatedLeftover = Platform.poweredInsert(energy, monitor, offered, this.mySrc,
-            Actionable.SIMULATE);
-        final BigInteger accepted = BigAEStackValues.get(offered).subtract(BigAEStackValues.get(simulatedLeftover));
+        final IAEItemStack simulatedLeftover = Platform
+            .poweredInsert(energy, monitor, offered, this.mySrc, Actionable.SIMULATE);
+        final BigInteger accepted = BigAEStackValues.get(offered)
+            .subtract(BigAEStackValues.get(simulatedLeftover));
         if (accepted.signum() <= 0) {
             cir.setReturnValue(true);
             return;
@@ -75,12 +79,21 @@ public abstract class PartImportBusMixin extends PartBaseImportBus<IAEItemStack>
         }
         final IAEItemStack actual = AEItemStack.create(removed);
         final IAEItemStack leftover = Platform.poweredInsert(energy, monitor, actual, this.mySrc);
-        final BigInteger inserted = BigAEStackValues.get(actual).subtract(BigAEStackValues.get(leftover));
+        final BigInteger inserted = BigAEStackValues.get(actual)
+            .subtract(BigAEStackValues.get(leftover));
         if (leftover != null) {
-            final appeng.api.storage.data.IAEStack<?> remaining = BigInventoryAdaptors.addStackBig(adaptor, leftover,
-                appeng.api.config.InsertionMode.DEFAULT, false);
-            if (remaining != null) Platform.spawnDrops(this.getHost().getTile().getWorldObj(), this.getHost().getTile().xCoord,
-                this.getHost().getTile().yCoord, this.getHost().getTile().zCoord,
+            final appeng.api.storage.data.IAEStack<?> remaining = BigInventoryAdaptors
+                .addStackBig(adaptor, leftover, appeng.api.config.InsertionMode.DEFAULT, false);
+            if (remaining != null) Platform.spawnDrops(
+                this.getHost()
+                    .getTile()
+                    .getWorldObj(),
+                this.getHost()
+                    .getTile().xCoord,
+                this.getHost()
+                    .getTile().yCoord,
+                this.getHost()
+                    .getTile().zCoord,
                 java.util.Collections.singletonList(((IAEItemStack) remaining).getItemStack()));
         }
         this.itemToSend -= inserted.intValueExact();

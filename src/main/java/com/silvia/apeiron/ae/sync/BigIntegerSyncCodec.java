@@ -3,8 +3,9 @@ package com.silvia.apeiron.ae.sync;
 import java.io.IOException;
 import java.math.BigInteger;
 
-import appeng.container.sync.SyncCodec;
 import com.silvia.apeiron.math.BigValueCodec;
+
+import appeng.container.sync.SyncCodec;
 import io.netty.buffer.ByteBuf;
 
 /** Exact BigInteger codec for AE's object synchronization handlers. */

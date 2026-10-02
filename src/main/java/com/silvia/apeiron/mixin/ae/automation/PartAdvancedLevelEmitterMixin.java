@@ -2,6 +2,10 @@ package com.silvia.apeiron.mixin.ae.automation;
 
 import java.math.BigInteger;
 
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraftforge.common.util.Constants.NBT;
+
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -11,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.automation.BigAdvancedLevelEmitterAccess;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigValueCodec;
 
@@ -27,9 +31,6 @@ import appeng.me.GridAccessException;
 import appeng.parts.automation.PartAdvancedLevelEmitter;
 import appeng.tile.inventory.IAEStackInventory;
 import appeng.util.Platform;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraftforge.common.util.Constants.NBT;
 
 /** Makes the six-slot level emitter keep exact thresholds and exact observed counts. */
 @Mixin(value = PartAdvancedLevelEmitter.class, remap = false)
@@ -75,7 +76,8 @@ public abstract class PartAdvancedLevelEmitterMixin implements BigAdvancedLevelE
     public void setReportingValueBig(final int slot, final BigInteger value) {
         apeiron$amountBig[slot] = AdaptiveInteger.fitsLong(value) ? null : value;
         amount[slot] = BigAEStackValues.saturatedLong(value);
-        ((PartAdvancedLevelEmitter) (Object) this).getHost().markForSave();
+        ((PartAdvancedLevelEmitter) (Object) this).getHost()
+            .markForSave();
         updateState();
     }
 
@@ -101,12 +103,10 @@ public abstract class PartAdvancedLevelEmitterMixin implements BigAdvancedLevelE
             final IAEStack<?> stack = config.getAEStackInSlot(slot);
             if (stack == null) continue;
             sawActive = true;
-            BigInteger current = apeiron$lastReportedBig[slot] == null
-                ? BigInteger.valueOf(lastReportedValue[slot])
+            BigInteger current = apeiron$lastReportedBig[slot] == null ? BigInteger.valueOf(lastReportedValue[slot])
                 : apeiron$lastReportedBig[slot];
             BigInteger threshold = getReportingValueBig(slot);
-            boolean slotState = slotInverted[slot]
-                ? current.compareTo(threshold) < 0
+            boolean slotState = slotInverted[slot] ? current.compareTo(threshold) < 0
                 : current.compareTo(threshold) >= 0;
             result = mode == BooleanOperation.AND ? result && slotState : result || slotState;
         }
@@ -123,12 +123,14 @@ public abstract class PartAdvancedLevelEmitterMixin implements BigAdvancedLevelE
             return;
         }
         try {
-            final IMEMonitor monitor = ((PartAdvancedLevelEmitter) (Object) this).getProxy().getStorage()
+            final IMEMonitor monitor = ((PartAdvancedLevelEmitter) (Object) this).getProxy()
+                .getStorage()
                 .getMEMonitor(configured.getStackType());
             if (monitor == null) {
                 apeiron$setLast(slot, BigInteger.ZERO);
             } else {
-                final IAEStack<?> found = monitor.getStorageList().findPrecise(configured);
+                final IAEStack<?> found = monitor.getStorageList()
+                    .findPrecise(configured);
                 apeiron$setLast(slot, found == null ? BigInteger.ZERO : BigAEStackValues.get(found));
             }
         } catch (final GridAccessException e) {
@@ -144,8 +146,8 @@ public abstract class PartAdvancedLevelEmitterMixin implements BigAdvancedLevelE
     }
 
     @Inject(method = "onStackChange", at = @At("HEAD"), cancellable = true)
-    private void apeiron$stackChangeExact(final IItemList<?> list, final IAEStack fullStack,
-        final IAEStack diffStack, final BaseActionSource source, final StorageChannel channel, final CallbackInfo ci) {
+    private void apeiron$stackChangeExact(final IItemList<?> list, final IAEStack fullStack, final IAEStack diffStack,
+        final BaseActionSource source, final StorageChannel channel, final CallbackInfo ci) {
         if (!BigAEStackValues.isBig(fullStack)) return;
         boolean changed = false;
         for (int slot = 0; slot < IAdvancedLevelEmitter.SLOT_COUNT; slot++) {
@@ -180,10 +182,13 @@ public abstract class PartAdvancedLevelEmitterMixin implements BigAdvancedLevelE
         for (int slot = 0; slot < Math.min(IAdvancedLevelEmitter.SLOT_COUNT, list.tagCount()); slot++) {
             final NBTTagCompound tag = list.getCompoundTagAt(slot);
             BigValueCodec.writeNBT(tag, "amount", "ApeironAmount", new AdaptiveInteger(getReportingValueBig(slot)));
-            BigValueCodec.writeNBT(tag, "lastReportedValue", "ApeironLastReportedValue",
-                new AdaptiveInteger(apeiron$lastReportedBig[slot] == null
-                    ? BigInteger.valueOf(lastReportedValue[slot])
-                    : apeiron$lastReportedBig[slot]));
+            BigValueCodec.writeNBT(
+                tag,
+                "lastReportedValue",
+                "ApeironLastReportedValue",
+                new AdaptiveInteger(
+                    apeiron$lastReportedBig[slot] == null ? BigInteger.valueOf(lastReportedValue[slot])
+                        : apeiron$lastReportedBig[slot]));
             exactList.appendTag(tag);
         }
         data.setTag("slots", exactList);

@@ -5,8 +5,8 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-import com.silvia.apeiron.ae.terminal.BigContainerAccess;
 import com.silvia.apeiron.ae.sync.BigSyncRegistrarAccess;
+import com.silvia.apeiron.ae.terminal.BigContainerAccess;
 
 import appeng.container.AEBaseContainer;
 import appeng.container.sync.SyncRegistrar;

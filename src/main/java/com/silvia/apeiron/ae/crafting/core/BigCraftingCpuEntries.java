@@ -26,10 +26,7 @@ public final class BigCraftingCpuEntries {
         final BigInteger[] values = PENDING.get();
         PENDING.remove();
         return values == null
-                ? new BigInteger[] {
-                        BigInteger.valueOf(stored),
-                        BigInteger.valueOf(active),
-                        BigInteger.valueOf(pending) }
-                : values;
+            ? new BigInteger[] { BigInteger.valueOf(stored), BigInteger.valueOf(active), BigInteger.valueOf(pending) }
+            : values;
     }
 }

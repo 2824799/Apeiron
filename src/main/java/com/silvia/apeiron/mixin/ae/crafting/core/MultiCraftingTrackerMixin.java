@@ -7,8 +7,8 @@ import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingTracker;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.api.config.InsertionMode;
 import appeng.api.networking.IGrid;
@@ -37,7 +37,9 @@ public abstract class MultiCraftingTrackerMixin implements BigCraftingTracker {
 
         BigInteger physicalLimit = MAX_PHYSICAL_REQUEST;
         if (stack instanceof IAEItemStack) {
-            physicalLimit = BigInteger.valueOf(((IAEItemStack) stack).getItemStack().getMaxStackSize());
+            physicalLimit = BigInteger.valueOf(
+                ((IAEItemStack) stack).getItemStack()
+                    .getMaxStackSize());
         }
         final BigInteger requestAmount = amount.min(physicalLimit);
         final IAEStack<?> request = BigAEStackValues.copyWithSize(stack, requestAmount);

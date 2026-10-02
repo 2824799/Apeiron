@@ -2,8 +2,8 @@ package com.silvia.apeiron.ae.storage;
 
 import java.math.BigInteger;
 
-import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IAEItemStack;
+import appeng.api.storage.data.IAEStack;
 
 /** Exact accounting alongside AE2's existing capacity and count getters. */
 public interface BigCellInventory extends BigIMEInventory {

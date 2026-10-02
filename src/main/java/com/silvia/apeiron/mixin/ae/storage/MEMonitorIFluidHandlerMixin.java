@@ -42,12 +42,15 @@ public abstract class MEMonitorIFluidHandlerMixin implements BigMEInventory {
     }
 
     @Override
-    public IAEStack<?> extractItemsBig(final IAEStack<?> request, final Actionable mode, final BaseActionSource source) {
-        if (!(request instanceof IAEFluidStack) || BigAEStackValues.get(request).signum() <= 0) return null;
+    public IAEStack<?> extractItemsBig(final IAEStack<?> request, final Actionable mode,
+        final BaseActionSource source) {
+        if (!(request instanceof IAEFluidStack) || BigAEStackValues.get(request)
+            .signum() <= 0) return null;
         final BigInteger requested = BigAEStackValues.get(request);
         BigInteger extracted = BigInteger.ZERO;
         do {
-            final BigInteger amount = requested.subtract(extracted).min(BigInventoryAdaptors.MAX_EXTERNAL_CHUNK);
+            final BigInteger amount = requested.subtract(extracted)
+                .min(BigInventoryAdaptors.MAX_EXTERNAL_CHUNK);
             final IAEFluidStack chunk = BigAEStackValues.copyWithSize((IAEFluidStack) request, amount);
             final IAEFluidStack result = ((MEMonitorIFluidHandler) (Object) this).extractItems(chunk, mode, source);
             if (result == null) break;
@@ -59,20 +62,26 @@ public abstract class MEMonitorIFluidHandlerMixin implements BigMEInventory {
         return extracted.signum() == 0 ? null : BigAEStackValues.copyWithSize(request, extracted);
     }
 
-    @Inject(method = "injectItems(Lappeng/api/storage/data/IAEFluidStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEFluidStack;",
-        at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "injectItems(Lappeng/api/storage/data/IAEFluidStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEFluidStack;",
+        at = @At("HEAD"),
+        cancellable = true)
     private void apeiron$inject(final IAEFluidStack input, final Actionable mode, final BaseActionSource source,
         final CallbackInfoReturnable<IAEFluidStack> cir) {
-        if (BigAEStackValues.get(input).compareTo(BigInventoryAdaptors.MAX_EXTERNAL_CHUNK) > 0) {
+        if (BigAEStackValues.get(input)
+            .compareTo(BigInventoryAdaptors.MAX_EXTERNAL_CHUNK) > 0) {
             cir.setReturnValue((IAEFluidStack) this.injectItemsBig(input, mode, source));
         }
     }
 
-    @Inject(method = "extractItems(Lappeng/api/storage/data/IAEFluidStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEFluidStack;",
-        at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "extractItems(Lappeng/api/storage/data/IAEFluidStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEFluidStack;",
+        at = @At("HEAD"),
+        cancellable = true)
     private void apeiron$extract(final IAEFluidStack request, final Actionable mode, final BaseActionSource source,
         final CallbackInfoReturnable<IAEFluidStack> cir) {
-        if (BigAEStackValues.get(request).compareTo(BigInventoryAdaptors.MAX_EXTERNAL_CHUNK) > 0) {
+        if (BigAEStackValues.get(request)
+            .compareTo(BigInventoryAdaptors.MAX_EXTERNAL_CHUNK) > 0) {
             cir.setReturnValue((IAEFluidStack) this.extractItemsBig(request, mode, source));
         }
     }

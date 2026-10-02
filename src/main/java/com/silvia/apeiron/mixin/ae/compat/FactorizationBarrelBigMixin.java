@@ -27,12 +27,15 @@ public abstract class FactorizationBarrelBigMixin implements BigIMEInventory {
 
     private static final BigInteger INT_MAX = BigInteger.valueOf(Integer.MAX_VALUE);
 
-    @Shadow @Final private IFZ fProxy;
-    @Shadow @Final private TileEntity te;
+    @Shadow
+    @Final
+    private IFZ fProxy;
+    @Shadow
+    @Final
+    private TileEntity te;
 
     @Override
-    public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode,
-        final BaseActionSource source) {
+    public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode, final BaseActionSource source) {
         if (input == null) return null;
         final BigInteger requested = BigAEStackValues.get(input);
         if (requested.signum() <= 0) return null;
@@ -44,14 +47,20 @@ public abstract class FactorizationBarrelBigMixin implements BigIMEInventory {
 
         final BigInteger stored = BigInteger.valueOf(this.fProxy.barrelGetItemCount(this.te));
         final BigInteger capacity = BigInteger.valueOf(this.fProxy.barrelGetMaxItemCount(this.te))
-            .subtract(stored).max(BigInteger.ZERO);
-        final BigInteger accepted = requested.min(capacity).min(INT_MAX);
+            .subtract(stored)
+            .max(BigInteger.ZERO);
+        final BigInteger accepted = requested.min(capacity)
+            .min(INT_MAX);
         if (mode == Actionable.MODULATE && accepted.signum() > 0) {
             if (current == null) this.fProxy.setItemType(this.te, template);
-            this.fProxy.barrelSetCount(this.te, stored.add(accepted).intValueExact());
+            this.fProxy.barrelSetCount(
+                this.te,
+                stored.add(accepted)
+                    .intValueExact());
         }
         return accepted.signum() == 0 || accepted.compareTo(requested) < 0
-            ? BigAEStackValues.copyWithSize(input, requested.subtract(accepted)) : null;
+            ? BigAEStackValues.copyWithSize(input, requested.subtract(accepted))
+            : null;
     }
 
     @Override
@@ -61,10 +70,13 @@ public abstract class FactorizationBarrelBigMixin implements BigIMEInventory {
         final ItemStack current = this.fProxy.barrelGetItem(this.te);
         if (current == null || !request.equals(current)) return null;
         final BigInteger available = BigInteger.valueOf(this.fProxy.barrelGetItemCount(this.te));
-        final BigInteger extracted = BigAEStackValues.get(request).min(available).min(INT_MAX);
+        final BigInteger extracted = BigAEStackValues.get(request)
+            .min(available)
+            .min(INT_MAX);
         if (extracted.signum() <= 0) return null;
         if (mode == Actionable.MODULATE) {
-            final int remaining = available.subtract(extracted).intValueExact();
+            final int remaining = available.subtract(extracted)
+                .intValueExact();
             this.fProxy.barrelSetCount(this.te, remaining);
             if (remaining == 0) this.fProxy.setItemType(this.te, null);
         }
@@ -72,14 +84,14 @@ public abstract class FactorizationBarrelBigMixin implements BigIMEInventory {
     }
 
     @Inject(method = "injectItems", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyInject(final IAEItemStack input, final Actionable mode,
-        final BaseActionSource source, final CallbackInfoReturnable<IAEItemStack> cir) {
+    private void apeiron$legacyInject(final IAEItemStack input, final Actionable mode, final BaseActionSource source,
+        final CallbackInfoReturnable<IAEItemStack> cir) {
         if (BigAEStackValues.isBig(input)) cir.setReturnValue(this.injectItemsBig(input, mode, source));
     }
 
     @Inject(method = "extractItems", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyExtract(final IAEItemStack request, final Actionable mode,
-        final BaseActionSource source, final CallbackInfoReturnable<IAEItemStack> cir) {
+    private void apeiron$legacyExtract(final IAEItemStack request, final Actionable mode, final BaseActionSource source,
+        final CallbackInfoReturnable<IAEItemStack> cir) {
         if (BigAEStackValues.isBig(request)) cir.setReturnValue(this.extractItemsBig(request, mode, source));
     }
 }

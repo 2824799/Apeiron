@@ -1,10 +1,10 @@
 package com.silvia.apeiron.mixin.ae.storage;
 
 import java.math.BigInteger;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashSet;
 
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -35,23 +35,38 @@ public abstract class GridStorageCacheBigMixin implements BigStorageGrid {
     @Final
     private HashSet<ICellProvider> activeCellProviders;
 
-    @Unique private BigInteger apeiron$itemBytesTotal = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$itemBytesUsed = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$itemTypesTotal = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$itemTypesUsed = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$itemCellCount = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$itemBytesTotal = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$itemBytesUsed = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$itemTypesTotal = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$itemTypesUsed = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$itemCellCount = BigInteger.ZERO;
 
-    @Unique private BigInteger apeiron$fluidBytesTotal = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$fluidBytesUsed = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$fluidTypesTotal = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$fluidTypesUsed = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$fluidCellCount = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$fluidBytesTotal = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$fluidBytesUsed = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$fluidTypesTotal = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$fluidTypesUsed = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$fluidCellCount = BigInteger.ZERO;
 
-    @Unique private BigInteger apeiron$essentiaBytesTotal = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$essentiaBytesUsed = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$essentiaTypesTotal = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$essentiaTypesUsed = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$essentiaCellCount = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$essentiaBytesTotal = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$essentiaBytesUsed = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$essentiaTypesTotal = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$essentiaTypesUsed = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$essentiaCellCount = BigInteger.ZERO;
 
     @Inject(method = "updateBytesInfo", at = @At("TAIL"))
     private void apeiron$rebuildExactStatistics(final CallbackInfo ci) {
@@ -99,16 +114,15 @@ public abstract class GridStorageCacheBigMixin implements BigStorageGrid {
     @Unique
     private void apeiron$add(final ICellCacheRegistry registry) {
         final BigCellInventoryHandler exact = registry instanceof BigCellInventoryHandler
-            ? (BigCellInventoryHandler) registry : null;
+            ? (BigCellInventoryHandler) registry
+            : null;
 
         final BigInteger totalBytes = exact == null ? BigInteger.valueOf(registry.getTotalBytes())
             : exact.getTotalBytesBig();
         final BigInteger usedBytes = exact == null ? BigInteger.valueOf(registry.getUsedBytes())
             : exact.getUsedBytesBig();
-        BigInteger totalTypes = exact == null ? BigInteger.valueOf(registry.getTotalTypes())
-            : exact.getTotalTypesBig();
-        BigInteger usedTypes = exact == null ? BigInteger.valueOf(registry.getUsedTypes())
-            : exact.getUsedTypesBig();
+        BigInteger totalTypes = exact == null ? BigInteger.valueOf(registry.getTotalTypes()) : exact.getTotalTypesBig();
+        BigInteger usedTypes = exact == null ? BigInteger.valueOf(registry.getUsedTypes()) : exact.getUsedTypesBig();
 
         // AE uses these values for void cells and deliberately excludes them from the finite type totals.
         if (totalTypes.equals(INTEGER_MAX) || totalTypes.equals(LONG_MAX)) {
@@ -143,19 +157,78 @@ public abstract class GridStorageCacheBigMixin implements BigStorageGrid {
         }
     }
 
-    @Override public BigInteger getItemBytesTotalBig() { return this.apeiron$itemBytesTotal; }
-    @Override public BigInteger getItemBytesUsedBig() { return this.apeiron$itemBytesUsed; }
-    @Override public BigInteger getItemTypesTotalBig() { return this.apeiron$itemTypesTotal; }
-    @Override public BigInteger getItemTypesUsedBig() { return this.apeiron$itemTypesUsed; }
-    @Override public BigInteger getItemCellCountBig() { return this.apeiron$itemCellCount; }
-    @Override public BigInteger getFluidBytesTotalBig() { return this.apeiron$fluidBytesTotal; }
-    @Override public BigInteger getFluidBytesUsedBig() { return this.apeiron$fluidBytesUsed; }
-    @Override public BigInteger getFluidTypesTotalBig() { return this.apeiron$fluidTypesTotal; }
-    @Override public BigInteger getFluidTypesUsedBig() { return this.apeiron$fluidTypesUsed; }
-    @Override public BigInteger getFluidCellCountBig() { return this.apeiron$fluidCellCount; }
-    @Override public BigInteger getEssentiaBytesTotalBig() { return this.apeiron$essentiaBytesTotal; }
-    @Override public BigInteger getEssentiaBytesUsedBig() { return this.apeiron$essentiaBytesUsed; }
-    @Override public BigInteger getEssentiaTypesTotalBig() { return this.apeiron$essentiaTypesTotal; }
-    @Override public BigInteger getEssentiaTypesUsedBig() { return this.apeiron$essentiaTypesUsed; }
-    @Override public BigInteger getEssentiaCellCountBig() { return this.apeiron$essentiaCellCount; }
+    @Override
+    public BigInteger getItemBytesTotalBig() {
+        return this.apeiron$itemBytesTotal;
+    }
+
+    @Override
+    public BigInteger getItemBytesUsedBig() {
+        return this.apeiron$itemBytesUsed;
+    }
+
+    @Override
+    public BigInteger getItemTypesTotalBig() {
+        return this.apeiron$itemTypesTotal;
+    }
+
+    @Override
+    public BigInteger getItemTypesUsedBig() {
+        return this.apeiron$itemTypesUsed;
+    }
+
+    @Override
+    public BigInteger getItemCellCountBig() {
+        return this.apeiron$itemCellCount;
+    }
+
+    @Override
+    public BigInteger getFluidBytesTotalBig() {
+        return this.apeiron$fluidBytesTotal;
+    }
+
+    @Override
+    public BigInteger getFluidBytesUsedBig() {
+        return this.apeiron$fluidBytesUsed;
+    }
+
+    @Override
+    public BigInteger getFluidTypesTotalBig() {
+        return this.apeiron$fluidTypesTotal;
+    }
+
+    @Override
+    public BigInteger getFluidTypesUsedBig() {
+        return this.apeiron$fluidTypesUsed;
+    }
+
+    @Override
+    public BigInteger getFluidCellCountBig() {
+        return this.apeiron$fluidCellCount;
+    }
+
+    @Override
+    public BigInteger getEssentiaBytesTotalBig() {
+        return this.apeiron$essentiaBytesTotal;
+    }
+
+    @Override
+    public BigInteger getEssentiaBytesUsedBig() {
+        return this.apeiron$essentiaBytesUsed;
+    }
+
+    @Override
+    public BigInteger getEssentiaTypesTotalBig() {
+        return this.apeiron$essentiaTypesTotal;
+    }
+
+    @Override
+    public BigInteger getEssentiaTypesUsedBig() {
+        return this.apeiron$essentiaTypesUsed;
+    }
+
+    @Override
+    public BigInteger getEssentiaCellCountBig() {
+        return this.apeiron$essentiaCellCount;
+    }
 }

@@ -21,8 +21,10 @@ public abstract class CellInventoryHandlerBigMixin implements BigCellInventoryHa
     @Override
     public BigInteger getStoredItemCountBig() {
         BigCellInventory exact = apeiron$exactCell();
-        return exact == null ? BigInteger.valueOf(((CellInventoryHandler<?>) (Object) this).getCellInv()
-            .getStoredItemCount()) : exact.getStoredItemCountBig();
+        return exact == null ? BigInteger.valueOf(
+            ((CellInventoryHandler<?>) (Object) this).getCellInv()
+                .getStoredItemCount())
+            : exact.getStoredItemCountBig();
     }
 
     @Override

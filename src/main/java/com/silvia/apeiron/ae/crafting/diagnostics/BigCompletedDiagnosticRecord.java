@@ -11,7 +11,7 @@ public interface BigCompletedDiagnosticRecord {
 
     static BigInteger produced(final CraftingCpuDiagnostics.CompletedDiagnosticRecord record) {
         return record instanceof BigCompletedDiagnosticRecord
-                ? ((BigCompletedDiagnosticRecord) record).getProducedAmountBig()
-                : BigInteger.valueOf(record.getProducedAmount());
+            ? ((BigCompletedDiagnosticRecord) record).getProducedAmountBig()
+            : BigInteger.valueOf(record.getProducedAmount());
     }
 }

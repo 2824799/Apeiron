@@ -9,9 +9,9 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraftforge.common.util.Constants.NBT;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.Overwrite;
 
 import com.silvia.apeiron.ae.crafting.core.BigTaskProgress;
 import com.silvia.apeiron.math.AdaptiveInteger;
@@ -51,7 +51,9 @@ public abstract class CraftingTaskProgressMixin implements BigTaskProgress {
 
     @Override
     public void decrementValueBig() {
-        this.setValueBig(this.getValueBig().subtract(BigInteger.ONE));
+        this.setValueBig(
+            this.getValueBig()
+                .subtract(BigInteger.ONE));
     }
 
     @Override
@@ -145,7 +147,8 @@ public abstract class CraftingTaskProgressMixin implements BigTaskProgress {
         for (int index = 0; index < source.tagCount(); index++) {
             final NBTTagCompound tag = source.getCompoundTagAt(index);
             final BigInteger remaining = tag.hasKey("ApeironRemaining", NBT.TAG_BYTE_ARRAY)
-                ? BigValueCodec.readNBT(tag, "remaining", "ApeironRemaining").toBigInteger()
+                ? BigValueCodec.readNBT(tag, "remaining", "ApeironRemaining")
+                    .toBigInteger()
                 : BigInteger.valueOf(tag.hasKey("remaining", NBT.TAG_LONG) ? tag.getLong("remaining") : 1L);
             this.addCraftsToSessionBig(CraftingDiagnosticSessionId.fromNBT(tag, "id"), remaining);
         }

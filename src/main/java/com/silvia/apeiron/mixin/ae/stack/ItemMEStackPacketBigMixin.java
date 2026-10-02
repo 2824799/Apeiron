@@ -21,8 +21,8 @@ import appeng.items.misc.ItemMEStackPacket;
 public abstract class ItemMEStackPacketBigMixin {
 
     @Inject(method = "addCheckedInformation", at = @At("TAIL"))
-    private void apeiron$exactPacketAmount(final ItemStack stack, final EntityPlayer player,
-        final List<String> lines, final boolean displayMoreInfo, final CallbackInfo ci) {
+    private void apeiron$exactPacketAmount(final ItemStack stack, final EntityPlayer player, final List<String> lines,
+        final boolean displayMoreInfo, final CallbackInfo ci) {
         final IAEStack<?> value = ItemMEStackPacket.toAEStack(stack);
         if (value == null) return;
         final java.math.BigInteger amount = BigAEStackValues.get(value);

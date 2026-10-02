@@ -10,9 +10,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.flow.BigFlowRate;
 import com.silvia.apeiron.ae.flow.BigFlowStore;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.api.networking.security.BaseActionSource;
 import appeng.api.storage.data.IAEStack;
@@ -34,7 +34,7 @@ public abstract class ItemFlowGridCacheMixin {
         if (!AEConfig.instance.enableItemFlowTracking || !this.trackingEnabled || !BigAEStackValues.isBig(diff)) return;
         synchronized (APEIRON_STORES) {
             APEIRON_STORES.computeIfAbsent((ItemFlowGridCache) (Object) this, ignored -> new BigFlowStore())
-                    .record(diff, source);
+                .record(diff, source);
         }
         ci.cancel();
     }
@@ -53,12 +53,20 @@ public abstract class ItemFlowGridCacheMixin {
             FlowRate rate = result.get(entry.getKey());
             if (rate == null) {
                 rate = new FlowRate(
-                        BigAEStackValues.saturatedLong(entry.getValue().in()),
-                        BigAEStackValues.saturatedLong(entry.getValue().out()));
+                    BigAEStackValues.saturatedLong(
+                        entry.getValue()
+                            .in()),
+                    BigAEStackValues.saturatedLong(
+                        entry.getValue()
+                            .out()));
                 result.put(entry.getKey(), rate);
             }
             if (rate instanceof BigFlowRate) {
-                ((BigFlowRate) rate).setBigFlow(entry.getValue().in(), entry.getValue().out());
+                ((BigFlowRate) rate).setBigFlow(
+                    entry.getValue()
+                        .in(),
+                    entry.getValue()
+                        .out());
             }
         }
     }

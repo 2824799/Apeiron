@@ -16,20 +16,17 @@ public interface BigCraftingCpuEntry {
     BigInteger getTotalAmountBig();
 
     static BigInteger stored(final CraftingCpuEntry entry) {
-        return entry instanceof BigCraftingCpuEntry
-                ? ((BigCraftingCpuEntry) entry).getStoredAmountBig()
-                : BigInteger.valueOf(entry.getStoredAmount());
+        return entry instanceof BigCraftingCpuEntry ? ((BigCraftingCpuEntry) entry).getStoredAmountBig()
+            : BigInteger.valueOf(entry.getStoredAmount());
     }
 
     static BigInteger active(final CraftingCpuEntry entry) {
-        return entry instanceof BigCraftingCpuEntry
-                ? ((BigCraftingCpuEntry) entry).getActiveAmountBig()
-                : BigInteger.valueOf(entry.getActiveAmount());
+        return entry instanceof BigCraftingCpuEntry ? ((BigCraftingCpuEntry) entry).getActiveAmountBig()
+            : BigInteger.valueOf(entry.getActiveAmount());
     }
 
     static BigInteger pending(final CraftingCpuEntry entry) {
-        return entry instanceof BigCraftingCpuEntry
-                ? ((BigCraftingCpuEntry) entry).getPendingAmountBig()
-                : BigInteger.valueOf(entry.getPendingAmount());
+        return entry instanceof BigCraftingCpuEntry ? ((BigCraftingCpuEntry) entry).getPendingAmountBig()
+            : BigInteger.valueOf(entry.getPendingAmount());
     }
 }

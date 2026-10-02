@@ -19,14 +19,12 @@ public interface BigCraftingTimingRecord {
     void setEndTickBig(long endTick);
 
     static BigInteger remaining(final CraftingCpuDiagnostics.CraftingTimingRecord record) {
-        return record instanceof BigCraftingTimingRecord
-                ? ((BigCraftingTimingRecord) record).getRemainingToProduceBig()
-                : BigInteger.valueOf(record.getRemainingToProduce());
+        return record instanceof BigCraftingTimingRecord ? ((BigCraftingTimingRecord) record).getRemainingToProduceBig()
+            : BigInteger.valueOf(record.getRemainingToProduce());
     }
 
     static BigInteger original(final CraftingCpuDiagnostics.CraftingTimingRecord record) {
-        return record instanceof BigCraftingTimingRecord
-                ? ((BigCraftingTimingRecord) record).getOriginalToProduceBig()
-                : BigInteger.valueOf(record.getOriginalToProduce());
+        return record instanceof BigCraftingTimingRecord ? ((BigCraftingTimingRecord) record).getOriginalToProduceBig()
+            : BigInteger.valueOf(record.getOriginalToProduce());
     }
 }

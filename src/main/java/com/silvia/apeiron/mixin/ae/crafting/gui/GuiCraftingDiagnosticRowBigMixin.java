@@ -50,10 +50,14 @@ public abstract class GuiCraftingDiagnosticRowBigMixin implements BigDiagnosticG
 
     @Inject(method = "fromPacket", at = @At("RETURN"))
     private static void apeiron$capture(final DiagnosticRowView packetRow, final CallbackInfoReturnable<Object> cir) {
-        if (!((Object) packetRow instanceof BigDiagnosticRow) || !(cir.getReturnValue() instanceof BigDiagnosticGuiRow)) return;
+        if (!((Object) packetRow instanceof BigDiagnosticRow) || !(cir.getReturnValue() instanceof BigDiagnosticGuiRow))
+            return;
         final BigDiagnosticRow packet = (BigDiagnosticRow) (Object) packetRow;
         final BigDiagnosticGuiRow row = (BigDiagnosticGuiRow) cir.getReturnValue();
-        row.setExactGuiValues(packet.getTotalProducedBig(), packet.getElapsedTimeTicksBig(), packet.getSampleCountBig());
+        row.setExactGuiValues(
+            packet.getTotalProducedBig(),
+            packet.getElapsedTimeTicksBig(),
+            packet.getSampleCountBig());
     }
 
     @Override
@@ -63,8 +67,7 @@ public abstract class GuiCraftingDiagnosticRowBigMixin implements BigDiagnosticG
 
     @Override
     public BigInteger getElapsedTimeTicksBig() {
-        return this.apeiron$elapsedTimeTicks == null
-            ? BigInteger.valueOf(this.elapsedTimeTicks)
+        return this.apeiron$elapsedTimeTicks == null ? BigInteger.valueOf(this.elapsedTimeTicks)
             : this.apeiron$elapsedTimeTicks;
     }
 
@@ -77,8 +80,7 @@ public abstract class GuiCraftingDiagnosticRowBigMixin implements BigDiagnosticG
     public double getItemsPerSecondBig() {
         final BigInteger ticks = this.getElapsedTimeTicksBig();
         if (ticks.signum() <= 0) return 0.0D;
-        return new BigDecimal(this.getTotalProducedBig())
-            .multiply(BigDecimal.valueOf(TICKS_PER_SECOND))
+        return new BigDecimal(this.getTotalProducedBig()).multiply(BigDecimal.valueOf(TICKS_PER_SECOND))
             .divide(new BigDecimal(ticks), 8, RoundingMode.HALF_UP)
             .doubleValue();
     }
@@ -113,7 +115,8 @@ public abstract class GuiCraftingDiagnosticRowBigMixin implements BigDiagnosticG
 
     @Overwrite
     private String getCompactFormattedItemsPerSecond(final java.text.DecimalFormat format) {
-        if (this.getElapsedTimeTicksBig().signum() <= 0) return "-";
+        if (this.getElapsedTimeTicksBig()
+            .signum() <= 0) return "-";
         final double itemsPerSecond = this.getItemsPerSecondBig();
         if (itemsPerSecond >= 1000.0D) {
             if (Double.isFinite(itemsPerSecond) && itemsPerSecond <= Long.MAX_VALUE) {
@@ -122,8 +125,7 @@ public abstract class GuiCraftingDiagnosticRowBigMixin implements BigDiagnosticG
             return String.format(java.util.Locale.ROOT, "%.2E", itemsPerSecond);
         }
         final long whole = (long) itemsPerSecond;
-        return Math.abs(itemsPerSecond - whole) < 0.1D
-            ? Long.toString(whole)
+        return Math.abs(itemsPerSecond - whole) < 0.1D ? Long.toString(whole)
             : String.format(java.util.Locale.ROOT, "%.1f", itemsPerSecond);
     }
 }

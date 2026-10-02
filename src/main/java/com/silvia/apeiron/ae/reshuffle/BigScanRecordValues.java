@@ -9,8 +9,8 @@ public final class BigScanRecordValues {
 
     private BigScanRecordValues() {}
 
-    public static void capture(final BigInteger typesUsed, final BigInteger typesTotal,
-        final BigInteger bytesUsed, final BigInteger bytesTotal) {
+    public static void capture(final BigInteger typesUsed, final BigInteger typesTotal, final BigInteger bytesUsed,
+        final BigInteger bytesTotal) {
         CURRENT.set(new BigInteger[] { typesUsed, typesTotal, bytesUsed, bytesTotal });
     }
 

@@ -38,7 +38,9 @@ public abstract class GuiCraftingCPUBigMixin {
 
     @Redirect(
         method = "drawAmountLine",
-        at = @At(value = "INVOKE", target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
     private String apeiron$formatWide(final ReadableNumberConverter converter, final long value) {
         return BigGuiNumberCapture.formatWideAmount(value);
     }

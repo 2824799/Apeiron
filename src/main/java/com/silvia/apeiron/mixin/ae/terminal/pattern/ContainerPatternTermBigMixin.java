@@ -23,7 +23,9 @@ public abstract class ContainerPatternTermBigMixin {
             final BigInteger divisor = BigInteger.valueOf(multiplier);
             for (int i = 0; i < inventory.getSizeInventory(); i++) {
                 final IAEStack<?> stack = inventory.getAEStackInSlot(i);
-                if (stack != null && !BigAEStackValues.get(stack).mod(divisor).equals(BigInteger.ZERO)) return false;
+                if (stack != null && !BigAEStackValues.get(stack)
+                    .mod(divisor)
+                    .equals(BigInteger.ZERO)) return false;
             }
             return true;
         }

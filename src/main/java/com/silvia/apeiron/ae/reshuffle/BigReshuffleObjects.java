@@ -3,9 +3,10 @@ package com.silvia.apeiron.ae.reshuffle;
 import java.lang.reflect.Constructor;
 import java.math.BigInteger;
 
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+
 import appeng.api.storage.IMEInventoryHandler;
 import appeng.api.storage.data.IAEStack;
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 /** Lazily constructs AE2's private queue records; counts are assigned through transformed interfaces. */
 public final class BigReshuffleObjects {
@@ -13,6 +14,7 @@ public final class BigReshuffleObjects {
     private BigReshuffleObjects() {}
 
     private static final class Constructors {
+
         static final Constructor<?> PENDING = resolve("PendingInjection", IAEStack.class);
         static final Constructor<?> SOURCE = resolve("SourceContribution", IMEInventoryHandler.class, long.class);
 
@@ -38,8 +40,8 @@ public final class BigReshuffleObjects {
 
     public static BigReshuffleSource source(final IMEInventoryHandler source, final BigInteger amount) {
         try {
-            final BigReshuffleSource result = (BigReshuffleSource) Constructors.SOURCE.newInstance(source,
-                BigAEStackValues.saturatedLong(amount));
+            final BigReshuffleSource result = (BigReshuffleSource) Constructors.SOURCE
+                .newInstance(source, BigAEStackValues.saturatedLong(amount));
             result.setAmountBig(amount);
             return result;
         } catch (ReflectiveOperationException error) {

@@ -36,21 +36,29 @@ public abstract class MEMonitorHandlerMixin implements BigMEInventory {
         final IAEStack<?> offered = input.copy();
         final IAEStack<?> result = BigMEInventories.injectItemsBig(this.getHandler(), input, mode, source);
         if (mode == Actionable.MODULATE) {
-            final BigInteger delta = BigAEStackValues.get(offered).subtract(BigAEStackValues.get(result));
+            final BigInteger delta = BigAEStackValues.get(offered)
+                .subtract(BigAEStackValues.get(result));
             if (delta.signum() != 0) this.postChangesToListeners(
-                Collections.singletonList(BigAEStackValues.copyWithSize(offered, delta)), source);
+                Collections.singletonList(BigAEStackValues.copyWithSize(offered, delta)),
+                source);
         }
         return result;
     }
 
     @Override
-    public IAEStack<?> extractItemsBig(final IAEStack<?> request, final Actionable mode, final BaseActionSource source) {
+    public IAEStack<?> extractItemsBig(final IAEStack<?> request, final Actionable mode,
+        final BaseActionSource source) {
         if (request == null) return null;
         final IAEStack<?> offered = request.copy();
         final IAEStack<?> result = BigMEInventories.extractItemsBig(this.getHandler(), request, mode, source);
         if (mode == Actionable.MODULATE && result != null) {
-            this.postChangesToListeners(Collections.singletonList(
-                BigAEStackValues.copyWithSize(offered, BigAEStackValues.get(result).negate())), source);
+            this.postChangesToListeners(
+                Collections.singletonList(
+                    BigAEStackValues.copyWithSize(
+                        offered,
+                        BigAEStackValues.get(result)
+                            .negate())),
+                source);
         }
         return result;
     }

@@ -49,8 +49,7 @@ public abstract class DiagnosticRowViewMixin implements BigDiagnosticRow {
 
     @Override
     public BigInteger getSampleCountBig() {
-        return this.apeiron$sampleCount == null
-            ? BigInteger.valueOf(((DiagnosticRowView) (Object) this).sampleCount)
+        return this.apeiron$sampleCount == null ? BigInteger.valueOf(((DiagnosticRowView) (Object) this).sampleCount)
             : this.apeiron$sampleCount;
     }
 

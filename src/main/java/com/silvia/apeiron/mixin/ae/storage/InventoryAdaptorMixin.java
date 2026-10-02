@@ -9,7 +9,6 @@ import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.storage.BigInventoryAdaptors;
 
 import appeng.api.config.InsertionMode;
-import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.util.InventoryAdaptor;
 
@@ -20,24 +19,18 @@ public abstract class InventoryAdaptorMixin {
     @Inject(method = "addStack", at = @At("HEAD"), cancellable = true)
     private void apeiron$addBig(final IAEStack<?> input, final InsertionMode mode,
         final CallbackInfoReturnable<IAEStack<?>> cir) {
-        if (BigAEStackValues.get(input).compareTo(java.math.BigInteger.valueOf(Integer.MAX_VALUE - 1L)) > 0) {
-            cir.setReturnValue(BigInventoryAdaptors.addStackBig(
-                (InventoryAdaptor) (Object) this,
-                input,
-                mode,
-                false));
+        if (BigAEStackValues.get(input)
+            .compareTo(java.math.BigInteger.valueOf(Integer.MAX_VALUE - 1L)) > 0) {
+            cir.setReturnValue(BigInventoryAdaptors.addStackBig((InventoryAdaptor) (Object) this, input, mode, false));
         }
     }
 
     @Inject(method = "simulateAddStack", at = @At("HEAD"), cancellable = true)
     private void apeiron$simulateBig(final IAEStack<?> input, final InsertionMode mode,
         final CallbackInfoReturnable<IAEStack<?>> cir) {
-        if (BigAEStackValues.get(input).compareTo(java.math.BigInteger.valueOf(Integer.MAX_VALUE - 1L)) > 0) {
-            cir.setReturnValue(BigInventoryAdaptors.addStackBig(
-                (InventoryAdaptor) (Object) this,
-                input,
-                mode,
-                true));
+        if (BigAEStackValues.get(input)
+            .compareTo(java.math.BigInteger.valueOf(Integer.MAX_VALUE - 1L)) > 0) {
+            cir.setReturnValue(BigInventoryAdaptors.addStackBig((InventoryAdaptor) (Object) this, input, mode, true));
         }
     }
 }

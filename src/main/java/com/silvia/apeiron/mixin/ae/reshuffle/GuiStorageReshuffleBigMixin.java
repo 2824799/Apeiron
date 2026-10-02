@@ -2,37 +2,40 @@ package com.silvia.apeiron.mixin.ae.reshuffle;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Comparator;
 
-import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
-import com.silvia.apeiron.ae.reshuffle.BigScanRecord;
 import com.silvia.apeiron.ae.reshuffle.BigReshuffleItemChangeAccess;
 import com.silvia.apeiron.ae.reshuffle.BigReshuffleReportAccess;
+import com.silvia.apeiron.ae.reshuffle.BigScanRecord;
+import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
 
+import appeng.api.config.HealthSortOrder;
 import appeng.api.storage.data.IAEStack;
 import appeng.client.gui.implementations.GuiStorageReshuffle;
+import appeng.container.implementations.ContainerStorageReshuffle;
+import appeng.core.localization.Localization;
 import appeng.helpers.ReshuffleReport;
 import appeng.helpers.ReshuffleReport.ItemChange;
 import appeng.helpers.ScanTask.ScanRecord;
-import appeng.api.config.HealthSortOrder;
-import appeng.container.implementations.ContainerStorageReshuffle;
-import appeng.core.localization.Localization;
 
 /** Displays exact storage-reshuffle counts in the report and tooltips. */
 @Mixin(value = GuiStorageReshuffle.class, remap = false)
 public abstract class GuiStorageReshuffleBigMixin {
 
-    @Shadow @Final private ContainerStorageReshuffle container;
-    @Shadow @Final private java.util.List<ScanRecord> scanRecords;
+    @Shadow
+    @Final
+    private ContainerStorageReshuffle container;
+    @Shadow
+    @Final
+    private java.util.List<ScanRecord> scanRecords;
 
     @Inject(method = "drawScanContent", at = @At("HEAD"))
     private void apeiron$clearScanCapture(final int mouseX, final int mouseY, final CallbackInfo ci) {
@@ -48,7 +51,8 @@ public abstract class GuiStorageReshuffleBigMixin {
         BigInteger total = exact.getBytesTotalBig();
         if (total.signum() <= 0) return 0.0;
         return new BigDecimal(exact.getBytesUsedBig()).multiply(BigDecimal.valueOf(100L))
-                .divide(new BigDecimal(total), 8, java.math.RoundingMode.HALF_UP).doubleValue();
+            .divide(new BigDecimal(total), 8, java.math.RoundingMode.HALF_UP)
+            .doubleValue();
     }
 
     @Overwrite
@@ -72,52 +76,61 @@ public abstract class GuiStorageReshuffleBigMixin {
         });
     }
 
-    @Redirect(method = "drawScanContent", at = @At(value = "FIELD",
-        target = "Lappeng/helpers/ScanTask$ScanRecord;typesUsed:J"))
+    @Redirect(
+        method = "drawScanContent",
+        at = @At(value = "FIELD", target = "Lappeng/helpers/ScanTask$ScanRecord;typesUsed:J"))
     private long apeiron$scanTypesUsed(final ScanRecord record) {
-        BigInteger value = record instanceof BigScanRecord
-            ? ((BigScanRecord) (Object) record).getTypesUsedBig() : BigInteger.valueOf(record.typesUsed);
+        BigInteger value = record instanceof BigScanRecord ? ((BigScanRecord) (Object) record).getTypesUsedBig()
+            : BigInteger.valueOf(record.typesUsed);
         return BigGuiNumberCapture.captureScanTypesUsed(value);
     }
 
-    @Redirect(method = "drawScanContent", at = @At(value = "FIELD",
-        target = "Lappeng/helpers/ScanTask$ScanRecord;typesTotal:J"))
+    @Redirect(
+        method = "drawScanContent",
+        at = @At(value = "FIELD", target = "Lappeng/helpers/ScanTask$ScanRecord;typesTotal:J"))
     private long apeiron$scanTypesTotal(final ScanRecord record) {
-        BigInteger value = record instanceof BigScanRecord
-            ? ((BigScanRecord) (Object) record).getTypesTotalBig() : BigInteger.valueOf(record.typesTotal);
+        BigInteger value = record instanceof BigScanRecord ? ((BigScanRecord) (Object) record).getTypesTotalBig()
+            : BigInteger.valueOf(record.typesTotal);
         return BigGuiNumberCapture.captureScanTypesTotal(value);
     }
 
-    @Redirect(method = "drawScanContent", at = @At(value = "FIELD",
-        target = "Lappeng/helpers/ScanTask$ScanRecord;bytesUsed:J"))
+    @Redirect(
+        method = "drawScanContent",
+        at = @At(value = "FIELD", target = "Lappeng/helpers/ScanTask$ScanRecord;bytesUsed:J"))
     private long apeiron$scanBytesUsed(final ScanRecord record) {
-        BigInteger value = record instanceof BigScanRecord
-            ? ((BigScanRecord) (Object) record).getBytesUsedBig() : BigInteger.valueOf(record.bytesUsed);
+        BigInteger value = record instanceof BigScanRecord ? ((BigScanRecord) (Object) record).getBytesUsedBig()
+            : BigInteger.valueOf(record.bytesUsed);
         return BigGuiNumberCapture.captureScanBytesUsed(value);
     }
 
-    @Redirect(method = "drawScanContent", at = @At(value = "FIELD",
-        target = "Lappeng/helpers/ScanTask$ScanRecord;bytesTotal:J"))
+    @Redirect(
+        method = "drawScanContent",
+        at = @At(value = "FIELD", target = "Lappeng/helpers/ScanTask$ScanRecord;bytesTotal:J"))
     private long apeiron$scanBytesTotal(final ScanRecord record) {
-        BigInteger value = record instanceof BigScanRecord
-            ? ((BigScanRecord) (Object) record).getBytesTotalBig() : BigInteger.valueOf(record.bytesTotal);
+        BigInteger value = record instanceof BigScanRecord ? ((BigScanRecord) (Object) record).getBytesTotalBig()
+            : BigInteger.valueOf(record.bytesTotal);
         return BigGuiNumberCapture.captureScanBytesTotal(value);
     }
 
-    @Redirect(method = "drawScanContent", at = @At(value = "INVOKE",
-        target = "Ljava/lang/StringBuilder;append(J)Ljava/lang/StringBuilder;"))
+    @Redirect(
+        method = "drawScanContent",
+        at = @At(value = "INVOKE", target = "Ljava/lang/StringBuilder;append(J)Ljava/lang/StringBuilder;"))
     private static StringBuilder apeiron$formatScanInteger(final StringBuilder builder, final long value) {
         return builder.append(BigGuiNumberCapture.formatScanInteger(value));
     }
 
-    @Redirect(method = "drawScanContent", at = @At(value = "INVOKE",
-        target = "Lappeng/util/Platform;formatByteDouble(D)Ljava/lang/String;"))
+    @Redirect(
+        method = "drawScanContent",
+        at = @At(value = "INVOKE", target = "Lappeng/util/Platform;formatByteDouble(D)Ljava/lang/String;"))
     private static String apeiron$formatScanBytes(final double value) {
         return BigGuiNumberCapture.formatScanBytes(value);
     }
 
-    @Redirect(method = "drawScanContent", at = @At(value = "INVOKE",
-        target = "Lappeng/core/localization/Localization;getLocal([Ljava/lang/Object;)Ljava/lang/String;"))
+    @Redirect(
+        method = "drawScanContent",
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/core/localization/Localization;getLocal([Ljava/lang/Object;)Ljava/lang/String;"))
     private static String apeiron$formatScanTypes(final Localization text, final Object[] args) {
         return text.getLocal(BigGuiNumberCapture.formatScanTypeArgs(args));
     }
@@ -172,26 +185,23 @@ public abstract class GuiStorageReshuffleBigMixin {
         method = "buildItemLines",
         at = @At(value = "FIELD", target = "Lappeng/helpers/ReshuffleReport$ItemChange;difference:J"))
     private long apeiron$captureDifference(final ItemChange change) {
-        return BigGuiNumberCapture.captureReportLong(
-                ((BigReshuffleItemChangeAccess) change).getDifferenceBig(),
-                change.difference);
+        return BigGuiNumberCapture
+            .captureReportLong(((BigReshuffleItemChangeAccess) change).getDifferenceBig(), change.difference);
     }
 
     @Redirect(
         method = "buildItemLines",
         at = @At(value = "FIELD", target = "Lappeng/helpers/ReshuffleReport$ItemChange;beforeCount:J"))
     private long apeiron$captureBefore(final ItemChange change) {
-        return BigGuiNumberCapture.captureReportLong(
-                ((BigReshuffleItemChangeAccess) change).getBeforeCountBig(),
-                change.beforeCount);
+        return BigGuiNumberCapture
+            .captureReportLong(((BigReshuffleItemChangeAccess) change).getBeforeCountBig(), change.beforeCount);
     }
 
     @Redirect(
         method = "buildItemLines",
         at = @At(value = "FIELD", target = "Lappeng/helpers/ReshuffleReport$ItemChange;afterCount:J"))
     private long apeiron$captureAfter(final ItemChange change) {
-        return BigGuiNumberCapture.captureReportLong(
-                ((BigReshuffleItemChangeAccess) change).getAfterCountBig(),
-                change.afterCount);
+        return BigGuiNumberCapture
+            .captureReportLong(((BigReshuffleItemChangeAccess) change).getAfterCountBig(), change.afterCount);
     }
 }

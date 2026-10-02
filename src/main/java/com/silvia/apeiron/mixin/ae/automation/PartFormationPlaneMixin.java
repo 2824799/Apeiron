@@ -22,9 +22,13 @@ public abstract class PartFormationPlaneMixin implements BigIMEInventory {
 
     @Override
     public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode, final BaseActionSource source) {
-        if (input == null || BigAEStackValues.get(input).signum() <= 0) return input;
+        if (input == null || BigAEStackValues.get(input)
+            .signum() <= 0) return input;
         final BigInteger offered = BigAEStackValues.get(input);
-        final BigInteger chunk = offered.min(BigInteger.valueOf(input.getItemStack().getMaxStackSize()));
+        final BigInteger chunk = offered.min(
+            BigInteger.valueOf(
+                input.getItemStack()
+                    .getMaxStackSize()));
         final IAEItemStack physical = BigAEStackValues.copyWithSize(input, chunk);
         final IAEItemStack rejected = ((PartFormationPlane) (Object) this).injectItems(physical, mode, source);
         final BigInteger left = BigAEStackValues.get(rejected);
@@ -39,8 +43,10 @@ public abstract class PartFormationPlaneMixin implements BigIMEInventory {
         return null;
     }
 
-    @Inject(method = "injectItems(Lappeng/api/storage/data/IAEItemStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEItemStack;",
-        at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "injectItems(Lappeng/api/storage/data/IAEItemStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEItemStack;",
+        at = @At("HEAD"),
+        cancellable = true)
     private void apeiron$placeBig(final IAEItemStack input, final Actionable mode, final BaseActionSource source,
         final CallbackInfoReturnable<IAEItemStack> cir) {
         if (BigAEStackValues.isBig(input)) cir.setReturnValue(this.injectItemsBig(input, mode, source));

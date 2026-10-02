@@ -11,11 +11,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.storage.BigMEInventory;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
-
 import com.silvia.apeiron.ae.storage.BigIMEInventory;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
+import com.silvia.apeiron.ae.storage.BigMEInventory;
 import com.silvia.apeiron.ae.storage.UnsupportedBigInventoryException;
 
 import appeng.api.config.Actionable;
@@ -55,8 +54,7 @@ public abstract class NetworkInventoryHandlerMixin implements BigIMEInventory, B
         return (List<IMEInventoryHandler<IAEStack>>) (List<?>) apeiron$self().getHandlers();
     }
 
-    private boolean apeiron$hasItem(IMEInventoryHandler<IAEStack> inventory, IAEStack input,
-        BaseActionSource source) {
+    private boolean apeiron$hasItem(IMEInventoryHandler<IAEStack> inventory, IAEStack input, BaseActionSource source) {
         try {
             if (inventory.isPrioritized(input)) return true;
             if (BigAEStackValues.isBig(input) && !(inventory instanceof BigMEInventory)) {
@@ -69,8 +67,8 @@ public abstract class NetworkInventoryHandlerMixin implements BigIMEInventory, B
         }
     }
 
-    private IAEStack apeiron$inject(IMEInventoryHandler<IAEStack> inventory, IAEStack input,
-        Actionable mode, BaseActionSource source) {
+    private IAEStack apeiron$inject(IMEInventoryHandler<IAEStack> inventory, IAEStack input, Actionable mode,
+        BaseActionSource source) {
         try {
             return BigMEInventories.injectItemsBig(inventory, input, mode, source);
         } catch (UnsupportedBigInventoryException ignored) {
@@ -78,8 +76,8 @@ public abstract class NetworkInventoryHandlerMixin implements BigIMEInventory, B
         }
     }
 
-    private IAEStack apeiron$extract(IMEInventoryHandler<IAEStack> inventory, IAEStack request,
-        Actionable mode, BaseActionSource source) {
+    private IAEStack apeiron$extract(IMEInventoryHandler<IAEStack> inventory, IAEStack request, Actionable mode,
+        BaseActionSource source) {
         try {
             return BigMEInventories.extractItemsBig(inventory, request, mode, source);
         } catch (UnsupportedBigInventoryException ignored) {

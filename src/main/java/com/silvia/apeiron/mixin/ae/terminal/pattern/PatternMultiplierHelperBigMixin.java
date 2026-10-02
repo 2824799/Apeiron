@@ -66,7 +66,8 @@ public abstract class PatternMultiplierHelperBigMixin {
             final NBTTagCompound tag = list.getCompoundTagAt(index);
             if (tag.hasNoTags()) continue;
             if (tag.hasKey("Cnt", NBT.TAG_LONG) || tag.hasKey("ApeironCnt", NBT.TAG_BYTE_ARRAY)) {
-                final BigInteger value = BigValueCodec.readNBT(tag, "Cnt", "ApeironCnt").toBigInteger();
+                final BigInteger value = BigValueCodec.readNBT(tag, "Cnt", "ApeironCnt")
+                    .toBigInteger();
                 final BigInteger modified = dividing ? value.shiftRight(shift) : value.shiftLeft(shift);
                 BigValueCodec.writeNBT(tag, "Cnt", "ApeironCnt", new AdaptiveInteger(modified));
             }

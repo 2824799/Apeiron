@@ -10,18 +10,16 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.automation.BigSuperMEReplenisher;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.api.config.Actionable;
 import appeng.api.implementations.items.IStorageCell;
 import appeng.api.networking.security.BaseActionSource;
 import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IAEStackType;
-import appeng.me.storage.MEInventoryHandler;
 import appeng.tile.inventory.AppEngInternalInventory;
 import appeng.tile.misc.TileSuperMEReplenisher;
 import appeng.util.item.IAEStackList;
@@ -31,17 +29,33 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 @Mixin(value = TileSuperMEReplenisher.class, remap = false)
 public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplenisher {
 
-    @Shadow @Final private IAEStackList storage;
-    @Shadow @Final private IAEStackList out;
-    @Shadow @Final private Object2IntOpenHashMap<IAEStackType<?>> unusedCount;
-    @Shadow @Final private AppEngInternalInventory cells;
-    @Shadow private long totalBytes;
-    @Shadow private long usedBytes;
-    @Shadow private int status;
-    @Shadow @Final private BaseActionSource src;
+    @Shadow
+    @Final
+    private IAEStackList storage;
+    @Shadow
+    @Final
+    private IAEStackList out;
+    @Shadow
+    @Final
+    private Object2IntOpenHashMap<IAEStackType<?>> unusedCount;
+    @Shadow
+    @Final
+    private AppEngInternalInventory cells;
+    @Shadow
+    private long totalBytes;
+    @Shadow
+    private long usedBytes;
+    @Shadow
+    private int status;
+    @Shadow
+    @Final
+    private BaseActionSource src;
 
-    @Shadow private void updatePowerDraw() {}
-    @Shadow private void postStorageChange(IAEStack<?> stack, long amount, BaseActionSource source) {}
+    @Shadow
+    private void updatePowerDraw() {}
+
+    @Shadow
+    private void postStorageChange(IAEStack<?> stack, long amount, BaseActionSource source) {}
 
     @Unique
     private TileSuperMEReplenisher apeiron$self() {
@@ -80,34 +94,38 @@ public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplen
 
     @Unique
     private BigInteger apeiron$countStack(final IAEStack<?> stack) {
-        final int weight = stack.getStackType().getAmountPerByte();
+        final int weight = stack.getStackType()
+            .getAmountPerByte();
         final BigInteger[] quotient = BigAEStackValues.get(stack)
-                .divideAndRemainder(BigInteger.valueOf(weight));
+            .divideAndRemainder(BigInteger.valueOf(weight));
         final int previous = this.unusedCount.getOrDefault(stack.getStackType(), 0);
         final BigInteger remainder = quotient[1].add(BigInteger.valueOf(previous));
         this.unusedCount.put(
-                stack.getStackType(),
-                remainder.remainder(BigInteger.valueOf(weight)).intValue());
+            stack.getStackType(),
+            remainder.remainder(BigInteger.valueOf(weight))
+                .intValue());
         return quotient[0].add(remainder.divide(BigInteger.valueOf(weight)));
     }
 
     @Unique
     private boolean apeiron$needsExact(final IAEStack<?> stack) {
-        return BigAEStackValues.isBig(stack)
-                || !BigAEStackValues.fitsLong(this.getTotalBytesBig())
-                || !BigAEStackValues.fitsLong(this.getUsedBytesBig());
+        return BigAEStackValues.isBig(stack) || !BigAEStackValues.fitsLong(this.getTotalBytesBig())
+            || !BigAEStackValues.fitsLong(this.getUsedBytesBig());
     }
 
     @Unique
     private static BigInteger apeiron$bytesFor(final BigInteger amount, final int amountPerByte) {
         if (amount.signum() <= 0) return BigInteger.ZERO;
         final BigInteger divisor = BigInteger.valueOf(amountPerByte);
-        return amount.add(divisor).subtract(BigInteger.ONE).divide(divisor);
+        return amount.add(divisor)
+            .subtract(BigInteger.ONE)
+            .divide(divisor);
     }
 
     @Unique
     private static int apeiron$remainder(final BigInteger amount, final int amountPerByte) {
-        return amount.remainder(BigInteger.valueOf(amountPerByte)).intValue();
+        return amount.remainder(BigInteger.valueOf(amountPerByte))
+            .intValue();
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -118,30 +136,37 @@ public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplen
         final IAEStackType type = input.getStackType();
         final int weight = type.getAmountPerByte();
         final BigInteger usedBefore = this.apeiron$rebuildUsedBytes();
-        final BigInteger free = this.getTotalBytesBig().subtract(usedBefore);
+        final BigInteger free = this.getTotalBytesBig()
+            .subtract(usedBefore);
         final BigInteger stackSize = BigAEStackValues.get(input);
         final int unused = this.unusedCount.getOrDefault(type, 0);
         if (free.signum() < 0 || free.signum() == 0 && unused == 0) return input;
 
         final int freeUnused = unused == 0 ? 0 : weight - unused;
         final BigInteger toCount = stackSize.compareTo(BigInteger.valueOf(freeUnused)) > 0
-                ? stackSize.subtract(BigInteger.valueOf(freeUnused)) : BigInteger.ZERO;
+            ? stackSize.subtract(BigInteger.valueOf(freeUnused))
+            : BigInteger.ZERO;
         final BigInteger needBytes = apeiron$bytesFor(toCount, weight);
-        final int newUnused = toCount.signum() == 0
-                ? apeiron$remainder(BigInteger.valueOf(unused).add(stackSize), weight)
-                : apeiron$remainder(toCount, weight);
+        final int newUnused = toCount.signum() == 0 ? apeiron$remainder(
+            BigInteger.valueOf(unused)
+                .add(stackSize),
+            weight) : apeiron$remainder(toCount, weight);
 
         if (mode == Actionable.SIMULATE) {
             if (free.compareTo(needBytes) >= 0) return null;
             final BigInteger capacity = free.multiply(BigInteger.valueOf(weight))
-                    .add(BigInteger.valueOf(freeUnused));
-            return BigAEStackValues.copyWithSize(input, stackSize.subtract(capacity).max(BigInteger.ZERO));
+                .add(BigInteger.valueOf(freeUnused));
+            return BigAEStackValues.copyWithSize(
+                input,
+                stackSize.subtract(capacity)
+                    .max(BigInteger.ZERO));
         }
 
         this.status = 1;
         if (free.compareTo(needBytes) >= 0) {
             this.unusedCount.put(type, newUnused);
-            final BigInteger used = this.getUsedBytesBig().add(needBytes);
+            final BigInteger used = this.getUsedBytesBig()
+                .add(needBytes);
             this.usedBytes = BigAEStackValues.saturatedLong(used);
             this.storage.add(input);
             this.postStorageChange(input, BigAEStackValues.saturatedLong(stackSize), source);
@@ -149,7 +174,9 @@ public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplen
         }
 
         final BigInteger capacity = free.multiply(BigInteger.valueOf(weight))
-                .add(BigInteger.valueOf(freeUnused)).max(BigInteger.ZERO).min(stackSize);
+            .add(BigInteger.valueOf(freeUnused))
+            .max(BigInteger.ZERO)
+            .min(stackSize);
         final IAEStack<?> allowed = BigAEStackValues.copyWithSize(input, capacity);
         this.storage.add(allowed);
         this.unusedCount.put(type, 0);
@@ -167,18 +194,21 @@ public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplen
         if (stored == null) return null;
         final BigInteger available = BigAEStackValues.get(stored);
         if (available.signum() <= 0) return null;
-        final BigInteger amount = BigAEStackValues.get(request).min(available);
+        final BigInteger amount = BigAEStackValues.get(request)
+            .min(available);
         final IAEStack<?> result = BigAEStackValues.copyWithSize(stored, amount);
         if (mode == Actionable.MODULATE) {
-            final int weight = request.getStackType().getAmountPerByte();
+            final int weight = request.getStackType()
+                .getAmountPerByte();
             final BigInteger used = this.getUsedBytesBig();
             BigAEStackValues.set(stored, available.subtract(amount));
             final int unused = this.unusedCount.getOrDefault(request.getStackType(), 0);
             final BigInteger partial = BigInteger.valueOf(unused == 0 ? 0 : weight - unused)
-                    .add(amount.remainder(BigInteger.valueOf(weight)));
+                .add(amount.remainder(BigInteger.valueOf(weight)));
             final BigInteger freed = amount.divide(BigInteger.valueOf(weight))
-                    .add(partial.divide(BigInteger.valueOf(weight)));
-            final int next = partial.remainder(BigInteger.valueOf(weight)).intValue();
+                .add(partial.divide(BigInteger.valueOf(weight)));
+            final int next = partial.remainder(BigInteger.valueOf(weight))
+                .intValue();
             this.unusedCount.put(request.getStackType(), next == 0 ? 0 : weight - next);
             this.usedBytes = BigAEStackValues.saturatedLong(used.subtract(freed));
             this.postStorageChange(result, BigAEStackValues.saturatedLong(amount.negate()), source);
@@ -193,8 +223,8 @@ public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplen
     }
 
     @Inject(method = "extractItems", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyExtract(final IAEStack<?> request, final Actionable mode,
-        final BaseActionSource source, final CallbackInfoReturnable<IAEStack<?>> cir) {
+    private void apeiron$legacyExtract(final IAEStack<?> request, final Actionable mode, final BaseActionSource source,
+        final CallbackInfoReturnable<IAEStack<?>> cir) {
         if (this.apeiron$needsExact(request)) cir.setReturnValue(this.apeiron$extractExact(request, mode, source));
     }
 

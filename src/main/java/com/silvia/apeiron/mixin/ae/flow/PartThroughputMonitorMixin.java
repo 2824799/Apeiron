@@ -12,9 +12,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.BigNumberFormatter;
 
+import appeng.api.storage.data.IAEStack;
 import appeng.parts.reporting.PartThroughputMonitor;
 import appeng.util.IWideReadableNumberConverter;
-import appeng.api.storage.data.IAEStack;
 
 /** Renders exact large amounts on throughput monitors. */
 @Mixin(value = PartThroughputMonitor.class, remap = false)

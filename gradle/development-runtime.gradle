@@ -24,7 +24,6 @@ dependencies {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Natura:2.8.24:dev")
     runtimeOnlyNonPublishable("apeiron.development:sciencenotleisure:0.2.7-rc1:dev")
     runtimeOnlyNonPublishable("apeiron.development:programmablehatches:0.2.0p26:dev")
-    runtimeOnlyNonPublishable(rfg.deobf(files("../EndPlan/build/libs/endplan-0.1.0.jar")))
 
     // Common GregTech prerequisites are resolved transitively from its development jar.
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:GT5-Unofficial:5.09.54.190:dev")

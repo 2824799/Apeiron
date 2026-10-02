@@ -42,8 +42,8 @@ public abstract class GuiCraftingDiagnosticTerminalBigMixin {
                 String.CASE_INSENSITIVE_ORDER);
             case CRAFTED -> comparator = (left, right) -> exact(left).compareTo(exact(right));
             case SAMPLES -> comparator = (left, right) -> samples(left).compareTo(samples(right));
-            case AVG_PER_SECOND -> comparator = Comparator.comparingDouble(
-                row -> ((BigDiagnosticGuiRow) row).getItemsPerSecondBig());
+            case AVG_PER_SECOND -> comparator = Comparator
+                .comparingDouble(row -> ((BigDiagnosticGuiRow) row).getItemsPerSecondBig());
             case CUMULATIVE_TIME -> comparator = (left, right) -> elapsed(left).compareTo(elapsed(right));
             default -> comparator = (left, right) -> 0;
         }
@@ -53,7 +53,9 @@ public abstract class GuiCraftingDiagnosticTerminalBigMixin {
 
     @Redirect(
         method = "drawFG",
-        at = @At(value = "FIELD", target = "Lappeng/client/gui/implementations/GuiCraftingDiagnosticTerminal$Row;totalProduced:J"))
+        at = @At(
+            value = "FIELD",
+            target = "Lappeng/client/gui/implementations/GuiCraftingDiagnosticTerminal$Row;totalProduced:J"))
     private long apeiron$captureTooltipTotal(final Object row) {
         if ((Object) row instanceof BigDiagnosticGuiRow exact) {
             return BigGuiNumberCapture.captureAmount(exact.getTotalProducedBig());

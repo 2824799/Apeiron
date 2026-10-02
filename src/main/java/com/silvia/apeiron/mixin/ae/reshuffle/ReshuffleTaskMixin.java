@@ -15,12 +15,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.ae.storage.BigMEInventories;
 import com.silvia.apeiron.ae.reshuffle.BigReshuffleObjects;
 import com.silvia.apeiron.ae.reshuffle.BigReshufflePending;
-import com.silvia.apeiron.ae.reshuffle.BigReshuffleSource;
 import com.silvia.apeiron.ae.reshuffle.BigReshuffleReportAccess;
+import com.silvia.apeiron.ae.reshuffle.BigReshuffleSource;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.ae.storage.BigMEInventories;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.ReshufflePhase;
@@ -31,32 +31,58 @@ import appeng.api.storage.IMEInventoryHandler;
 import appeng.api.storage.IMEMonitor;
 import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IItemList;
-import appeng.helpers.ReshuffleTask;
 import appeng.helpers.ReshuffleReport;
+import appeng.helpers.ReshuffleTask;
 
 /** Exact transfer and rollback accounting while retaining AE's subnet traversal and per-tick batches. */
 @SuppressWarnings({ "rawtypes", "unchecked" })
 @Mixin(value = ReshuffleTask.class, remap = false)
 public abstract class ReshuffleTaskMixin {
 
-    @Shadow @Final private ReshuffleActionSource src;
-    @Shadow @Final private MachineSource rollbackSrc;
-    @Shadow @Final private IStorageGrid sg;
-    @Shadow @Final private boolean insertOrder;
-    @Shadow private ReshufflePhase phase;
-    @Shadow private int extractedTypes;
-    @Shadow private int injectedTypes;
-    @Shadow private double extractedItems;
-    @Shadow private double injectedItems;
-    @Shadow @Final private IItemList<IAEStack<?>> extracted;
-    @Shadow @Final private IItemList<IAEStack<?>> cantExtract;
-    @Shadow @Final private IItemList<IAEStack<?>> cantInject;
-    @Shadow @Final private List injectQueue;
-    @Shadow @Final private Map injectLookup;
-    @Shadow private Iterator injectIterator;
+    @Shadow
+    @Final
+    private ReshuffleActionSource src;
+    @Shadow
+    @Final
+    private MachineSource rollbackSrc;
+    @Shadow
+    @Final
+    private IStorageGrid sg;
+    @Shadow
+    @Final
+    private boolean insertOrder;
+    @Shadow
+    private ReshufflePhase phase;
+    @Shadow
+    private int extractedTypes;
+    @Shadow
+    private int injectedTypes;
+    @Shadow
+    private double extractedItems;
+    @Shadow
+    private double injectedItems;
+    @Shadow
+    @Final
+    private IItemList<IAEStack<?>> extracted;
+    @Shadow
+    @Final
+    private IItemList<IAEStack<?>> cantExtract;
+    @Shadow
+    @Final
+    private IItemList<IAEStack<?>> cantInject;
+    @Shadow
+    @Final
+    private List injectQueue;
+    @Shadow
+    @Final
+    private Map injectLookup;
+    @Shadow
+    private Iterator injectIterator;
 
-    @Unique private BigInteger apeiron$extractedBig = BigInteger.ZERO;
-    @Unique private BigInteger apeiron$injectedBig = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$extractedBig = BigInteger.ZERO;
+    @Unique
+    private BigInteger apeiron$injectedBig = BigInteger.ZERO;
 
     @Inject(method = "lambda$handlerProcessor$0", at = @At("HEAD"), cancellable = true)
     private void apeiron$extractEntry(final boolean extract, final IMEInventoryHandler handler,
@@ -91,8 +117,8 @@ public abstract class ReshuffleTaskMixin {
     @Inject(method = "toQueueList", at = @At("TAIL"))
     private void apeiron$sortExact(final CallbackInfo ci) {
         this.injectQueue.sort((left, right) -> {
-            final int order = BigAEStackValues.compare(((BigReshufflePending) left).getStackBig(),
-                ((BigReshufflePending) right).getStackBig());
+            final int order = BigAEStackValues
+                .compare(((BigReshufflePending) left).getStackBig(), ((BigReshufflePending) right).getStackBig());
             return this.insertOrder ? -order : order;
         });
     }
@@ -109,8 +135,8 @@ public abstract class ReshuffleTaskMixin {
             final IAEStack<?> offered = BigAEStackValues.copyWithSize(stack, amount);
             IAEStack<?> rejected = offered;
             try {
-                rejected = BigMEInventories.injectItemsBig(source.getSourceBig(), offered, Actionable.MODULATE,
-                    this.rollbackSrc);
+                rejected = BigMEInventories
+                    .injectItemsBig(source.getSourceBig(), offered, Actionable.MODULATE, this.rollbackSrc);
             } catch (Exception error) {
                 appeng.core.AELog.error(error, "Failed to restore a storage reshuffle stack to its source");
             }

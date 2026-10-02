@@ -16,26 +16,22 @@ public interface BigCraftingCpuStatus {
     BigInteger getRemainingItemsBig();
 
     static BigInteger storage(final CraftingCPUStatus status) {
-        return status instanceof BigCraftingCpuStatus
-                ? ((BigCraftingCpuStatus) status).getStorageBig()
-                : BigInteger.valueOf(status.getStorage());
+        return status instanceof BigCraftingCpuStatus ? ((BigCraftingCpuStatus) status).getStorageBig()
+            : BigInteger.valueOf(status.getStorage());
     }
 
     static BigInteger usedStorage(final CraftingCPUStatus status) {
-        return status instanceof BigCraftingCpuStatus
-                ? ((BigCraftingCpuStatus) status).getUsedStorageBig()
-                : BigInteger.valueOf(status.getUsedStorage());
+        return status instanceof BigCraftingCpuStatus ? ((BigCraftingCpuStatus) status).getUsedStorageBig()
+            : BigInteger.valueOf(status.getUsedStorage());
     }
 
     static BigInteger totalItems(final CraftingCPUStatus status) {
-        return status instanceof BigCraftingCpuStatus
-                ? ((BigCraftingCpuStatus) status).getTotalItemsBig()
-                : BigInteger.valueOf(status.getTotalItems());
+        return status instanceof BigCraftingCpuStatus ? ((BigCraftingCpuStatus) status).getTotalItemsBig()
+            : BigInteger.valueOf(status.getTotalItems());
     }
 
     static BigInteger remainingItems(final CraftingCPUStatus status) {
-        return status instanceof BigCraftingCpuStatus
-                ? ((BigCraftingCpuStatus) status).getRemainingItemsBig()
-                : BigInteger.valueOf(status.getRemainingItems());
+        return status instanceof BigCraftingCpuStatus ? ((BigCraftingCpuStatus) status).getRemainingItemsBig()
+            : BigInteger.valueOf(status.getRemainingItems());
     }
 }

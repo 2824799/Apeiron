@@ -1,20 +1,20 @@
 package com.silvia.apeiron.mixin.ae.stack;
 
 import java.math.BigInteger;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
+import com.silvia.apeiron.ae.crafting.diagnostics.BigDiagnosticRow;
 import com.silvia.apeiron.ae.crafting.packets.BigCraftPackets;
 import com.silvia.apeiron.ae.flow.BigFlowPackets;
-import com.silvia.apeiron.ae.crafting.diagnostics.BigDiagnosticRow;
 import com.silvia.apeiron.ae.sync.BigPacketPayload;
 import com.silvia.apeiron.math.BigValueCodec;
 
-import appeng.core.sync.AppEngPacket;
 import appeng.api.storage.data.IAEStack;
+import appeng.core.sync.AppEngPacket;
 import appeng.me.cache.ItemFlowGridCache.FlowRate;
 import appeng.me.diagnostics.DiagnosticRowView;
 import io.netty.buffer.ByteBuf;
@@ -64,12 +64,17 @@ public abstract class AppEngPacketMixin implements BigPacketPayload {
         replacement.writeInt(APEIRON_DIAGNOSTIC_MAGIC);
         replacement.writeInt(rows.size());
         for (final DiagnosticRowView row : rows) {
-            final BigDiagnosticRow exact = (Object) row instanceof BigDiagnosticRow
-                ? (BigDiagnosticRow) (Object) row
+            final BigDiagnosticRow exact = (Object) row instanceof BigDiagnosticRow ? (BigDiagnosticRow) (Object) row
                 : null;
-            BigValueCodec.writePacket(replacement, exact == null ? BigInteger.valueOf(row.totalProduced) : exact.getTotalProducedBig());
-            BigValueCodec.writePacket(replacement, exact == null ? BigInteger.valueOf(row.elapsedTimeTicks) : exact.getElapsedTimeTicksBig());
-            BigValueCodec.writePacket(replacement, exact == null ? BigInteger.valueOf(row.sampleCount) : exact.getSampleCountBig());
+            BigValueCodec.writePacket(
+                replacement,
+                exact == null ? BigInteger.valueOf(row.totalProduced) : exact.getTotalProducedBig());
+            BigValueCodec.writePacket(
+                replacement,
+                exact == null ? BigInteger.valueOf(row.elapsedTimeTicks) : exact.getElapsedTimeTicksBig());
+            BigValueCodec.writePacket(
+                replacement,
+                exact == null ? BigInteger.valueOf(row.sampleCount) : exact.getSampleCountBig());
         }
         this.configureWrite(replacement);
     }

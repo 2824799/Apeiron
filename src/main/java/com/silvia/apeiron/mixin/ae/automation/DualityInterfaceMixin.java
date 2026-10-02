@@ -29,9 +29,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.silvia.apeiron.ae.crafting.core.BigCraftingTracker;
 import com.silvia.apeiron.ae.stack.BigAEItemStacks;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.ae.crafting.core.BigCraftingTracker;
 import com.silvia.apeiron.ae.storage.BigInventoryAdaptors;
 
 import appeng.api.AEApi;
@@ -51,7 +51,6 @@ import appeng.me.GridAccessException;
 import appeng.me.helpers.AENetworkProxy;
 import appeng.util.InventoryAdaptor;
 import appeng.util.Platform;
-import appeng.util.inv.ItemSlot;
 
 /** Keeps interface inventory work and output forwarding exact at the physical inventory boundary. */
 @Mixin(value = DualityInterface.class, remap = false)
@@ -129,7 +128,8 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
     private appeng.tile.inventory.AppEngInternalInventory storage;
 
     @Inject(method = "updatePlan", at = @At("HEAD"), cancellable = true)
-    private void apeiron$updatePlan(final int slot, final org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+    private void apeiron$updatePlan(final int slot,
+        final org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
         final IAEItemStack configured = this.config.getAEStackInSlot(slot);
         if (!BigAEStackValues.isBig(configured)) return;
         final BigInteger desired = BigAEStackValues.get(configured);
@@ -145,12 +145,19 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
         if (stored == null) {
             this.requireWork[slot] = configured.copy();
         } else if (fuzzySlot || configured.isSameType(stored)) {
-            final IAEItemStack work = fuzzySlot ? AEApi.instance().storage().createItemStack(stored) : configured.copy();
+            final IAEItemStack work = fuzzySlot ? AEApi.instance()
+                .storage()
+                .createItemStack(stored) : configured.copy();
             final BigInteger delta = desired.subtract(BigInteger.valueOf(stored.stackSize));
             this.requireWork[slot] = delta.signum() == 0 ? null : BigAEItemStacks.copyWithSize(work, delta);
         } else {
-            final IAEItemStack work = AEApi.instance().storage().createItemStack(stored);
-            this.requireWork[slot] = BigAEItemStacks.copyWithSize(work, BigAEStackValues.get(work).negate());
+            final IAEItemStack work = AEApi.instance()
+                .storage()
+                .createItemStack(stored);
+            this.requireWork[slot] = BigAEItemStacks.copyWithSize(
+                work,
+                BigAEStackValues.get(work)
+                    .negate());
         }
         ci.cancel();
     }
@@ -179,16 +186,20 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
         boolean sentSomething = false;
 
         for (ForgeDirection side : possibleDirections) {
-            final TileEntity target = world.getTileEntity(
-                tile.xCoord + side.offsetX,
-                tile.yCoord + side.offsetY,
-                tile.zCoord + side.offsetZ);
-            if (target == null || target.getClass().getName().equals("li.cil.oc.common.tileentity.Adapter")) continue;
+            final TileEntity target = world
+                .getTileEntity(tile.xCoord + side.offsetX, tile.yCoord + side.offsetY, tile.zCoord + side.offsetZ);
+            if (target == null || target.getClass()
+                .getName()
+                .equals("li.cil.oc.common.tileentity.Adapter")) continue;
 
             if (target instanceof IInterfaceHost host) {
                 try {
                     final DualityInterface other = host.getInterfaceDuality();
-                    if (!other.getProxy().isActive() || other.getProxy().getGrid() == this.gridProxy.getGrid()) continue;
+                    if (!other.getProxy()
+                        .isActive()
+                        || other.getProxy()
+                            .getGrid() == this.gridProxy.getGrid())
+                        continue;
                 } catch (GridAccessException ignored) {
                     continue;
                 }
@@ -240,7 +251,8 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
         this.isWorking = true;
         boolean changed = false;
         try {
-            this.destination = this.gridProxy.getStorage().getItemInventory();
+            this.destination = this.gridProxy.getStorage()
+                .getItemInventory();
             final IEnergySource energy = this.gridProxy.getEnergy();
             final BigInteger planAmount = BigAEItemStacks.stackSize(plan);
 
@@ -248,22 +260,21 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
                 final BigInteger requested = planAmount.negate();
                 final IAEItemStack toStore = BigAEItemStacks.copyWithSize(plan, requested);
                 final IAEItemStack available = BigInventoryAdaptors.extractStackBig(adaptor, toStore, true);
-                if (available == null || !BigAEItemStacks.stackSize(available).equals(requested)) {
+                if (available == null || !BigAEItemStacks.stackSize(available)
+                    .equals(requested)) {
                     changed = true;
                 } else {
-                    final IAEItemStack leftover = Platform.poweredInsert(
-                        energy,
-                        this.destination,
-                        toStore,
-                        this.interfaceRequestSource);
-                    final BigInteger notStored = leftover == null ? BigInteger.ZERO : BigAEItemStacks.stackSize(leftover);
-                    final BigInteger moved = requested.subtract(notStored).max(BigInteger.ZERO);
+                    final IAEItemStack leftover = Platform
+                        .poweredInsert(energy, this.destination, toStore, this.interfaceRequestSource);
+                    final BigInteger notStored = leftover == null ? BigInteger.ZERO
+                        : BigAEItemStacks.stackSize(leftover);
+                    final BigInteger moved = requested.subtract(notStored)
+                        .max(BigInteger.ZERO);
                     if (moved.signum() > 0) {
-                        final IAEItemStack removed = BigInventoryAdaptors.extractStackBig(
-                            adaptor,
-                            BigAEItemStacks.copyWithSize(toStore, moved),
-                            false);
-                        if (removed == null || BigAEItemStacks.stackSize(removed).compareTo(moved) < 0) {
+                        final IAEItemStack removed = BigInventoryAdaptors
+                            .extractStackBig(adaptor, BigAEItemStacks.copyWithSize(toStore, moved), false);
+                        if (removed == null || BigAEItemStacks.stackSize(removed)
+                            .compareTo(moved) < 0) {
                             changed = true;
                         } else {
                             changed = true;
@@ -272,13 +283,9 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
                 }
             } else if (planAmount.signum() > 0) {
                 final IAEItemStack requestedPlan = BigAEItemStacks.copyWithSize(plan, planAmount);
-                final IAEItemStack simulatedLeftover = (IAEItemStack) BigInventoryAdaptors.addStackBig(
-                    adaptor,
-                    requestedPlan,
-                    InsertionMode.DEFAULT,
-                    true);
-                final BigInteger availableRoom = simulatedLeftover == null
-                    ? planAmount
+                final IAEItemStack simulatedLeftover = (IAEItemStack) BigInventoryAdaptors
+                    .addStackBig(adaptor, requestedPlan, InsertionMode.DEFAULT, true);
+                final BigInteger availableRoom = simulatedLeftover == null ? planAmount
                     : planAmount.subtract(BigAEItemStacks.stackSize(simulatedLeftover));
                 if (availableRoom.signum() <= 0) {
                     changed = true;
@@ -301,30 +308,31 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
                     }
 
                     if (acquired != null) {
-                        final IAEItemStack failed = (IAEItemStack) BigInventoryAdaptors.addStackBig(
-                            adaptor,
-                            acquired,
-                            InsertionMode.DEFAULT,
-                            false);
+                        final IAEItemStack failed = (IAEItemStack) BigInventoryAdaptors
+                            .addStackBig(adaptor, acquired, InsertionMode.DEFAULT, false);
                         if (failed != null) {
                             final IAEItemStack rejected = com.silvia.apeiron.ae.storage.BigMEInventories.injectItemsBig(
-                                this.destination, failed, Actionable.MODULATE, this.interfaceRequestSource);
+                                this.destination,
+                                failed,
+                                Actionable.MODULATE,
+                                this.interfaceRequestSource);
                             if (rejected != null) this.addToSendList(rejected);
                         }
                         changed = true;
                     } else if (this.getInstalledUpgrades(Upgrades.CRAFTING) > 0
                         && this.craftingTracker instanceof BigCraftingTracker tracker) {
-                        final ICraftingGrid craftingGrid = this.gridProxy.getCrafting();
-                        changed = tracker.handleCraftingBig(
-                            slot,
-                            availableRoom,
-                            plan,
-                            adaptor,
-                            this.iHost.getTileEntity().getWorldObj(),
-                            this.gridProxy.getGrid(),
-                            craftingGrid,
-                            this.interfaceRequestSource);
-                    }
+                            final ICraftingGrid craftingGrid = this.gridProxy.getCrafting();
+                            changed = tracker.handleCraftingBig(
+                                slot,
+                                availableRoom,
+                                plan,
+                                adaptor,
+                                this.iHost.getTileEntity()
+                                    .getWorldObj(),
+                                this.gridProxy.getGrid(),
+                                craftingGrid,
+                                this.interfaceRequestSource);
+                        }
                 }
             }
         } catch (GridAccessException ignored) {
@@ -338,8 +346,7 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
     }
 
     @Inject(method = "usePlan", at = @At("HEAD"), cancellable = true)
-    private void apeiron$usePlan(final int slot, final IAEItemStack plan,
-        final CallbackInfoReturnable<Boolean> cir) {
+    private void apeiron$usePlan(final int slot, final IAEItemStack plan, final CallbackInfoReturnable<Boolean> cir) {
         if (BigAEItemStacks.isStackSizeBig(plan)) {
             cir.setReturnValue(this.apeiron$usePlanBig(slot, plan));
         }
@@ -358,8 +365,12 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
         for (Iterator<IAEStack<?>> iterator = this.unlockStacks.iterator(); iterator.hasNext();) {
             final IAEStack<?> unlock = iterator.next();
             if (!unlock.equals(input)) continue;
-            BigAEStackValues.set(unlock, BigAEStackValues.get(unlock).subtract(BigAEStackValues.get(input)));
-            if (BigAEStackValues.get(unlock).signum() <= 0) iterator.remove();
+            BigAEStackValues.set(
+                unlock,
+                BigAEStackValues.get(unlock)
+                    .subtract(BigAEStackValues.get(input)));
+            if (BigAEStackValues.get(unlock)
+                .signum() <= 0) iterator.remove();
             changed = true;
             break;
         }
@@ -374,7 +385,9 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
     }
 
     @Shadow
-    private void addToSendList(IAEStack<?> stack) { throw new AssertionError(); }
+    private void addToSendList(IAEStack<?> stack) {
+        throw new AssertionError();
+    }
 
     @Unique
     private BigInteger apeiron$patternInputAmount;

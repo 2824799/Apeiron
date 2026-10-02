@@ -6,7 +6,6 @@ import java.math.RoundingMode;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -22,15 +21,30 @@ import appeng.tile.misc.TileCondenser;
 @Mixin(value = TileCondenser.class, remap = false)
 public abstract class TileCondenserBigMixin implements BigCondenserAccess {
 
-    @Shadow private double storedPower;
+    @Shadow
+    private double storedPower;
 
-    @Shadow public abstract double getStorage();
-    @Shadow public abstract double getRequiredPower();
-    @Shadow private ItemStack getOutput() { throw new AssertionError(); }
-    @Shadow private boolean canAddOutput(ItemStack output) { throw new AssertionError(); }
-    @Shadow private void addOutput(ItemStack output) {}
+    @Shadow
+    public abstract double getStorage();
 
-    @Unique private BigDecimal apeiron$storedPowerBig;
+    @Shadow
+    public abstract double getRequiredPower();
+
+    @Shadow
+    private ItemStack getOutput() {
+        throw new AssertionError();
+    }
+
+    @Shadow
+    private boolean canAddOutput(ItemStack output) {
+        throw new AssertionError();
+    }
+
+    @Shadow
+    private void addOutput(ItemStack output) {}
+
+    @Unique
+    private BigDecimal apeiron$storedPowerBig;
 
     @Unique
     private BigDecimal apeiron$getPower() {
@@ -42,7 +56,8 @@ public abstract class TileCondenserBigMixin implements BigCondenserAccess {
 
     @Override
     public void apeiron$addPowerBig(final BigDecimal rawPower) {
-        BigDecimal value = this.apeiron$getPower().add(rawPower);
+        BigDecimal value = this.apeiron$getPower()
+            .add(rawPower);
         final BigDecimal capacity = BigDecimal.valueOf(this.getStorage());
         if (value.signum() < 0) value = BigDecimal.ZERO;
         if (capacity.signum() >= 0 && value.compareTo(capacity) > 0) value = capacity;
@@ -79,6 +94,10 @@ public abstract class TileCondenserBigMixin implements BigCondenserAccess {
 
     @Inject(method = "writeToNBT_TileCondenser", at = @At("TAIL"))
     private void apeiron$writeExact(final NBTTagCompound data, final CallbackInfo ci) {
-        data.setString("ApeironStoredPower", this.apeiron$getPower().setScale(12, RoundingMode.HALF_UP).toPlainString());
+        data.setString(
+            "ApeironStoredPower",
+            this.apeiron$getPower()
+                .setScale(12, RoundingMode.HALF_UP)
+                .toPlainString());
     }
 }

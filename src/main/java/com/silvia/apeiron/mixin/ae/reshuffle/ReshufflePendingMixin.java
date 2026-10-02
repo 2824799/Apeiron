@@ -1,14 +1,12 @@
 package com.silvia.apeiron.mixin.ae.reshuffle;
 
-import java.lang.reflect.Constructor;
 import java.math.BigInteger;
 import java.util.List;
 
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 
 import com.silvia.apeiron.ae.reshuffle.BigReshufflePending;
-import com.silvia.apeiron.ae.reshuffle.BigReshuffleSource;
 
 import appeng.api.storage.IMEInventoryHandler;
 import appeng.api.storage.data.IAEStack;

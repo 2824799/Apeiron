@@ -29,7 +29,6 @@ import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.storage.IMEInventory;
 import appeng.api.storage.IMEMonitor;
 import appeng.api.storage.data.IAEStack;
-import appeng.api.storage.data.IItemList;
 import appeng.me.GridAccessException;
 import appeng.tile.inventory.AppEngInternalInventory;
 import appeng.tile.storage.TileIOPort;
@@ -102,10 +101,16 @@ public abstract class TileIOPortMixin {
         final IMEInventory destination, BigInteger itemsToMove) {
         final Iterator<? extends IAEStack<?>> iterator;
         if (src instanceof IMEMonitor monitor) {
-            iterator = monitor.getAvailableItemsWithPriority(IterationCounter.fetchNewId()).getItems(true).distinct()
+            iterator = monitor.getAvailableItemsWithPriority(IterationCounter.fetchNewId())
+                .getItems(true)
+                .distinct()
                 .iterator();
         } else {
-            iterator = src.getAvailableItems(src.getStackType().createList(), IterationCounter.fetchNewId()).iterator();
+            iterator = src.getAvailableItems(
+                src.getStackType()
+                    .createList(),
+                IterationCounter.fetchNewId())
+                .iterator();
         }
 
         boolean didStuff;
@@ -120,32 +125,27 @@ public abstract class TileIOPortMixin {
 
                 final BigInteger requested = availableBefore.min(itemsToMove);
                 final IAEStack<?> extractRequest = BigAEStackValues.copyWithSize(availableStack, requested);
-                final IAEStack<?> simulatedRemainder = appeng.util.Platform.poweredInsert(
-                    energy,
-                    destination,
-                    extractRequest,
-                    this.mySrc,
-                    Actionable.SIMULATE);
-                BigInteger possible = requested.subtract(
-                    simulatedRemainder == null ? BigInteger.ZERO : BigAEStackValues.get(simulatedRemainder));
+                final IAEStack<?> simulatedRemainder = appeng.util.Platform
+                    .poweredInsert(energy, destination, extractRequest, this.mySrc, Actionable.SIMULATE);
+                BigInteger possible = requested
+                    .subtract(simulatedRemainder == null ? BigInteger.ZERO : BigAEStackValues.get(simulatedRemainder));
 
                 if (possible.signum() > 0) {
                     final IAEStack<?> actualRequest = BigAEStackValues.copyWithSize(extractRequest, possible);
-                    final IAEStack<?> extracted = BigMEInventories.extractItemsBig(
-                        src,
-                        actualRequest,
-                        Actionable.MODULATE,
-                        this.mySrc);
+                    final IAEStack<?> extracted = BigMEInventories
+                        .extractItemsBig(src, actualRequest, Actionable.MODULATE, this.mySrc);
                     if (extracted != null) {
                         possible = BigAEStackValues.get(extracted);
                         final IAEStack<?> failed = appeng.util.Platform.poweredInsert(
                             energy,
                             destination,
-                            extracted.copy().setCraftable(false),
+                            extracted.copy()
+                                .setCraftable(false),
                             this.mySrc);
                         if (failed != null) {
                             final BigInteger failedAmount = BigAEStackValues.get(failed);
-                            possible = possible.subtract(failedAmount).max(BigInteger.ZERO);
+                            possible = possible.subtract(failedAmount)
+                                .max(BigInteger.ZERO);
                             BigMEInventories.injectItemsBig(src, failed, Actionable.MODULATE, this.mySrc);
                             sourceHasRemainingItems = true;
                         }
@@ -170,12 +170,15 @@ public abstract class TileIOPortMixin {
     @Unique
     private static BigInteger apeiron$ceilDiv(final BigInteger value, final long divisor) {
         final BigInteger d = BigInteger.valueOf(divisor);
-        return value.add(d).subtract(BigInteger.ONE).divide(d);
+        return value.add(d)
+            .subtract(BigInteger.ONE)
+            .divide(d);
     }
 
     @Unique
     private TickRateModulation apeiron$tickingRequest(final IGridNode node) {
-        if (!((TileIOPort) (Object) this).getProxy().isActive()) return TickRateModulation.IDLE;
+        if (!((TileIOPort) (Object) this).getProxy()
+            .isActive()) return TickRateModulation.IDLE;
 
         final RedstoneMode redstoneMode = (RedstoneMode) this.manager.getSetting(Settings.REDSTONE_CONTROLLED);
         if (redstoneMode == RedstoneMode.SIGNAL_PULSE && !this.pendingRedstonePulse) {
@@ -205,7 +208,8 @@ public abstract class TileIOPortMixin {
             && fullnessMode == FullnessMode.EMPTY;
 
         try {
-            final IEnergySource energy = ((TileIOPort) (Object) this).getProxy().getEnergy();
+            final IEnergySource energy = ((TileIOPort) (Object) this).getProxy()
+                .getEnergy();
             for (int slot = 0; slot < 6; slot++) {
                 final ItemStack cell = this.cells.getStackInSlot(slot);
                 if (cell == null) continue;
@@ -219,11 +223,13 @@ public abstract class TileIOPortMixin {
                 final IMEInventory<?> inventory = this.getInv(cell);
                 if (inventory == null) continue;
 
-                final IMEMonitor<?> monitor = ((TileIOPort) (Object) this).getProxy().getStorage()
+                final IMEMonitor<?> monitor = ((TileIOPort) (Object) this).getProxy()
+                    .getStorage()
                     .getMEMonitor(inventory.getStackType());
                 if (monitor == null) continue;
 
-                final long amountPerUnit = inventory.getStackType().getAmountPerUnit();
+                final long amountPerUnit = inventory.getStackType()
+                    .getAmountPerUnit();
                 final BigInteger transferBudget = amountToMove.multiply(BigInteger.valueOf(amountPerUnit));
                 final ApeironTransferResult result = operationMode == OperationMode.EMPTY
                     ? this.apeiron$transferContents(energy, inventory, monitor, transferBudget)

@@ -21,7 +21,11 @@ public final class BigReflectiveBackend {
                 throw new IllegalStateException("Cannot read integration field " + name, e);
             }
         }
-        throw new IllegalStateException("Missing integration field " + name + " on " + target.getClass().getName());
+        throw new IllegalStateException(
+            "Missing integration field " + name
+                + " on "
+                + target.getClass()
+                    .getName());
     }
 
     public static Object invoke(final Object target, final String name, final Object... args) {
@@ -29,7 +33,8 @@ public final class BigReflectiveBackend {
         Class<?> type = target.getClass();
         while (type != null && selected == null) {
             for (final Method method : type.getDeclaredMethods()) {
-                if (method.getName().equals(name) && accepts(method.getParameterTypes(), args)) {
+                if (method.getName()
+                    .equals(name) && accepts(method.getParameterTypes(), args)) {
                     selected = method;
                     break;
                 }
@@ -37,16 +42,21 @@ public final class BigReflectiveBackend {
             type = type.getSuperclass();
         }
         if (selected == null) {
-            for (final Method method : target.getClass().getMethods()) {
-                if (method.getName().equals(name) && accepts(method.getParameterTypes(), args)) {
+            for (final Method method : target.getClass()
+                .getMethods()) {
+                if (method.getName()
+                    .equals(name) && accepts(method.getParameterTypes(), args)) {
                     selected = method;
                     break;
                 }
             }
         }
         if (selected == null) {
-            throw new IllegalStateException("Missing integration method " + name + " on "
-                + target.getClass().getName());
+            throw new IllegalStateException(
+                "Missing integration method " + name
+                    + " on "
+                    + target.getClass()
+                        .getName());
         }
         try {
             selected.setAccessible(true);

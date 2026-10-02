@@ -9,9 +9,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.silvia.apeiron.ae.compat.BigReflectiveBackend;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.storage.BigIMEInventory;
-import com.silvia.apeiron.ae.compat.BigReflectiveBackend;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.BaseActionSource;
@@ -29,8 +29,7 @@ public abstract class BSCrateBigMixin implements BigIMEInventory {
     }
 
     @Override
-    public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode,
-        final BaseActionSource source) {
+    public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode, final BaseActionSource source) {
         if (input == null) return null;
         final Object crateStorage = this.apeiron$crateStorage();
         BigInteger remaining = BigAEStackValues.get(input);
@@ -61,8 +60,9 @@ public abstract class BSCrateBigMixin implements BigIMEInventory {
         BigInteger remaining = BigAEStackValues.get(request);
         if (remaining.signum() <= 0) return null;
         if (mode == Actionable.SIMULATE) {
-            final BigInteger available = BigInteger.valueOf(BigReflectiveBackend.intValue(
-                BigReflectiveBackend.invoke(crateStorage, "getItemCount", request.getItemStack())));
+            final BigInteger available = BigInteger.valueOf(
+                BigReflectiveBackend
+                    .intValue(BigReflectiveBackend.invoke(crateStorage, "getItemCount", request.getItemStack())));
             final BigInteger amount = remaining.min(available);
             return amount.signum() == 0 ? null : BigAEStackValues.copyWithSize(request, amount);
         }
@@ -72,10 +72,11 @@ public abstract class BSCrateBigMixin implements BigIMEInventory {
             final BigInteger requestedAmount = remaining.min(INT_MAX);
             final ItemStack offered = request.getItemStack();
             offered.stackSize = requestedAmount.intValueExact();
-            final ItemStack obtained = (ItemStack) BigReflectiveBackend.invoke(
-                crateStorage, "extractItems", offered, requestedAmount.intValueExact());
+            final ItemStack obtained = (ItemStack) BigReflectiveBackend
+                .invoke(crateStorage, "extractItems", offered, requestedAmount.intValueExact());
             if (obtained == null || obtained.stackSize <= 0) break;
-            final BigInteger amount = BigInteger.valueOf(obtained.stackSize).min(requestedAmount);
+            final BigInteger amount = BigInteger.valueOf(obtained.stackSize)
+                .min(requestedAmount);
             extracted = extracted.add(amount);
             remaining = remaining.subtract(amount);
             if (amount.compareTo(requestedAmount) < 0) break;
@@ -84,14 +85,14 @@ public abstract class BSCrateBigMixin implements BigIMEInventory {
     }
 
     @Inject(method = "injectItems", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyInject(final IAEItemStack input, final Actionable mode,
-        final BaseActionSource source, final CallbackInfoReturnable<IAEItemStack> cir) {
+    private void apeiron$legacyInject(final IAEItemStack input, final Actionable mode, final BaseActionSource source,
+        final CallbackInfoReturnable<IAEItemStack> cir) {
         if (BigAEStackValues.isBig(input)) cir.setReturnValue(this.injectItemsBig(input, mode, source));
     }
 
     @Inject(method = "extractItems", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyExtract(final IAEItemStack request, final Actionable mode,
-        final BaseActionSource source, final CallbackInfoReturnable<IAEItemStack> cir) {
+    private void apeiron$legacyExtract(final IAEItemStack request, final Actionable mode, final BaseActionSource source,
+        final CallbackInfoReturnable<IAEItemStack> cir) {
         if (BigAEStackValues.isBig(request)) cir.setReturnValue(this.extractItemsBig(request, mode, source));
     }
 }

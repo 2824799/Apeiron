@@ -1,14 +1,14 @@
 package com.silvia.apeiron.mixin.ae.reshuffle;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.IdentityHashMap;
 
-import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,10 +16,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.ae.storage.BigCellInventory;
 import com.silvia.apeiron.ae.reshuffle.BigScanRecord;
 import com.silvia.apeiron.ae.reshuffle.BigScanRecordValues;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.ae.storage.BigCellInventory;
 import com.silvia.apeiron.math.BigValueCodec;
 
 import appeng.api.storage.IMEInventory;
@@ -31,8 +31,6 @@ import appeng.me.storage.CellInventory;
 import appeng.util.IterationCounter;
 import appeng.util.item.IAEStackList;
 import io.netty.buffer.ByteBuf;
-
-import java.io.IOException;
 
 /** Sorts storage-scan preview entries by their exact amount. */
 @Mixin(value = ScanTask.class, remap = false)
@@ -54,8 +52,10 @@ public abstract class ScanTaskBigMixin {
         try {
             final List<IAEStack<?>> allStacks = new ArrayList<>();
             cellInv.getAvailableItems((IItemList) new IAEStackList(), IterationCounter.fetchNewId())
-                    .forEach(stack -> allStacks.add((IAEStack<?>) stack));
-            allStacks.sort(Comparator.comparing((IAEStack<?> stack) -> BigAEStackValues.get(stack)).reversed());
+                .forEach(stack -> allStacks.add((IAEStack<?>) stack));
+            allStacks.sort(
+                Comparator.comparing((IAEStack<?> stack) -> BigAEStackValues.get(stack))
+                    .reversed());
             for (int i = 0; i < Math.min(maxItems, allStacks.size()); i++) {
                 entries.add(allStacks.get(i));
             }
@@ -149,18 +149,21 @@ public abstract class ScanTaskBigMixin {
         buf.writeInt(APEIRON_SCAN_MAGIC);
         buf.writeInt(records.size());
         for (final ScanTask.ScanRecord record : records) {
-            final BigScanRecord exact = (Object) record instanceof BigScanRecord
-                ? (BigScanRecord) (Object) record
+            final BigScanRecord exact = (Object) record instanceof BigScanRecord ? (BigScanRecord) (Object) record
                 : null;
             buf.writeInt(record.slot);
             buf.writeInt(record.x);
             buf.writeInt(record.y);
             buf.writeInt(record.z);
             buf.writeInt(record.dim);
-            BigValueCodec.writePacket(buf, exact == null ? BigInteger.valueOf(record.typesUsed) : exact.getTypesUsedBig());
-            BigValueCodec.writePacket(buf, exact == null ? BigInteger.valueOf(record.typesTotal) : exact.getTypesTotalBig());
-            BigValueCodec.writePacket(buf, exact == null ? BigInteger.valueOf(record.bytesUsed) : exact.getBytesUsedBig());
-            BigValueCodec.writePacket(buf, exact == null ? BigInteger.valueOf(record.bytesTotal) : exact.getBytesTotalBig());
+            BigValueCodec
+                .writePacket(buf, exact == null ? BigInteger.valueOf(record.typesUsed) : exact.getTypesUsedBig());
+            BigValueCodec
+                .writePacket(buf, exact == null ? BigInteger.valueOf(record.typesTotal) : exact.getTypesTotalBig());
+            BigValueCodec
+                .writePacket(buf, exact == null ? BigInteger.valueOf(record.bytesUsed) : exact.getBytesUsedBig());
+            BigValueCodec
+                .writePacket(buf, exact == null ? BigInteger.valueOf(record.bytesTotal) : exact.getBytesTotalBig());
         }
     }
 
@@ -180,7 +183,10 @@ public abstract class ScanTaskBigMixin {
             final BigInteger bytesUsed = BigValueCodec.readPacket(buf);
             final BigInteger bytesTotal = BigValueCodec.readPacket(buf);
             for (final ScanTask.ScanRecord record : this.apeiron$records()) {
-                if (record.slot == slot && record.x == x && record.y == y && record.z == z && record.dim == dim
+                if (record.slot == slot && record.x == x
+                    && record.y == y
+                    && record.z == z
+                    && record.dim == dim
                     && (Object) record instanceof BigScanRecord exact) {
                     exact.setExactScanValues(typesUsed, typesTotal, bytesUsed, bytesTotal);
                     break;

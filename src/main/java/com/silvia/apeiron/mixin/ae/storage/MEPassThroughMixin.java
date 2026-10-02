@@ -3,8 +3,8 @@ package com.silvia.apeiron.mixin.ae.storage;
 import org.spongepowered.asm.mixin.Mixin;
 
 import com.silvia.apeiron.ae.storage.BigIMEInventory;
-import com.silvia.apeiron.ae.storage.BigMEInventory;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
+import com.silvia.apeiron.ae.storage.BigMEInventory;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.BaseActionSource;
@@ -22,8 +22,8 @@ public abstract class MEPassThroughMixin implements BigIMEInventory, BigMEInvent
             return injectItemsBig((IAEItemStack) input, mode, source);
         }
         MEPassThrough wrapper = (MEPassThrough) (Object) this;
-        return BigMEInventories.injectItemsBig((appeng.api.storage.IMEInventory) wrapper.getInternal(), input, mode,
-            source);
+        return BigMEInventories
+            .injectItemsBig((appeng.api.storage.IMEInventory) wrapper.getInternal(), input, mode, source);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -32,8 +32,8 @@ public abstract class MEPassThroughMixin implements BigIMEInventory, BigMEInvent
             return extractItemsBig((IAEItemStack) request, mode, source);
         }
         MEPassThrough wrapper = (MEPassThrough) (Object) this;
-        return BigMEInventories.extractItemsBig((appeng.api.storage.IMEInventory) wrapper.getInternal(), request, mode,
-            source);
+        return BigMEInventories
+            .extractItemsBig((appeng.api.storage.IMEInventory) wrapper.getInternal(), request, mode, source);
     }
 
     @SuppressWarnings("unchecked")

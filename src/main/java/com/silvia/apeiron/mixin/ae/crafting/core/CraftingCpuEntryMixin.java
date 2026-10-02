@@ -10,9 +10,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingCpuEntries;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingCpuEntry;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.BigValueCodec;
 
 import appeng.api.storage.data.IAEStack;
@@ -33,9 +33,7 @@ public abstract class CraftingCpuEntryMixin implements BigCraftingCpuEntry {
     @Unique
     private BigInteger apeiron$pending;
 
-    @Inject(
-        method = "<init>(Lappeng/api/storage/data/IAEStack;JJJLappeng/util/ScheduledReason;)V",
-        at = @At("TAIL"))
+    @Inject(method = "<init>(Lappeng/api/storage/data/IAEStack;JJJLappeng/util/ScheduledReason;)V", at = @At("TAIL"))
     private void apeiron$captureConstructor(final IAEStack<?> stack, final long stored, final long active,
         final long pending, final ScheduledReason reason, final CallbackInfo ci) {
         final BigInteger[] values = BigCraftingCpuEntries.take(stored, active, pending);
@@ -69,39 +67,44 @@ public abstract class CraftingCpuEntryMixin implements BigCraftingCpuEntry {
     @Override
     public BigInteger getStoredAmountBig() {
         return this.apeiron$stored == null ? BigInteger.valueOf(((CraftingCpuEntry) (Object) this).getStoredAmount())
-                : this.apeiron$stored;
+            : this.apeiron$stored;
     }
 
     @Override
     public BigInteger getActiveAmountBig() {
         return this.apeiron$active == null ? BigInteger.valueOf(((CraftingCpuEntry) (Object) this).getActiveAmount())
-                : this.apeiron$active;
+            : this.apeiron$active;
     }
 
     @Override
     public BigInteger getPendingAmountBig() {
         return this.apeiron$pending == null ? BigInteger.valueOf(((CraftingCpuEntry) (Object) this).getPendingAmount())
-                : this.apeiron$pending;
+            : this.apeiron$pending;
     }
 
     @Override
     public BigInteger getTotalAmountBig() {
-        return this.getStoredAmountBig().add(this.getActiveAmountBig()).add(this.getPendingAmountBig());
+        return this.getStoredAmountBig()
+            .add(this.getActiveAmountBig())
+            .add(this.getPendingAmountBig());
     }
 
     @Overwrite
     public boolean hasStoredAmount() {
-        return this.getStoredAmountBig().signum() > 0;
+        return this.getStoredAmountBig()
+            .signum() > 0;
     }
 
     @Overwrite
     public boolean hasActiveAmount() {
-        return this.getActiveAmountBig().signum() > 0;
+        return this.getActiveAmountBig()
+            .signum() > 0;
     }
 
     @Overwrite
     public boolean hasPendingAmount() {
-        return this.getPendingAmountBig().signum() > 0;
+        return this.getPendingAmountBig()
+            .signum() > 0;
     }
 
     @Overwrite
@@ -112,7 +115,8 @@ public abstract class CraftingCpuEntryMixin implements BigCraftingCpuEntry {
     @Overwrite
     public IAEStack<?> getVisualStack() {
         final CraftingCpuEntry self = (CraftingCpuEntry) (Object) this;
-        final IAEStack<?> visualStack = self.getStack().copy();
+        final IAEStack<?> visualStack = self.getStack()
+            .copy();
         return BigAEStackValues.set(visualStack, this.getTotalAmountBig());
     }
 }

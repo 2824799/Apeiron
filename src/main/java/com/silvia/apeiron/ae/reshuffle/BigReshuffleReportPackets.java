@@ -3,11 +3,12 @@ package com.silvia.apeiron.ae.reshuffle;
 import java.io.IOException;
 import java.math.BigInteger;
 
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+
 import appeng.helpers.ReshuffleReport;
 import appeng.helpers.ReshuffleReport.ItemChange;
 import appeng.util.Platform;
 import io.netty.buffer.ByteBuf;
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 /** Optional exact suffix for AE's legacy storage-reshuffle report packet. */
 public final class BigReshuffleReportPackets {
@@ -22,11 +23,10 @@ public final class BigReshuffleReportPackets {
         final BigInteger injected = access.getInjectedItemsBig();
         final BigInteger before = access.getBeforeItemsBig();
         final BigInteger after = access.getAfterItemsBig();
-        if (!BigAEStackValues.isBigValue(extracted)
-                && !BigAEStackValues.isBigValue(injected)
-                && !BigAEStackValues.isBigValue(before)
-                && !BigAEStackValues.isBigValue(after)
-                && !hasBigChanges(report)) return;
+        if (!BigAEStackValues.isBigValue(extracted) && !BigAEStackValues.isBigValue(injected)
+            && !BigAEStackValues.isBigValue(before)
+            && !BigAEStackValues.isBigValue(after)
+            && !hasBigChanges(report)) return;
 
         out.writeInt(PACKET_MAGIC);
         com.silvia.apeiron.math.BigValueCodec.writePacket(out, extracted);
@@ -58,12 +58,16 @@ public final class BigReshuffleReportPackets {
 
     private static boolean hasBigChanges(final ReshuffleReport report) {
         for (final ItemChange change : report.gainedItems) {
-            if (change instanceof BigReshuffleItemChangeAccess access && BigAEStackValues.isBigValue(access.getBeforeCountBig())) return true;
-            if (change instanceof BigReshuffleItemChangeAccess access && BigAEStackValues.isBigValue(access.getAfterCountBig())) return true;
+            if (change instanceof BigReshuffleItemChangeAccess access
+                && BigAEStackValues.isBigValue(access.getBeforeCountBig())) return true;
+            if (change instanceof BigReshuffleItemChangeAccess access
+                && BigAEStackValues.isBigValue(access.getAfterCountBig())) return true;
         }
         for (final ItemChange change : report.lostItems) {
-            if (change instanceof BigReshuffleItemChangeAccess access && BigAEStackValues.isBigValue(access.getBeforeCountBig())) return true;
-            if (change instanceof BigReshuffleItemChangeAccess access && BigAEStackValues.isBigValue(access.getAfterCountBig())) return true;
+            if (change instanceof BigReshuffleItemChangeAccess access
+                && BigAEStackValues.isBigValue(access.getBeforeCountBig())) return true;
+            if (change instanceof BigReshuffleItemChangeAccess access
+                && BigAEStackValues.isBigValue(access.getAfterCountBig())) return true;
         }
         return false;
     }
@@ -86,7 +90,10 @@ public final class BigReshuffleReportPackets {
             final appeng.api.storage.data.IAEStack<?> stack = Platform.readStackByte(in);
             final BigInteger before = com.silvia.apeiron.math.BigValueCodec.readPacket(in);
             final BigInteger after = com.silvia.apeiron.math.BigValueCodec.readPacket(in);
-            final ItemChange change = new ItemChange(stack, BigAEStackValues.saturatedLong(before), BigAEStackValues.saturatedLong(after));
+            final ItemChange change = new ItemChange(
+                stack,
+                BigAEStackValues.saturatedLong(before),
+                BigAEStackValues.saturatedLong(after));
             ((BigReshuffleItemChangeAccess) change).setCountsBig(before, after);
             changes.add(change);
         }

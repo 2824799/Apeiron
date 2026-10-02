@@ -30,7 +30,9 @@ public abstract class GuiCraftingListBigMixin {
 
     @Redirect(
         method = "drawStringAndItem",
-        at = @At(value = "INVOKE", target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
     private static String apeiron$formatWide(final ReadableNumberConverter converter, final long value) {
         return BigGuiNumberCapture.formatWideAny(value);
     }

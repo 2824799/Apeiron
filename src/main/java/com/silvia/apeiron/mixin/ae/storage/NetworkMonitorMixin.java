@@ -15,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.silvia.apeiron.ae.stack.BigAEItemStacks;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.storage.BigIMEInventory;
-import com.silvia.apeiron.ae.storage.BigMEInventory;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
+import com.silvia.apeiron.ae.storage.BigMEInventory;
 import com.silvia.apeiron.ae.storage.BigStorageInterceptor;
 import com.silvia.apeiron.ae.storage.UnsupportedBigInventoryException;
 
@@ -98,10 +98,13 @@ public abstract class NetworkMonitorMixin implements BigIMEInventory, BigMEInven
         BaseActionSource source) {
         BigInteger delta;
         if (extraction) {
-            delta = result == null ? BigInteger.ZERO : BigAEStackValues.get(result).negate();
+            delta = result == null ? BigInteger.ZERO
+                : BigAEStackValues.get(result)
+                    .negate();
         } else {
             BigInteger leftover = result == null ? BigInteger.ZERO : BigAEStackValues.get(result);
-            delta = BigAEStackValues.get(offered).subtract(leftover);
+            delta = BigAEStackValues.get(offered)
+                .subtract(leftover);
         }
         if (delta.signum() == 0) return;
         IAEStack change = BigAEStackValues.set(offered.copy(), delta);
@@ -125,8 +128,9 @@ public abstract class NetworkMonitorMixin implements BigIMEInventory, BigMEInven
                 input = (IAEStack) ((BigStorageInterceptor) interceptor).injectItemsBig(input, mode, source);
             } else {
                 if (BigAEStackValues.isBig(input)) {
-                    throw new UnsupportedOperationException("Storage interceptor has no exact-count implementation: "
-                        + interceptor.getClass().getName());
+                    throw new UnsupportedOperationException(
+                        "Storage interceptor has no exact-count implementation: " + interceptor.getClass()
+                            .getName());
                 }
                 input = (IAEStack) interceptor.injectItems(input, mode, source);
             }

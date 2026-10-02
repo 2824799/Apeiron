@@ -9,9 +9,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.silvia.apeiron.ae.compat.BigReflectiveBackend;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.storage.BigIMEInventory;
-import com.silvia.apeiron.ae.compat.BigReflectiveBackend;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.BaseActionSource;
@@ -29,8 +29,7 @@ public abstract class MinefactoryReloadedDeepStorageUnitBigMixin implements BigI
     }
 
     @Override
-    public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode,
-        final BaseActionSource source) {
+    public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode, final BaseActionSource source) {
         if (input == null) return null;
         final BigInteger requested = BigAEStackValues.get(input);
         if (requested.signum() <= 0) return null;
@@ -39,19 +38,21 @@ public abstract class MinefactoryReloadedDeepStorageUnitBigMixin implements BigI
         if (storedType != null && !input.equals(storedType)) return input;
         if (storedType == null && input.getTagCompound() != null) return input;
 
-        final BigInteger stored = storedType == null ? BigInteger.ZERO
-            : BigInteger.valueOf(storedType.stackSize);
-        final BigInteger capacity = BigInteger.valueOf(BigReflectiveBackend.longValue(
-            BigReflectiveBackend.invoke(dsu, "getMaxStoredCount")))
-            .min(INT_MAX).subtract(stored).max(BigInteger.ZERO);
+        final BigInteger stored = storedType == null ? BigInteger.ZERO : BigInteger.valueOf(storedType.stackSize);
+        final BigInteger capacity = BigInteger
+            .valueOf(BigReflectiveBackend.longValue(BigReflectiveBackend.invoke(dsu, "getMaxStoredCount")))
+            .min(INT_MAX)
+            .subtract(stored)
+            .max(BigInteger.ZERO);
         final BigInteger accepted = requested.min(capacity);
         if (mode == Actionable.MODULATE && accepted.signum() > 0) {
-            final int count = stored.add(accepted).intValueExact();
+            final int count = stored.add(accepted)
+                .intValueExact();
             if (storedType == null) BigReflectiveBackend.invoke(dsu, "setStoredItemType", input.getItemStack(), count);
             else BigReflectiveBackend.invoke(dsu, "setStoredItemCount", count);
         }
-        return accepted.compareTo(requested) < 0
-            ? BigAEStackValues.copyWithSize(input, requested.subtract(accepted)) : null;
+        return accepted.compareTo(requested) < 0 ? BigAEStackValues.copyWithSize(input, requested.subtract(accepted))
+            : null;
     }
 
     @Override
@@ -61,23 +62,28 @@ public abstract class MinefactoryReloadedDeepStorageUnitBigMixin implements BigI
         final ItemStack storedType = (ItemStack) BigReflectiveBackend.invoke(dsu, "getStoredItemType");
         if (request == null || storedType == null || !request.equals(storedType)) return null;
         final BigInteger available = BigInteger.valueOf(storedType.stackSize);
-        final BigInteger extracted = BigAEStackValues.get(request).min(available);
+        final BigInteger extracted = BigAEStackValues.get(request)
+            .min(available);
         if (extracted.signum() <= 0) return null;
         if (mode == Actionable.MODULATE) {
-            BigReflectiveBackend.invoke(dsu, "setStoredItemCount", available.subtract(extracted).intValueExact());
+            BigReflectiveBackend.invoke(
+                dsu,
+                "setStoredItemCount",
+                available.subtract(extracted)
+                    .intValueExact());
         }
         return BigAEStackValues.copyWithSize(request, extracted);
     }
 
     @Inject(method = "injectItems", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyInject(final IAEItemStack input, final Actionable mode,
-        final BaseActionSource source, final CallbackInfoReturnable<IAEItemStack> cir) {
+    private void apeiron$legacyInject(final IAEItemStack input, final Actionable mode, final BaseActionSource source,
+        final CallbackInfoReturnable<IAEItemStack> cir) {
         if (BigAEStackValues.isBig(input)) cir.setReturnValue(this.injectItemsBig(input, mode, source));
     }
 
     @Inject(method = "extractItems", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyExtract(final IAEItemStack request, final Actionable mode,
-        final BaseActionSource source, final CallbackInfoReturnable<IAEItemStack> cir) {
+    private void apeiron$legacyExtract(final IAEItemStack request, final Actionable mode, final BaseActionSource source,
+        final CallbackInfoReturnable<IAEItemStack> cir) {
         if (BigAEStackValues.isBig(request)) cir.setReturnValue(this.extractItemsBig(request, mode, source));
     }
 }

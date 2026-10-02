@@ -10,6 +10,11 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
 import com.silvia.apeiron.Apeiron;
+import com.silvia.apeiron.ae.stack.BigAEItemStacks;
+import com.silvia.apeiron.ae.storage.BigCellInventory;
+import com.silvia.apeiron.ae.storage.BigIMEInventory;
+import com.silvia.apeiron.ae.storage.BigMEInventories;
+import com.silvia.apeiron.ae.storage.BigStorageCell;
 
 import appeng.api.config.Actionable;
 import appeng.api.exceptions.AppEngException;
@@ -30,11 +35,6 @@ import appeng.me.storage.NetworkInventoryHandler;
 import appeng.util.IterationCounter;
 import appeng.util.item.AEItemStack;
 import appeng.util.item.AEItemStackType;
-import com.silvia.apeiron.ae.stack.BigAEItemStacks;
-import com.silvia.apeiron.ae.storage.BigCellInventory;
-import com.silvia.apeiron.ae.storage.BigIMEInventory;
-import com.silvia.apeiron.ae.storage.BigMEInventories;
-import com.silvia.apeiron.ae.storage.BigStorageCell;
 
 /** Optional checks using the actual transformed cells and network classes, enabled with the stack smoke check. */
 public final class AEInventorySmoke {

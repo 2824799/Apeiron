@@ -52,7 +52,9 @@ public abstract class AEBaseCellBigMixin {
 
     @Redirect(
         method = "addCheckedInformation",
-        at = @At(value = "INVOKE", target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
     private String apeiron$formatStackAmount(final ReadableNumberConverter converter, final long value) {
         return BigCellTooltipNumbers.formatStack(value);
     }

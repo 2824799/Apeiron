@@ -2,15 +2,15 @@ package com.silvia.apeiron.ae.flow;
 
 import java.math.BigInteger;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+
 import appeng.api.networking.security.BaseActionSource;
 import appeng.api.networking.security.MachineSource;
 import appeng.api.storage.data.IAEStack;
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 /** Exact side-channel storage for the rolling item-flow window. */
 public final class BigFlowStore {
@@ -71,8 +71,12 @@ public final class BigFlowStore {
         for (final Bucket bucket : this.buckets) {
             for (final Map.Entry<IAEStack<?>, Totals> entry : bucket.byItem.entrySet()) {
                 final Totals total = result.computeIfAbsent(entry.getKey(), ignored -> new Totals());
-                total.addIn(entry.getValue().in());
-                total.addOut(entry.getValue().out());
+                total.addIn(
+                    entry.getValue()
+                        .in());
+                total.addOut(
+                    entry.getValue()
+                        .out());
             }
         }
         return result;

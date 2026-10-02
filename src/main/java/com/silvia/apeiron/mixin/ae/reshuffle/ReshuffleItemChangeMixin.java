@@ -12,21 +12,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.silvia.apeiron.ae.reshuffle.BigReshuffleItemChangeAccess;
 
-import appeng.helpers.ReshuffleReport.ItemChange;
 import appeng.api.storage.data.IAEStack;
+import appeng.helpers.ReshuffleReport.ItemChange;
 
 /** Stores exact counts beside AE's legacy report fields. */
 @Mixin(value = ItemChange.class, remap = false)
 public abstract class ReshuffleItemChangeMixin implements BigReshuffleItemChangeAccess {
 
-    @Shadow @Final public long beforeCount;
-    @Shadow @Final public long afterCount;
+    @Shadow
+    @Final
+    public long beforeCount;
+    @Shadow
+    @Final
+    public long afterCount;
 
-    @Unique private BigInteger apeiron$before;
-    @Unique private BigInteger apeiron$after;
+    @Unique
+    private BigInteger apeiron$before;
+    @Unique
+    private BigInteger apeiron$after;
 
     @Inject(method = "<init>", at = @At("TAIL"))
-    private void apeiron$initExact(final IAEStack<?> stack, final long before, final long after, final CallbackInfo ci) {
+    private void apeiron$initExact(final IAEStack<?> stack, final long before, final long after,
+        final CallbackInfo ci) {
         this.apeiron$before = BigInteger.valueOf(before);
         this.apeiron$after = BigInteger.valueOf(after);
     }

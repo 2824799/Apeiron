@@ -2,7 +2,6 @@ package com.silvia.apeiron.mixin.ae.crafting.core;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,9 +14,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Unique;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingNetworkDiagnostics;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigDiagnosticRowValues;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigValueCodec;
 
@@ -40,8 +39,11 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
     @Override
     public void recordSampleBig(final IAEStack<?> output, final CraftingDiagnosticSessionId sessionId,
         final BigInteger producedAmount, final long observedStartTick, final long observedEndTick) {
-        if (output == null || producedAmount == null || producedAmount.signum() <= 0
-            || sessionId == null || observedStartTick <= 0 || observedEndTick < observedStartTick) {
+        if (output == null || producedAmount == null
+            || producedAmount.signum() <= 0
+            || sessionId == null
+            || observedStartTick <= 0
+            || observedEndTick < observedStartTick) {
             return;
         }
 
@@ -94,11 +96,15 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
     @Overwrite
     public List<DiagnosticRowView> createRows(final String search, final DiagnosticSortMode sortMode,
         final boolean ascending) {
-        final String normalizedSearch = search == null ? "" : search.trim().toLowerCase();
+        final String normalizedSearch = search == null ? ""
+            : search.trim()
+                .toLowerCase();
         final List<Map.Entry<IAEStack<?>, ApeironDiagnosticStats>> rows = new ArrayList<>();
         for (final Map.Entry<IAEStack<?>, ApeironDiagnosticStats> entry : this.apeiron$diagnostics.entrySet()) {
-            if (normalizedSearch.isEmpty()
-                || entry.getKey().getDisplayName().toLowerCase().contains(normalizedSearch)) {
+            if (normalizedSearch.isEmpty() || entry.getKey()
+                .getDisplayName()
+                .toLowerCase()
+                .contains(normalizedSearch)) {
                 rows.add(entry);
             }
         }
@@ -106,9 +112,16 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
         rows.sort((left, right) -> {
             int comparison = apeiron$compareRows(left, right, sortMode);
             if (!ascending) comparison = -comparison;
-            if (comparison == 0) comparison = left.getKey().getDisplayName()
-                .compareToIgnoreCase(right.getKey().getDisplayName());
-            if (comparison == 0) comparison = Integer.compare(left.getKey().hashCode(), right.getKey().hashCode());
+            if (comparison == 0) comparison = left.getKey()
+                .getDisplayName()
+                .compareToIgnoreCase(
+                    right.getKey()
+                        .getDisplayName());
+            if (comparison == 0) comparison = Integer.compare(
+                left.getKey()
+                    .hashCode(),
+                right.getKey()
+                    .hashCode());
             return comparison;
         });
 
@@ -119,11 +132,13 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
             final BigInteger elapsed = BigInteger.valueOf(stats.getElapsedObservedTicks());
             final BigInteger samples = BigInteger.valueOf(stats.getSampleCount());
             BigDiagnosticRowValues.capture(total, elapsed, samples);
-            result.add(new DiagnosticRowView(
-                row.getKey().copy(),
-                BigAEStackValues.saturatedLong(total),
-                BigAEStackValues.saturatedLong(elapsed),
-                BigAEStackValues.saturatedLong(samples)));
+            result.add(
+                new DiagnosticRowView(
+                    row.getKey()
+                        .copy(),
+                    BigAEStackValues.saturatedLong(total),
+                    BigAEStackValues.saturatedLong(elapsed),
+                    BigAEStackValues.saturatedLong(samples)));
         }
         return result;
     }
@@ -133,8 +148,12 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
         final NBTTagList list = new NBTTagList();
         for (final Map.Entry<IAEStack<?>, ApeironDiagnosticStats> entry : this.apeiron$diagnostics.entrySet()) {
             final NBTTagCompound tag = new NBTTagCompound();
-            tag.setTag("Stack", entry.getKey().toNBTGeneric());
-            entry.getValue().writeToNBT(tag);
+            tag.setTag(
+                "Stack",
+                entry.getKey()
+                    .toNBTGeneric());
+            entry.getValue()
+                .writeToNBT(tag);
             list.appendTag(tag);
         }
         return list;
@@ -173,10 +192,15 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
         final ApeironDiagnosticStats a = left.getValue();
         final ApeironDiagnosticStats b = right.getValue();
         return switch (sortMode) {
-            case CRAFTED -> a.getTotalProduced().compareTo(b.getTotalProduced());
+            case CRAFTED -> a.getTotalProduced()
+                .compareTo(b.getTotalProduced());
             case AVG_PER_SECOND -> a.compareItemsPerSecond(b);
             case SAMPLES -> Long.compare(a.getSampleCount(), b.getSampleCount());
-            case NAME -> left.getKey().getDisplayName().compareToIgnoreCase(right.getKey().getDisplayName());
+            case NAME -> left.getKey()
+                .getDisplayName()
+                .compareToIgnoreCase(
+                    right.getKey()
+                        .getDisplayName());
             case CUMULATIVE_TIME -> Long.compare(a.getElapsedObservedTicks(), b.getElapsedObservedTicks());
         };
     }
@@ -197,13 +221,15 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
 
         private BigInteger getTotalProduced() {
             BigInteger result = this.completedTotalProduced;
-            for (final ApeironDiagnosticSessionStats session : this.sessions.values()) result = result.add(session.totalProduced);
+            for (final ApeironDiagnosticSessionStats session : this.sessions.values())
+                result = result.add(session.totalProduced);
             return result;
         }
 
         private long getElapsedObservedTicks() {
             long result = this.completedElapsedTimeTicks;
-            for (final ApeironDiagnosticSessionStats session : this.sessions.values()) result += session.getElapsedObservedTicks();
+            for (final ApeironDiagnosticSessionStats session : this.sessions.values())
+                result += session.getElapsedObservedTicks();
             return result;
         }
 
@@ -226,7 +252,8 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
             this.completedTotalProduced = this.completedTotalProduced.add(loaded.completedTotalProduced);
             this.completedElapsedTimeTicks += loaded.completedElapsedTimeTicks;
             this.completedSampleCount += loaded.completedSampleCount;
-            for (final Map.Entry<CraftingDiagnosticSessionId, ApeironDiagnosticSessionStats> entry : loaded.sessions.entrySet()) {
+            for (final Map.Entry<CraftingDiagnosticSessionId, ApeironDiagnosticSessionStats> entry : loaded.sessions
+                .entrySet()) {
                 this.sessions.computeIfAbsent(entry.getKey(), ignored -> new ApeironDiagnosticSessionStats())
                     .mergeFrom(entry.getValue());
             }
@@ -236,23 +263,32 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
             final long leftTicks = this.getElapsedObservedTicks();
             final long rightTicks = other.getElapsedObservedTicks();
             if (leftTicks <= 0 || rightTicks <= 0) return Long.compare(leftTicks, rightTicks);
-            return this.getTotalProduced().multiply(BigInteger.valueOf(rightTicks))
-                .compareTo(other.getTotalProduced().multiply(BigInteger.valueOf(leftTicks)));
+            return this.getTotalProduced()
+                .multiply(BigInteger.valueOf(rightTicks))
+                .compareTo(
+                    other.getTotalProduced()
+                        .multiply(BigInteger.valueOf(leftTicks)));
         }
 
         private void writeToNBT(final NBTTagCompound tag) {
             final BigInteger total = this.getTotalProduced();
             BigValueCodec.writeNBT(tag, "TotalProduced", "ApeironTotalProduced", new AdaptiveInteger(total));
-            BigValueCodec.writeNBT(tag, "CompletedTotalProduced", "ApeironCompletedTotalProduced",
+            BigValueCodec.writeNBT(
+                tag,
+                "CompletedTotalProduced",
+                "ApeironCompletedTotalProduced",
                 new AdaptiveInteger(this.completedTotalProduced));
             tag.setLong("CompletedElapsedTimeTicks", this.completedElapsedTimeTicks);
             tag.setLong("CompletedSampleCount", this.completedSampleCount);
             tag.setLong("SampleCount", this.getSampleCount());
             final NBTTagList sessionsTag = new NBTTagList();
-            for (final Map.Entry<CraftingDiagnosticSessionId, ApeironDiagnosticSessionStats> entry : this.sessions.entrySet()) {
+            for (final Map.Entry<CraftingDiagnosticSessionId, ApeironDiagnosticSessionStats> entry : this.sessions
+                .entrySet()) {
                 final NBTTagCompound sessionTag = new NBTTagCompound();
-                entry.getKey().writeToNBT(sessionTag, "SessionId");
-                entry.getValue().writeToNBT(sessionTag);
+                entry.getKey()
+                    .writeToNBT(sessionTag, "SessionId");
+                entry.getValue()
+                    .writeToNBT(sessionTag);
                 sessionsTag.appendTag(sessionTag);
             }
             tag.setTag("Sessions", sessionsTag);
@@ -262,7 +298,8 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
             if (tag == null || !tag.hasKey("CompletedElapsedTimeTicks", Constants.NBT.TAG_LONG)) return null;
             final ApeironDiagnosticStats stats = new ApeironDiagnosticStats();
             stats.completedTotalProduced = tag.hasKey("ApeironCompletedTotalProduced", Constants.NBT.TAG_BYTE_ARRAY)
-                ? BigValueCodec.readNBT(tag, "CompletedTotalProduced", "ApeironCompletedTotalProduced").toBigInteger()
+                ? BigValueCodec.readNBT(tag, "CompletedTotalProduced", "ApeironCompletedTotalProduced")
+                    .toBigInteger()
                 : BigInteger.valueOf(tag.getLong("CompletedTotalProduced"));
             stats.completedElapsedTimeTicks = tag.getLong("CompletedElapsedTimeTicks");
             stats.completedSampleCount = tag.getLong("CompletedSampleCount");
@@ -292,7 +329,8 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
             final long observedEndTick) {
             this.totalProduced = this.totalProduced.add(producedAmount);
             this.sampleCount++;
-            if (this.firstObservedTick == 0L || observedStartTick < this.firstObservedTick) this.firstObservedTick = observedStartTick;
+            if (this.firstObservedTick == 0L || observedStartTick < this.firstObservedTick)
+                this.firstObservedTick = observedStartTick;
             if (observedEndTick > this.lastObservedTick) this.lastObservedTick = observedEndTick;
         }
 
@@ -311,7 +349,8 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
         }
 
         private void writeToNBT(final NBTTagCompound tag) {
-            BigValueCodec.writeNBT(tag, "TotalProduced", "ApeironTotalProduced", new AdaptiveInteger(this.totalProduced));
+            BigValueCodec
+                .writeNBT(tag, "TotalProduced", "ApeironTotalProduced", new AdaptiveInteger(this.totalProduced));
             tag.setLong("ElapsedObservedTicks", this.getElapsedObservedTicks());
             tag.setLong("SampleCount", this.sampleCount);
         }
@@ -320,7 +359,8 @@ public abstract class CraftingNetworkDiagnosticsMixin implements BigCraftingNetw
             if (tag == null || !tag.hasKey("ElapsedObservedTicks", Constants.NBT.TAG_LONG)) return null;
             final ApeironDiagnosticSessionStats stats = new ApeironDiagnosticSessionStats();
             stats.totalProduced = tag.hasKey("ApeironTotalProduced", Constants.NBT.TAG_BYTE_ARRAY)
-                ? BigValueCodec.readNBT(tag, "TotalProduced", "ApeironTotalProduced").toBigInteger()
+                ? BigValueCodec.readNBT(tag, "TotalProduced", "ApeironTotalProduced")
+                    .toBigInteger()
                 : BigInteger.valueOf(tag.getLong("TotalProduced"));
             stats.sampleCount = tag.getLong("SampleCount");
             stats.elapsedObservedTicks = tag.getLong("ElapsedObservedTicks");

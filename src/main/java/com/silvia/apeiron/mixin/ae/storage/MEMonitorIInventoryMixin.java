@@ -26,18 +26,24 @@ public abstract class MEMonitorIInventoryMixin implements BigIMEInventory {
     @Final
     private InventoryAdaptor adaptor;
 
-    @Inject(method = "injectItems(Lappeng/api/storage/data/IAEItemStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEItemStack;", at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "injectItems(Lappeng/api/storage/data/IAEItemStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEItemStack;",
+        at = @At("HEAD"),
+        cancellable = true)
     private void apeiron$legacyInject(final IAEItemStack input, final Actionable mode, final BaseActionSource source,
         final CallbackInfoReturnable<IAEItemStack> cir) {
-        if (input instanceof IAEItemStack && (BigAEItemStacks.isStackSizeBig((IAEItemStack) input)
-            || input.getStackSize() >= Integer.MAX_VALUE)) {
+        if (input instanceof IAEItemStack
+            && (BigAEItemStacks.isStackSizeBig((IAEItemStack) input) || input.getStackSize() >= Integer.MAX_VALUE)) {
             cir.setReturnValue(injectItemsBig((IAEItemStack) input, mode, source));
         }
     }
 
-    @Inject(method = "extractItems(Lappeng/api/storage/data/IAEItemStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEItemStack;", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyExtract(final IAEItemStack request, final Actionable mode,
-        final BaseActionSource source, final CallbackInfoReturnable<IAEItemStack> cir) {
+    @Inject(
+        method = "extractItems(Lappeng/api/storage/data/IAEItemStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEItemStack;",
+        at = @At("HEAD"),
+        cancellable = true)
+    private void apeiron$legacyExtract(final IAEItemStack request, final Actionable mode, final BaseActionSource source,
+        final CallbackInfoReturnable<IAEItemStack> cir) {
         if (request instanceof IAEItemStack && (BigAEItemStacks.isStackSizeBig((IAEItemStack) request)
             || request.getStackSize() >= Integer.MAX_VALUE)) {
             cir.setReturnValue(extractItemsBig((IAEItemStack) request, mode, source));
@@ -45,14 +51,10 @@ public abstract class MEMonitorIInventoryMixin implements BigIMEInventory {
     }
 
     @Override
-    public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode,
-        final BaseActionSource source) {
+    public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode, final BaseActionSource source) {
         if (input == null || input.getStackSize() == 0) return null;
-        IAEStack<?> remainder = BigInventoryAdaptors.addStackBig(
-            adaptor,
-            input,
-            appeng.api.config.InsertionMode.DEFAULT,
-            mode == Actionable.SIMULATE);
+        IAEStack<?> remainder = BigInventoryAdaptors
+            .addStackBig(adaptor, input, appeng.api.config.InsertionMode.DEFAULT, mode == Actionable.SIMULATE);
         if (mode == Actionable.MODULATE) {
             ((MEMonitorIInventory) (Object) this).onTick();
         }
@@ -63,10 +65,7 @@ public abstract class MEMonitorIInventoryMixin implements BigIMEInventory {
     public IAEItemStack extractItemsBig(final IAEItemStack request, final Actionable mode,
         final BaseActionSource source) {
         if (request == null || request.getStackSize() == 0) return null;
-        IAEItemStack result = BigInventoryAdaptors.extractStackBig(
-            adaptor,
-            request,
-            mode == Actionable.SIMULATE);
+        IAEItemStack result = BigInventoryAdaptors.extractStackBig(adaptor, request, mode == Actionable.SIMULATE);
         if (mode == Actionable.MODULATE && result != null) ((MEMonitorIInventory) (Object) this).onTick();
         return result;
     }

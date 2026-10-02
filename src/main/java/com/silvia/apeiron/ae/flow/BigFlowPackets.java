@@ -4,11 +4,12 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Map;
 
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+
 import appeng.api.storage.data.IAEStack;
 import appeng.me.cache.ItemFlowGridCache.FlowRate;
 import appeng.util.Platform;
 import io.netty.buffer.ByteBuf;
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 /** Optional exact section appended to AE2's flow-rate packet. */
 public final class BigFlowPackets {
@@ -57,8 +58,8 @@ public final class BigFlowPackets {
                 ((BigFlowRate) rate).setBigFlow(inRate, outRate);
             } else {
                 final FlowRate replacement = new FlowRate(
-                        BigAEStackValues.saturatedLong(inRate),
-                        BigAEStackValues.saturatedLong(outRate));
+                    BigAEStackValues.saturatedLong(inRate),
+                    BigAEStackValues.saturatedLong(outRate));
                 if (replacement instanceof BigFlowRate) ((BigFlowRate) replacement).setBigFlow(inRate, outRate);
                 rates.put(stack, replacement);
             }

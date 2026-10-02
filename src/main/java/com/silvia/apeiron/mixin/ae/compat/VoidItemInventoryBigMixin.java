@@ -7,8 +7,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.compat.BigCondenserAccess;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.BaseActionSource;

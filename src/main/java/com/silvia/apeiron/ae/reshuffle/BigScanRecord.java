@@ -15,6 +15,5 @@ public interface BigScanRecord {
 
     boolean hasBigScanValues();
 
-    void setExactScanValues(BigInteger typesUsed, BigInteger typesTotal, BigInteger bytesUsed,
-        BigInteger bytesTotal);
+    void setExactScanValues(BigInteger typesUsed, BigInteger typesTotal, BigInteger bytesUsed, BigInteger bytesTotal);
 }

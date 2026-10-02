@@ -19,26 +19,34 @@ import appeng.util.inv.AdaptorIInventory;
 @Mixin(targets = "appeng.helpers.DualityInterface$InterfaceInventory", remap = false)
 public abstract class InterfaceInventoryMixin implements BigIMEInventory {
 
-    @Shadow @Final private DualityInterface this$0;
+    @Shadow
+    @Final
+    private DualityInterface this$0;
 
     private boolean apeiron$isInterfaceRequest(final BaseActionSource source) {
-        return source != null && source.getClass().getName().equals("appeng.helpers.DualityInterface$InterfaceRequestSource");
+        return source != null && source.getClass()
+            .getName()
+            .equals("appeng.helpers.DualityInterface$InterfaceRequestSource");
     }
 
     @Override
     public IAEItemStack injectItemsBig(final IAEItemStack input, final Actionable mode, final BaseActionSource source) {
         if (this.apeiron$isInterfaceRequest(source)) return input;
         final IAEItemStack result = (IAEItemStack) BigInventoryAdaptors.addStackBig(
-            new AdaptorIInventory(this.this$0.getStorage()), input, InsertionMode.DEFAULT, mode == Actionable.SIMULATE);
+            new AdaptorIInventory(this.this$0.getStorage()),
+            input,
+            InsertionMode.DEFAULT,
+            mode == Actionable.SIMULATE);
         if (mode == Actionable.MODULATE) ((MEMonitorIInventory) (Object) this).onTick();
         return result;
     }
 
     @Override
-    public IAEItemStack extractItemsBig(final IAEItemStack request, final Actionable mode, final BaseActionSource source) {
+    public IAEItemStack extractItemsBig(final IAEItemStack request, final Actionable mode,
+        final BaseActionSource source) {
         if (this.apeiron$isInterfaceRequest(source)) return null;
-        final IAEItemStack result = BigInventoryAdaptors.extractStackBig(new AdaptorIInventory(this.this$0.getStorage()),
-            request, mode == Actionable.SIMULATE);
+        final IAEItemStack result = BigInventoryAdaptors
+            .extractStackBig(new AdaptorIInventory(this.this$0.getStorage()), request, mode == Actionable.SIMULATE);
         if (mode == Actionable.MODULATE && result != null) ((MEMonitorIInventory) (Object) this).onTick();
         return result;
     }

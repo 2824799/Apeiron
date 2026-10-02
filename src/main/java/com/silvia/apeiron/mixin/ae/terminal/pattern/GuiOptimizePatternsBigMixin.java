@@ -10,7 +10,6 @@ import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
 
 import appeng.api.storage.data.IAEStack;
 import appeng.client.gui.implementations.GuiOptimizePatterns;
-import appeng.container.implementations.ContainerOptimizePatterns;
 import appeng.util.ReadableNumberConverter;
 
 /** Keeps pattern optimizer request counts readable when requestable values exceed long. */
@@ -33,7 +32,9 @@ public abstract class GuiOptimizePatternsBigMixin {
 
     @Redirect(
         method = "drawFG",
-        at = @At(value = "INVOKE", target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
     private String apeiron$formatWide(final ReadableNumberConverter converter, final long value) {
         return BigGuiNumberCapture.formatOptimizerWide(value);
     }

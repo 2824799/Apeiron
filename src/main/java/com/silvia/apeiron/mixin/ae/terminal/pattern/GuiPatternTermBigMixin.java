@@ -8,7 +8,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.options.FormatOptions;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.BigNumberFormatter;
@@ -26,7 +25,9 @@ public abstract class GuiPatternTermBigMixin {
 
     @Redirect(
         method = "handleItemTooltip",
-        at = @At(value = "INVOKE", target = "Lcom/gtnewhorizon/gtnhlib/util/numberformatting/NumberFormatUtil;formatNumber(Ljava/lang/Number;Lcom/gtnewhorizon/gtnhlib/util/numberformatting/options/FormatOptions;)Ljava/lang/String;"))
+        at = @At(
+            value = "INVOKE",
+            target = "Lcom/gtnewhorizon/gtnhlib/util/numberformatting/NumberFormatUtil;formatNumber(Ljava/lang/Number;Lcom/gtnewhorizon/gtnhlib/util/numberformatting/options/FormatOptions;)Ljava/lang/String;"))
     private String apeiron$formatBlankPattern(final Number ignored, final FormatOptions options) {
         final BigInteger exact = BigAEStackValues.get(this.blankPatternView);
         return BigNumberFormatter.formatExact(exact);

@@ -3,6 +3,8 @@ package com.silvia.apeiron.mixin.ae.automation;
 import java.math.BigInteger;
 import java.util.Collection;
 
+import net.minecraft.nbt.NBTTagCompound;
+
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -12,8 +14,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.automation.BigLevelEmitterAccess;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigValueCodec;
 
@@ -31,7 +33,6 @@ import appeng.parts.automation.PartLevelEmitter;
 import appeng.tile.inventory.IAEStackInventory;
 import appeng.util.AEStackTypeFilter;
 import appeng.util.Platform;
-import net.minecraft.nbt.NBTTagCompound;
 
 /** Makes level emitters compare exact network counts and persist exact thresholds. */
 @Mixin(value = PartLevelEmitter.class, remap = false)
@@ -71,8 +72,10 @@ public abstract class PartLevelEmitterMixin implements BigLevelEmitterAccess {
     public void setReportingValueBig(final BigInteger value) {
         apeiron$reporting = AdaptiveInteger.fitsLong(value) ? null : value;
         reportingValue = BigAEStackValues.saturatedLong(value);
-        ((PartLevelEmitter) (Object) this).getHost().markForSave();
-        ((PartLevelEmitter) (Object) this).getConfigManager().getSetting(Settings.LEVEL_TYPE);
+        ((PartLevelEmitter) (Object) this).getHost()
+            .markForSave();
+        ((PartLevelEmitter) (Object) this).getConfigManager()
+            .getSetting(Settings.LEVEL_TYPE);
         updateState();
     }
 
@@ -101,20 +104,23 @@ public abstract class PartLevelEmitterMixin implements BigLevelEmitterAccess {
         try {
             if (configured == null || monitor == null) {
                 for (IAEStackType<?> type : typeFilters.getEnabledTypes()) {
-                    final IMEMonitor<?> valid = self.getProxy().getStorage().getMEMonitor(type);
+                    final IMEMonitor<?> valid = self.getProxy()
+                        .getStorage()
+                        .getMEMonitor(type);
                     if (valid == null) continue;
                     for (IAEStack<?> stack : valid.getStorageList()) value = value.add(BigAEStackValues.get(stack));
                 }
             } else if (configured.getStackType() != monitor.getStackType()) {
                 return;
-            } else if (configured instanceof IAEItemStack
-                && self.getInstalledUpgrades(Upgrades.FUZZY) > 0) {
-                final FuzzyMode fuzzy = (FuzzyMode) self.getConfigManager().getSetting(Settings.FUZZY_MODE);
+            } else if (configured instanceof IAEItemStack && self.getInstalledUpgrades(Upgrades.FUZZY) > 0) {
+                final FuzzyMode fuzzy = (FuzzyMode) self.getConfigManager()
+                    .getSetting(Settings.FUZZY_MODE);
                 final Collection<IAEItemStack> matches = ((IMEMonitor<IAEItemStack>) monitor).getStorageList()
                     .findFuzzy((IAEItemStack) configured, fuzzy);
                 for (IAEItemStack stack : matches) value = value.add(BigAEStackValues.get(stack));
             } else {
-                final IAEStack<?> found = monitor.getStorageList().findPrecise(configured);
+                final IAEStack<?> found = monitor.getStorageList()
+                    .findPrecise(configured);
                 if (found != null) value = BigAEStackValues.get(found);
             }
         } catch (final GridAccessException e) {
@@ -148,9 +154,13 @@ public abstract class PartLevelEmitterMixin implements BigLevelEmitterAccess {
 
     @Inject(method = "writeToNBT", at = @At("TAIL"))
     private void apeiron$writeExact(final NBTTagCompound data, final CallbackInfo ci) {
-        BigValueCodec.writeNBT(data, "lastReportedValue", "ApeironLastReportedValue",
-            new AdaptiveInteger(apeiron$lastReported == null ? BigInteger.valueOf(lastReportedValue) : apeiron$lastReported));
-        BigValueCodec.writeNBT(data, "reportingValue", "ApeironReportingValue",
-            new AdaptiveInteger(getReportingValueBig()));
+        BigValueCodec.writeNBT(
+            data,
+            "lastReportedValue",
+            "ApeironLastReportedValue",
+            new AdaptiveInteger(
+                apeiron$lastReported == null ? BigInteger.valueOf(lastReportedValue) : apeiron$lastReported));
+        BigValueCodec
+            .writeNBT(data, "reportingValue", "ApeironReportingValue", new AdaptiveInteger(getReportingValueBig()));
     }
 }

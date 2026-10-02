@@ -11,7 +11,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.silvia.apeiron.ae.flow.BigFlowPackets;
-import com.silvia.apeiron.ae.flow.BigFlowRate;
 import com.silvia.apeiron.ae.sync.BigPacketPayload;
 
 import appeng.api.storage.data.IAEStack;

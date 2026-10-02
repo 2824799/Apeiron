@@ -10,8 +10,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.automation.BigPoweredTransfers;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.energy.IEnergySource;
@@ -45,25 +45,30 @@ public abstract class PartConversionMonitorBigMixin {
             final ItemStack one = hand.copy();
             one.stackSize = 1;
             final IAEStack<?> stack = type.getStackFromContainerItem(one);
-            if (stack == null || BigAEStackValues.get(stack).signum() <= 0
-                || monitorPart.getDisplayed() != null && !monitorPart.getDisplayed().isSameType(stack)) {
+            if (stack == null || BigAEStackValues.get(stack)
+                .signum() <= 0
+                || monitorPart.getDisplayed() != null && !monitorPart.getDisplayed()
+                    .isSameType(stack)) {
                 ci.cancel();
                 return;
             }
 
             try {
-                final IEnergySource energy = monitorPart.getProxy().getEnergy();
-                final IMEMonitor monitor = monitorPart.getProxy().getStorage().getMEMonitor(type);
+                final IEnergySource energy = monitorPart.getProxy()
+                    .getEnergy();
+                final IMEMonitor monitor = monitorPart.getProxy()
+                    .getStorage()
+                    .getMEMonitor(type);
                 if (monitor == null) break;
                 final PlayerSource source = new PlayerSource(player, monitorPart);
-                final IAEStack<?> simulatedLeftover = BigPoweredTransfers.poweredInsertBig(
-                    energy, monitor, stack, source, Actionable.SIMULATE);
-                final BigInteger accepted = BigAEStackValues.get(stack).subtract(
-                    simulatedLeftover == null ? BigInteger.ZERO : BigAEStackValues.get(simulatedLeftover));
+                final IAEStack<?> simulatedLeftover = BigPoweredTransfers
+                    .poweredInsertBig(energy, monitor, stack, source, Actionable.SIMULATE);
+                final BigInteger accepted = BigAEStackValues.get(stack)
+                    .subtract(simulatedLeftover == null ? BigInteger.ZERO : BigAEStackValues.get(simulatedLeftover));
                 if (accepted.signum() <= 0) break;
 
-                final ObjectLongPair<ItemStack> drained = type.drainStackFromContainer(
-                    one, BigAEStackValues.set(stack.copy(), accepted));
+                final ObjectLongPair<ItemStack> drained = type
+                    .drainStackFromContainer(one, BigAEStackValues.set(stack.copy(), accepted));
                 if (drained.left() == null || drained.rightLong() <= 0) break;
                 ItemStack result = drained.left();
 
@@ -75,7 +80,8 @@ public abstract class PartConversionMonitorBigMixin {
                     Actionable.MODULATE);
                 if (actualLeftover != null) {
                     final ObjectLongPair<ItemStack> filled = type.fillContainer(
-                        result, BigAEStackValues.set(stack.copy(), BigAEStackValues.get(actualLeftover)));
+                        result,
+                        BigAEStackValues.set(stack.copy(), BigAEStackValues.get(actualLeftover)));
                     if (filled.left() != null) result = filled.left();
                     final BigInteger unfilled = BigAEStackValues.get(actualLeftover)
                         .subtract(BigInteger.valueOf(filled.rightLong()));
@@ -112,19 +118,23 @@ public abstract class PartConversionMonitorBigMixin {
         for (final IAEStackType type : AEStackTypeRegistry.getAllTypes()) {
             if (!type.isContainerItemForType(hand)) continue;
             try {
-                final IEnergySource energy = monitorPart.getProxy().getEnergy();
-                final IMEMonitor monitor = monitorPart.getProxy().getStorage().getMEMonitor(type);
+                final IEnergySource energy = monitorPart.getProxy()
+                    .getEnergy();
+                final IMEMonitor monitor = monitorPart.getProxy()
+                    .getStorage()
+                    .getMEMonitor(type);
                 if (monitor == null) break;
                 final PlayerSource source = new PlayerSource(player, monitorPart);
-                final IAEStack<?> stored = BigPoweredTransfers.poweredExtractionBig(
-                    energy, monitor, displayed, source, Actionable.SIMULATE);
-                if (stored == null || BigAEStackValues.get(stored).signum() <= 0) break;
+                final IAEStack<?> stored = BigPoweredTransfers
+                    .poweredExtractionBig(energy, monitor, displayed, source, Actionable.SIMULATE);
+                if (stored == null || BigAEStackValues.get(stored)
+                    .signum() <= 0) break;
 
                 final ItemStack one = Platform.copyStackWithSizeOne(hand);
                 final BigInteger fillProbeAmount = BigAEStackValues.get(stored)
                     .min(BigInteger.valueOf(Long.MAX_VALUE));
-                final ObjectLongPair<ItemStack> probe = type.fillContainer(
-                    one, BigAEStackValues.set(stored.copy(), fillProbeAmount));
+                final ObjectLongPair<ItemStack> probe = type
+                    .fillContainer(one, BigAEStackValues.set(stored.copy(), fillProbeAmount));
                 if (probe.rightLong() <= 0) break;
 
                 final IAEStack<?> extracted = BigPoweredTransfers.poweredExtractionBig(

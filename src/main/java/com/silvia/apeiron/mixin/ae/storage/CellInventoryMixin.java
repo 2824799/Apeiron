@@ -18,7 +18,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.silvia.apeiron.ae.stack.BigAEItemStack;
 import com.silvia.apeiron.ae.stack.BigAEItemStacks;
-import com.silvia.apeiron.ae.stack.BigAEStack;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.storage.BigCellInventory;
 import com.silvia.apeiron.ae.storage.BigMEInventory;
@@ -124,7 +123,8 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
                     .min(getRemainingItemCountBig())
                     .max(BigInteger.ZERO);
             }
-            return share.subtract(BigAEStackValues.get(stack)).max(BigInteger.ZERO);
+            return share.subtract(BigAEStackValues.get(stack))
+                .max(BigInteger.ZERO);
         }
         if (restriction.signum() > 0) share = share.min(restriction.divide(BigInteger.valueOf(distTypesCount)));
         return share.max(BigInteger.ZERO);
@@ -147,7 +147,8 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
 
     @Override
     public BigInteger getRemainingTypesBig() {
-        return getTotalTypesBig().subtract(getStoredTypesBig()).max(BigInteger.ZERO);
+        return getTotalTypesBig().subtract(getStoredTypesBig())
+            .max(BigInteger.ZERO);
     }
 
     @Override
@@ -226,8 +227,7 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
 
     @Override
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public IAEStack<?> injectItemsBig(final IAEStack<?> input, final Actionable mode,
-        final BaseActionSource source) {
+    public IAEStack<?> injectItemsBig(final IAEStack<?> input, final Actionable mode, final BaseActionSource source) {
         if (input instanceof IAEItemStack) {
             return injectItemsBig((IAEItemStack) input, mode, source);
         }
@@ -240,17 +240,18 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
         if (cellType.isBlackListed(input)) return input;
 
         IAEStack stored = apeiron$rawStacks().findPrecise(input);
-        if (stored != null && BigAEStackValues.get(stored).signum() <= 0) stored = null;
+        if (stored != null && BigAEStackValues.get(stored)
+            .signum() <= 0) stored = null;
         if (stored == null && !apeiron$canHoldNewItem()) return input;
 
-        BigInteger room = apeiron$cell().isDistribution()
-            ? apeiron$remainingItemsCountDistGeneric(stored)
+        BigInteger room = apeiron$cell().isDistribution() ? apeiron$remainingItemsCountDistGeneric(stored)
             : getRemainingItemCountBig();
         if (stored == null && !apeiron$cell().isDistribution() && apeiron$restriction().signum() <= 0) {
             BigInteger byteRoom = getFreeBytesBig().subtract(BigInteger.valueOf(apeiron$cell().getBytesPerType()))
                 .multiply(BigInteger.valueOf(typeWeight))
                 .add(BigInteger.valueOf(apeiron$unusedCount()));
-            room = room.min(byteRoom).max(BigInteger.ZERO);
+            room = room.min(byteRoom)
+                .max(BigInteger.ZERO);
         }
         if (room.signum() == 0) return stored != null && apeiron$cell().isOverflow() ? null : input;
 
@@ -262,12 +263,14 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
                 added.setCraftable(false);
                 apeiron$rawStacks().add(added);
             } else {
-                BigAEStackValues.set(stored, BigAEStackValues.get(stored).add(accepted));
+                BigAEStackValues.set(
+                    stored,
+                    BigAEStackValues.get(stored)
+                        .add(accepted));
             }
             saveChanges();
         }
-        return requested.equals(accepted) || apeiron$cell().isOverflow()
-            ? null
+        return requested.equals(accepted) || apeiron$cell().isOverflow() ? null
             : BigAEStackValues.copyWithSize(input, requested.subtract(accepted));
     }
 
@@ -285,11 +288,16 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
         }
 
         IAEStack stored = apeiron$rawStacks().findPrecise(request);
-        if (stored == null || BigAEStackValues.get(stored).signum() <= 0) return null;
-        BigInteger extracted = BigAEStackValues.get(request).min(BigAEStackValues.get(stored));
+        if (stored == null || BigAEStackValues.get(stored)
+            .signum() <= 0) return null;
+        BigInteger extracted = BigAEStackValues.get(request)
+            .min(BigAEStackValues.get(stored));
         IAEStack result = BigAEStackValues.copyWithSize(stored, extracted);
         if (mode == Actionable.MODULATE) {
-            BigAEStackValues.set(stored, BigAEStackValues.get(stored).subtract(extracted));
+            BigAEStackValues.set(
+                stored,
+                BigAEStackValues.get(stored)
+                    .subtract(extracted));
             saveChanges();
         }
         return result;
@@ -403,7 +411,8 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
         int oldTypes = storedTypes;
         int slot = 0;
         for (IAEStack stack : apeiron$rawStacks()) {
-            if (BigAEStackValues.get(stack).signum() <= 0) continue;
+            if (BigAEStackValues.get(stack)
+                .signum() <= 0) continue;
             AdaptiveInteger count = new AdaptiveInteger(BigAEStackValues.get(stack));
             if (count.isBig()) total.add(count.toBigInteger());
             else total.add(count.longValueExact());
@@ -449,13 +458,16 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
             if (tagCompound.hasKey("Apeiron@" + slot)) {
                 BigAEStackValues.set(
                     stack,
-                    BigValueCodec.readNBT(tagCompound, "@" + slot, "Apeiron@" + slot).toBigInteger());
+                    BigValueCodec.readNBT(tagCompound, "@" + slot, "Apeiron@" + slot)
+                        .toBigInteger());
             } else if (!stackTag.hasKey("ApeironCnt")) {
                 long outer = tagCompound.getLong("@" + slot);
                 if (outer > 0) BigAEStackValues.set(stack, BigInteger.valueOf(outer));
             }
-            if (BigAEStackValues.get(stack).signum() < 0) throw new IllegalArgumentException("negative stored item count");
-            if (BigAEStackValues.get(stack).signum() == 0) continue;
+            if (BigAEStackValues.get(stack)
+                .signum() < 0) throw new IllegalArgumentException("negative stored item count");
+            if (BigAEStackValues.get(stack)
+                .signum() == 0) continue;
             apeiron$rawStacks().add(stack);
             total.add(BigAEStackValues.get(stack));
         }
@@ -472,7 +484,8 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
     private void apeiron$availableExact(IAEStack<?> request, int iteration, CallbackInfoReturnable<IAEStack<?>> cir) {
         if (apeiron$storedCountBig != null) {
             IAEStack found = apeiron$rawStacks().findPrecise(request);
-            if (found == null || BigAEStackValues.get(found).signum() <= 0) {
+            if (found == null || BigAEStackValues.get(found)
+                .signum() <= 0) {
                 cir.setReturnValue(null);
             } else {
                 IAEStack result = request.copy();
@@ -484,8 +497,7 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
 
     @Inject(method = "getTotalBytes", at = @At("HEAD"), cancellable = true)
     private void apeiron$totalBytes(CallbackInfoReturnable<Long> cir) {
-        if (cellType instanceof BigStorageCell)
-            cir.setReturnValue(apeiron$saturate(getTotalBytesBig()));
+        if (cellType instanceof BigStorageCell) cir.setReturnValue(apeiron$saturate(getTotalBytesBig()));
     }
 
     @Inject(method = "getUsedBytes", at = @At("HEAD"), cancellable = true)
@@ -500,8 +512,7 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
 
     @Inject(method = "getRemainingItemCount", at = @At("HEAD"), cancellable = true)
     private void apeiron$remainingCount(CallbackInfoReturnable<Long> cir) {
-        if (apeiron$needsBigMath())
-            cir.setReturnValue(apeiron$saturate(getRemainingItemCountBig()));
+        if (apeiron$needsBigMath()) cir.setReturnValue(apeiron$saturate(getRemainingItemCountBig()));
     }
 
     @Inject(method = "getRemainingItemsCountDist", at = @At("HEAD"), cancellable = true)

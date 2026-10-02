@@ -8,6 +8,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
 import com.silvia.apeiron.Apeiron;
+import com.silvia.apeiron.ae.stack.BigAEItemStack;
+import com.silvia.apeiron.ae.stack.BigAEItemStacks;
+import com.silvia.apeiron.ae.storage.BigIMEInventory;
+import com.silvia.apeiron.ae.storage.BigMEInventories;
 
 import appeng.api.AEApi;
 import appeng.api.config.AccessRestriction;
@@ -26,10 +30,6 @@ import appeng.util.item.HashBasedItemList;
 import appeng.util.item.ItemList;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import com.silvia.apeiron.ae.stack.BigAEItemStack;
-import com.silvia.apeiron.ae.stack.BigAEItemStacks;
-import com.silvia.apeiron.ae.storage.BigIMEInventory;
-import com.silvia.apeiron.ae.storage.BigMEInventories;
 
 /** Optional in-game check of the transformed AE2 class, enabled by APEIRON_VERIFY_STACK=1. */
 public final class AEItemStackSmoke {

@@ -17,7 +17,6 @@ import com.silvia.apeiron.ae.storage.BigStorageInterceptor;
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.BaseActionSource;
 import appeng.api.networking.security.MachineSource;
-import appeng.api.networking.security.MachineSource;
 import appeng.api.storage.IMEInventory;
 import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IAEStackType;
@@ -48,8 +47,8 @@ public abstract class PartPatternRepeaterMixin implements BigStorageInterceptor 
         if (input == null) return null;
 
         final IAEStack<?> waitingStack = waitingStacks.findPrecise(input);
-        if (!BigAEStackValues.isBig(input)
-            && (waitingStack == null || !BigAEStackValues.isBig(waitingStack))) return input;
+        if (!BigAEStackValues.isBig(input) && (waitingStack == null || !BigAEStackValues.isBig(waitingStack)))
+            return input;
 
         if (injecting) {
             return input;
@@ -72,11 +71,8 @@ public abstract class PartPatternRepeaterMixin implements BigStorageInterceptor 
                 return input;
             }
             final BigInteger tempSize = BigAEStackValues.get(tempStack);
-            final IAEStack<?> result = BigMEInventories.injectItemsBig(
-                (IMEInventory) monitor,
-                tempStack,
-                type,
-                actionSource);
+            final IAEStack<?> result = BigMEInventories
+                .injectItemsBig((IMEInventory) monitor, tempStack, type, actionSource);
             final BigInteger reducedSize = result == null ? BigInteger.ZERO : BigAEStackValues.get(result);
             final BigInteger returnSize = reducedSize.add(leftOver);
 

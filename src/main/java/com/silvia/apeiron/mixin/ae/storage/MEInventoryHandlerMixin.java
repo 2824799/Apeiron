@@ -3,8 +3,8 @@ package com.silvia.apeiron.mixin.ae.storage;
 import org.spongepowered.asm.mixin.Mixin;
 
 import com.silvia.apeiron.ae.storage.BigIMEInventory;
-import com.silvia.apeiron.ae.storage.BigMEInventory;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
+import com.silvia.apeiron.ae.storage.BigMEInventory;
 
 import appeng.api.config.AccessRestriction;
 import appeng.api.config.Actionable;
@@ -24,12 +24,12 @@ public abstract class MEInventoryHandlerMixin implements BigIMEInventory, BigMEI
             return injectItemsBig((IAEItemStack) input, mode, source);
         }
         MEInventoryHandler handler = (MEInventoryHandler) (Object) this;
-        if (!handler.canAccept(input) || source instanceof ReshuffleActionSource
-            && !handler.getReshuffleAccess().hasPermission(AccessRestriction.WRITE)) {
+        if (!handler.canAccept(input) || source instanceof ReshuffleActionSource && !handler.getReshuffleAccess()
+            .hasPermission(AccessRestriction.WRITE)) {
             return input;
         }
-        return BigMEInventories.injectItemsBig((appeng.api.storage.IMEInventory) handler.getInternal(), input, mode,
-            source);
+        return BigMEInventories
+            .injectItemsBig((appeng.api.storage.IMEInventory) handler.getInternal(), input, mode, source);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -38,17 +38,20 @@ public abstract class MEInventoryHandlerMixin implements BigIMEInventory, BigMEI
             return extractItemsBig((IAEItemStack) request, mode, source);
         }
         MEInventoryHandler handler = (MEInventoryHandler) (Object) this;
-        if (!handler.getAccess().hasPermission(AccessRestriction.READ)
-            || source instanceof ReshuffleActionSource
-                && !handler.getReshuffleAccess().hasPermission(AccessRestriction.READ)) {
+        if (!handler.getAccess()
+            .hasPermission(AccessRestriction.READ)
+            || source instanceof ReshuffleActionSource && !handler.getReshuffleAccess()
+                .hasPermission(AccessRestriction.READ)) {
             return null;
         }
-        if (handler.isExtractFilterActive() && !handler.getExtractPartitionList().isEmpty()
-            && !handler.getExtractFilterCondition().test(request)) {
+        if (handler.isExtractFilterActive() && !handler.getExtractPartitionList()
+            .isEmpty()
+            && !handler.getExtractFilterCondition()
+                .test(request)) {
             return null;
         }
-        return BigMEInventories.extractItemsBig((appeng.api.storage.IMEInventory) handler.getInternal(), request, mode,
-            source);
+        return BigMEInventories
+            .extractItemsBig((appeng.api.storage.IMEInventory) handler.getInternal(), request, mode, source);
     }
 
     @SuppressWarnings("unchecked")

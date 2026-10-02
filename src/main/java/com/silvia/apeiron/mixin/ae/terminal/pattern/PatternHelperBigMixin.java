@@ -26,10 +26,22 @@ import appeng.util.Platform;
 @Mixin(value = PatternHelper.class, remap = false)
 public abstract class PatternHelperBigMixin {
 
-    @Shadow @Final @Mutable private IAEItemStack[] inputs;
-    @Shadow @Final @Mutable private IAEItemStack[] outputs;
-    @Shadow @Final @Mutable private IAEItemStack[] condensedInputs;
-    @Shadow @Final @Mutable private IAEItemStack[] condensedOutputs;
+    @Shadow
+    @Final
+    @Mutable
+    private IAEItemStack[] inputs;
+    @Shadow
+    @Final
+    @Mutable
+    private IAEItemStack[] outputs;
+    @Shadow
+    @Final
+    @Mutable
+    private IAEItemStack[] condensedInputs;
+    @Shadow
+    @Final
+    @Mutable
+    private IAEItemStack[] condensedOutputs;
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void apeiron$restoreExactPatternValues(final net.minecraft.item.ItemStack pattern,

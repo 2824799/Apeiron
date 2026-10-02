@@ -5,6 +5,9 @@ import java.math.BigInteger;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 
+import com.silvia.apeiron.ae.stack.BigAEItemStacks;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+
 import appeng.api.config.Actionable;
 import appeng.api.config.InsertionMode;
 import appeng.api.storage.IMEMonitor;
@@ -14,8 +17,6 @@ import appeng.util.InventoryAdaptor;
 import appeng.util.Platform;
 import appeng.util.inv.AdaptorDualityInterface;
 import appeng.util.inv.AdaptorIInventory;
-import com.silvia.apeiron.ae.stack.BigAEItemStacks;
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 /** Transfers exact AE counts across physical inventories without repeating simulated capacity. */
 public final class BigInventoryAdaptors {
@@ -35,8 +36,12 @@ public final class BigInventoryAdaptors {
             final appeng.helpers.DualityInterface dual = ((AdaptorDualityInterface) adaptor).interfaceHost
                 .getInterfaceDuality();
             final IMEMonitor monitor = dual.getMEMonitor(input.getStackType());
-            return monitor == null ? input : BigMEInventories.injectItemsBig(monitor, input.copy(),
-                simulate ? Actionable.SIMULATE : Actionable.MODULATE, dual.getActionSource());
+            return monitor == null ? input
+                : BigMEInventories.injectItemsBig(
+                    monitor,
+                    input.copy(),
+                    simulate ? Actionable.SIMULATE : Actionable.MODULATE,
+                    dual.getActionSource());
         }
         if (adaptor.getClass() == AdaptorIInventory.class && input instanceof IAEItemStack) {
             return insertPhysical((BigPhysicalInventoryAccess) adaptor, (IAEItemStack) input, insertionMode, simulate);
@@ -82,7 +87,8 @@ public final class BigInventoryAdaptors {
                 if (stored != null && (emptyOnly || !Platform.isSameItemPrecise(stored, template))) continue;
                 final int room = stored == null ? limit : Math.max(0, limit - stored.stackSize);
                 if (room == 0) continue;
-                final int offered = remaining.min(BigInteger.valueOf(limit)).intValue();
+                final int offered = remaining.min(BigInteger.valueOf(limit))
+                    .intValue();
                 final ItemStack probe = template.copy();
                 probe.stackSize = offered;
                 if (!inventory.isItemValidForSlot(slot, probe)) continue;
@@ -113,15 +119,18 @@ public final class BigInventoryAdaptors {
             BigInteger extracted = BigInteger.ZERO;
             for (int slot = 0; slot < inventory.getSizeInventory() && remaining.signum() > 0; slot++) {
                 final ItemStack stored = inventory.getStackInSlot(slot);
-                if (stored == null || stored.stackSize <= 0 || !access.apeiron$canRemove(slot, stored)
+                if (stored == null || stored.stackSize <= 0
+                    || !access.apeiron$canRemove(slot, stored)
                     || !Platform.isSameItemPrecise(stored, template)) continue;
-                final int amount = remaining.min(BigInteger.valueOf(stored.stackSize)).intValue();
+                final int amount = remaining.min(BigInteger.valueOf(stored.stackSize))
+                    .intValue();
                 final int actual;
                 if (simulate) actual = amount;
                 else {
                     final ItemStack removed = inventory.decrStackSize(slot, amount);
                     actual = removed == null ? 0 : removed.stackSize;
-                    if (actual < 0 || actual > amount || removed != null && !Platform.isSameItemPrecise(removed, template)) {
+                    if (actual < 0 || actual > amount
+                        || removed != null && !Platform.isSameItemPrecise(removed, template)) {
                         throw new IllegalStateException("Physical inventory returned an invalid extraction");
                     }
                     inventory.markDirty();
@@ -133,7 +142,8 @@ public final class BigInventoryAdaptors {
         }
         BigInteger extracted = BigInteger.ZERO;
         do {
-            final int amount = remaining.min(MAX_EXTERNAL_CHUNK).intValue();
+            final int amount = remaining.min(MAX_EXTERNAL_CHUNK)
+                .intValue();
             final ItemStack template = request.getItemStack();
             template.stackSize = amount;
             final ItemStack removed = simulate ? adaptor.simulateRemove(amount, template, null)

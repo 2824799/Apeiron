@@ -10,9 +10,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingDiagnosticsValues;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingTimingRecord;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.me.cluster.implementations.CraftingCpuDiagnostics;
 
@@ -27,8 +27,7 @@ public abstract class CraftingTimingRecordMixin implements BigCraftingTimingReco
 
     @Inject(method = "<init>(JJLappeng/me/diagnostics/CraftingDiagnosticSessionId;)V", at = @At("TAIL"))
     private void apeiron$capture(final long toProduce, final long startTick,
-        final appeng.me.diagnostics.CraftingDiagnosticSessionId session,
-        final CallbackInfo ci) {
+        final appeng.me.diagnostics.CraftingDiagnosticSessionId session, final CallbackInfo ci) {
         this.apeiron$remaining = BigCraftingDiagnosticsValues.takeTiming(toProduce);
         this.apeiron$original = this.apeiron$remaining;
     }
@@ -39,28 +38,29 @@ public abstract class CraftingTimingRecordMixin implements BigCraftingTimingReco
     @Override
     public BigInteger getRemainingToProduceBig() {
         return this.apeiron$remaining == null
-                ? BigInteger.valueOf(((CraftingCpuDiagnostics.CraftingTimingRecord) (Object) this)
-                        .getRemainingToProduce())
-                : this.apeiron$remaining;
+            ? BigInteger.valueOf(((CraftingCpuDiagnostics.CraftingTimingRecord) (Object) this).getRemainingToProduce())
+            : this.apeiron$remaining;
     }
 
     @Override
     public BigInteger getOriginalToProduceBig() {
         return this.apeiron$original == null
-                ? BigInteger.valueOf(((CraftingCpuDiagnostics.CraftingTimingRecord) (Object) this)
-                        .getOriginalToProduce())
-                : this.apeiron$original;
+            ? BigInteger.valueOf(((CraftingCpuDiagnostics.CraftingTimingRecord) (Object) this).getOriginalToProduce())
+            : this.apeiron$original;
     }
 
     @Override
     public void addRemainingToProduceBig(final BigInteger delta) {
-        this.apeiron$remaining = this.getRemainingToProduceBig().add(delta);
+        this.apeiron$remaining = this.getRemainingToProduceBig()
+            .add(delta);
     }
 
     @Override
     public void addProducedBig(final BigInteger delta) {
-        this.apeiron$remaining = this.getRemainingToProduceBig().add(delta);
-        this.apeiron$original = this.getOriginalToProduceBig().add(delta);
+        this.apeiron$remaining = this.getRemainingToProduceBig()
+            .add(delta);
+        this.apeiron$original = this.getOriginalToProduceBig()
+            .add(delta);
     }
 
     @Override

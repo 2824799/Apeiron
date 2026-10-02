@@ -1,7 +1,5 @@
 package com.silvia.apeiron.mixin.ae.flow;
 
-import java.math.BigInteger;
-
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -31,7 +29,8 @@ public abstract class AbstractPartMonitorMixin {
         final String text = BigNumberFormatter.formatCompact(BigAEStackValues.get(newStack));
         if (!text.equals(lastHumanReadableText)) {
             lastHumanReadableText = text;
-            ((AbstractPartMonitor) (Object) this).getHost().markForUpdate();
+            ((AbstractPartMonitor) (Object) this).getHost()
+                .markForUpdate();
         }
         ci.cancel();
     }

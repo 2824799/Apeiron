@@ -8,13 +8,13 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCompletedDiagnosticRecord;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingDiagnosticsValues;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
+import appeng.api.storage.data.IAEStack;
 import appeng.me.cluster.implementations.CraftingCpuDiagnostics;
 import appeng.me.diagnostics.CraftingDiagnosticSessionId;
-import appeng.api.storage.data.IAEStack;
 
 /** Keeps a completed diagnostic record's produced amount exact. */
 @Mixin(value = CraftingCpuDiagnostics.CompletedDiagnosticRecord.class, remap = false)
@@ -34,13 +34,13 @@ public abstract class CompletedDiagnosticRecordMixin implements BigCompletedDiag
     @Override
     public BigInteger getProducedAmountBig() {
         return this.apeiron$produced == null
-                ? BigInteger.valueOf(((CraftingCpuDiagnostics.CompletedDiagnosticRecord) (Object) this)
-                        .getProducedAmount())
-                : this.apeiron$produced;
+            ? BigInteger.valueOf(((CraftingCpuDiagnostics.CompletedDiagnosticRecord) (Object) this).getProducedAmount())
+            : this.apeiron$produced;
     }
 
     @Inject(method = "getProducedAmount", at = @At("RETURN"), cancellable = true)
-    private void apeiron$saturate(final org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Long> cir) {
+    private void apeiron$saturate(
+        final org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Long> cir) {
         if (this.apeiron$produced != null) {
             cir.setReturnValue(BigAEStackValues.saturatedLong(this.apeiron$produced));
         }

@@ -6,9 +6,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingCPU;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingCpuEntries;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.api.networking.crafting.CraftingItemList;
 import appeng.api.storage.data.IAEStack;
@@ -61,8 +61,8 @@ public abstract class ContainerCraftingCPUBigMixin {
     private static BigInteger exactAmount(final CraftingCPUCluster monitor, final IAEStack<?> stack,
         final CraftingItemList list) {
         final BigInteger value = monitor instanceof BigCraftingCPU
-                ? ((BigCraftingCPU) monitor).getStackAmountBig(stack, list)
-                : BigInteger.valueOf(monitor.getStackAmount(stack, list));
+            ? ((BigCraftingCPU) monitor).getStackAmountBig(stack, list)
+            : BigInteger.valueOf(monitor.getStackAmount(stack, list));
         return value;
     }
 }

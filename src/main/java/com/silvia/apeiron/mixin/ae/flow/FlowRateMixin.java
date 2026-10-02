@@ -5,8 +5,8 @@ import java.math.BigInteger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.flow.BigFlowRate;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.me.cache.ItemFlowGridCache.FlowRate;
 

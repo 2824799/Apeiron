@@ -13,12 +13,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.packets.BigCraftNotification;
 import com.silvia.apeiron.ae.crafting.packets.BigCraftNotificationValues;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.AdaptiveInteger;
-import com.silvia.apeiron.math.BigValueCodec;
 import com.silvia.apeiron.math.BigNumberFormatter;
+import com.silvia.apeiron.math.BigValueCodec;
 
 import appeng.me.cluster.implementations.CraftingCPUCluster;
 
@@ -26,21 +26,21 @@ import appeng.me.cluster.implementations.CraftingCPUCluster;
 @Mixin(value = CraftingCPUCluster.CraftNotification.class, remap = false)
 public abstract class CraftNotificationBigMixin implements BigCraftNotification {
 
-    @Shadow private long outputsCount;
+    @Shadow
+    private long outputsCount;
 
     @Unique
     private BigInteger apeiron$outputsCount;
 
     @Inject(method = "<init>(Lappeng/api/storage/data/IAEStack;JJ)V", at = @At("TAIL"))
-    private void apeiron$capture(final appeng.api.storage.data.IAEStack<?> finalOutput,
-        final long outputsCount, final long elapsedTime, final CallbackInfo ci) {
+    private void apeiron$capture(final appeng.api.storage.data.IAEStack<?> finalOutput, final long outputsCount,
+        final long elapsedTime, final CallbackInfo ci) {
         this.apeiron$outputsCount = BigCraftNotificationValues.take(outputsCount);
     }
 
     @Override
     public BigInteger getOutputsCountBig() {
-        return this.apeiron$outputsCount == null
-            ? BigInteger.valueOf(this.outputsCount) : this.apeiron$outputsCount;
+        return this.apeiron$outputsCount == null ? BigInteger.valueOf(this.outputsCount) : this.apeiron$outputsCount;
     }
 
     @Inject(method = "getOutputsCount", at = @At("RETURN"), cancellable = true)
@@ -51,18 +51,15 @@ public abstract class CraftNotificationBigMixin implements BigCraftNotification 
     @Inject(method = "readFromNBT", at = @At("TAIL"))
     private void apeiron$read(final NBTTagCompound tag, final CallbackInfo ci) {
         if (tag.hasKey("ApeironOutputsCount")) {
-            this.apeiron$outputsCount = BigValueCodec.readNBT(
-                tag, "outputsCount", "ApeironOutputsCount").toBigInteger();
+            this.apeiron$outputsCount = BigValueCodec.readNBT(tag, "outputsCount", "ApeironOutputsCount")
+                .toBigInteger();
         }
     }
 
     @Inject(method = "writeToNBT", at = @At("TAIL"))
     private void apeiron$write(final NBTTagCompound tag, final CallbackInfo ci) {
-        BigValueCodec.writeNBT(
-            tag,
-            "outputsCount",
-            "ApeironOutputsCount",
-            new AdaptiveInteger(this.getOutputsCountBig()));
+        BigValueCodec
+            .writeNBT(tag, "outputsCount", "ApeironOutputsCount", new AdaptiveInteger(this.getOutputsCountBig()));
     }
 
     @Redirect(
