@@ -22,7 +22,6 @@ dependencies {
     // The WitcheryExtras POM supplies an obfuscated Witchery jar; remap it for the development client.
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:witchery-69673:2234410"))
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Natura:2.8.24:dev")
-    runtimeOnlyNonPublishable("apeiron.development:sciencenotleisure:0.2.7-rc1:dev")
     runtimeOnlyNonPublishable("apeiron.development:programmablehatches:0.2.0p26:dev")
 
     // Common GregTech prerequisites are resolved transitively from its development jar.
