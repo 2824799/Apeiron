@@ -26,6 +26,6 @@ public abstract class ItemSortersMixin {
 
     @Inject(method = "<clinit>", at = @At("TAIL"))
     private static void apeiron$exactSizeComparator(final CallbackInfo ci) {
-        CONFIG_BASED_SORT_BY_SIZE = (left, right) -> BigAEStackValues.get(right).compareTo(BigAEStackValues.get(left));
+        CONFIG_BASED_SORT_BY_SIZE = (left, right) -> BigAEStackValues.compare(right, left);
     }
 }

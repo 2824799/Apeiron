@@ -17,9 +17,11 @@ public final class BigAEStackPackets {
     public static void write(final ByteBuf out, final IAEStack<?> stack) {
         int flags = 0;
         if (stack instanceof BigAEStack && ((BigAEStack) stack).isStackSizeBig()) flags |= 1;
-        if (stack instanceof BigAERequestableStack && ((BigAERequestableStack) stack).isCountRequestableBig()) flags |= 2;
-        if (stack instanceof BigAERequestableStack
-            && ((BigAERequestableStack) stack).isCountRequestableCraftsBig()) flags |= 4;
+        if (stack instanceof BigAERequestableStack && ((BigAERequestableStack) stack).isCountRequestableBig())
+            flags |= 2;
+        if (stack instanceof BigAERequestableStack && ((BigAERequestableStack) stack).isCountRequestableCraftsBig())
+            flags |= 4;
+        if (BigAEStackValues.isInfinite(stack)) flags |= 8;
         if (flags == 0) return;
         out.writeInt(PACKET_MAGIC);
         out.writeByte(flags);
@@ -35,7 +37,8 @@ public final class BigAEStackPackets {
         if (in.getInt(in.readerIndex()) != PACKET_MAGIC) return;
         in.skipBytes(Integer.BYTES);
         final int flags = in.readUnsignedByte();
-        if ((flags & ~7) != 0 || flags == 0) throw new IOException("invalid Apeiron generic AE stack flags");
+        if ((flags & ~15) != 0 || flags == 0) throw new IOException("invalid Apeiron generic AE stack flags");
+        if ((flags & 8) != 0) ((InfiniteAEStack) stack).setInfinite(true);
         if ((flags & 1) != 0 && stack instanceof BigAEStack) {
             ((BigAEStack) stack).setStackSizeBig(BigValueCodec.readPacket(in));
         }

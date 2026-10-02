@@ -55,6 +55,7 @@ public final class BigAEItemStacks {
         if (exact.isStackSizeBig()) flags |= STACK_SIZE_FLAG;
         if (exact.isCountRequestableBig()) flags |= REQUESTABLE_FLAG;
         if (exact.isCountRequestableCraftsBig()) flags |= REQUESTABLE_CRAFTS_FLAG;
+        if (BigAEStackValues.isInfinite(stack)) flags |= 8;
         if (flags == 0) return;
 
         out.writeInt(PACKET_MAGIC);
@@ -72,11 +73,12 @@ public final class BigAEItemStacks {
 
         in.skipBytes(Integer.BYTES);
         int flags = in.readUnsignedByte();
-        if ((flags & ~(STACK_SIZE_FLAG | REQUESTABLE_FLAG | REQUESTABLE_CRAFTS_FLAG)) != 0 || flags == 0) {
+        if ((flags & ~(STACK_SIZE_FLAG | REQUESTABLE_FLAG | REQUESTABLE_CRAFTS_FLAG | 8)) != 0 || flags == 0) {
             throw new IOException("invalid Apeiron AE stack packet flags: " + flags);
         }
 
         BigAEItemStack exact = (BigAEItemStack) stack;
+        if ((flags & 8) != 0) ((InfiniteAEStack) stack).setInfinite(true);
         if ((flags & STACK_SIZE_FLAG) != 0) exact.setStackSizeBig(BigValueCodec.readPacket(in));
         if ((flags & REQUESTABLE_FLAG) != 0) {
             exact.setCountRequestableBig(BigValueCodec.readPacket(in));
@@ -87,6 +89,11 @@ public final class BigAEItemStacks {
     }
 
     public static void addStorage(IAEItemStack target, IAEItemStack source) {
+        if (BigAEStackValues.isInfinite(target)) return;
+        if (BigAEStackValues.isInfinite(source)) {
+            ((InfiniteAEStack) target).setInfinite(true);
+            return;
+        }
         if (target instanceof BigAEItemStack) {
             BigAEItemStack exact = (BigAEItemStack) target;
             if (source instanceof BigAEItemStack && ((BigAEItemStack) source).isStackSizeBig()) {

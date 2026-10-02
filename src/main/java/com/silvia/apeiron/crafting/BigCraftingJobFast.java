@@ -3,7 +3,6 @@ package com.silvia.apeiron.crafting;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -13,6 +12,13 @@ import java.util.concurrent.Future;
 
 import net.minecraft.world.World;
 
+import com.silvia.apeiron.ae.crafting.core.BigCraftingCPU;
+import com.silvia.apeiron.ae.crafting.core.BigCraftingJob;
+import com.silvia.apeiron.ae.crafting.core.BigMECraftingInventory;
+import com.silvia.apeiron.ae.crafting.core.BigSccResult;
+import com.silvia.apeiron.ae.stack.BigAEItemStack;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+
 import appeng.api.config.Actionable;
 import appeng.api.config.CraftingMode;
 import appeng.api.networking.IGrid;
@@ -21,34 +27,22 @@ import appeng.api.networking.crafting.ICraftingCallback;
 import appeng.api.networking.crafting.ICraftingJob;
 import appeng.api.networking.crafting.ICraftingPatternDetails;
 import appeng.api.networking.security.BaseActionSource;
-import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IItemList;
 import appeng.crafting.CraftBranchFailure;
 import appeng.crafting.MECraftingInventory;
 import appeng.crafting.fast.SccResolver;
 import appeng.crafting.v2.CraftingContext;
-import appeng.crafting.v2.CraftingRequest;
-import appeng.crafting.v2.CraftingRequest.SubstitutionMode;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
-import appeng.util.Platform;
 import it.unimi.dsi.fastutil.longs.LongObjectPair;
 import it.unimi.dsi.fastutil.objects.AbstractObject2LongMap;
 import it.unimi.dsi.fastutil.objects.AbstractObject2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-
-import com.silvia.apeiron.ae.stack.BigAEItemStack;
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.ae.crafting.core.BigCraftingCPU;
-import com.silvia.apeiron.ae.crafting.core.BigCraftingJob;
-import com.silvia.apeiron.ae.crafting.core.BigMECraftingInventory;
-import com.silvia.apeiron.ae.crafting.core.BigSccResult;
 
 /** Exact-count version of AE2's fast crafting calculator for large item requests. */
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
-        implements ICraftingJob<StackType>, BigCraftingJob {
+    implements ICraftingJob<StackType>, BigCraftingJob {
 
     private final CraftingContext context;
     private final StackType output;
@@ -71,6 +65,15 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
         this.context.itemModel.ignore(output);
     }
 
+    public CraftingContext getContext() {
+        return context;
+    }
+
+    public void forEachPatternBig(java.util.function.BiConsumer<ICraftingPatternDetails, BigInteger> consumer) {
+        calculate();
+        tasks.forEach(consumer);
+    }
+
     private void calculate() {
         if (this.calculated) return;
         try {
@@ -91,14 +94,15 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
             for (final ICraftingPatternDetails pattern : patterns) {
                 for (final IAEStack<?> candidate : pattern.getCondensedAEOutputs()) {
                     if (candidate.equals(stack)) return new it.unimi.dsi.fastutil.longs.LongObjectImmutablePair<>(
-                            candidate.getStackSize(), pattern);
+                        candidate.getStackSize(),
+                        pattern);
                 }
             }
             return null;
         });
         final BigSccResult result = (BigSccResult) (Object) raw;
         final AbstractObject2ObjectMap<IAEStack<?>, LongObjectPair<ICraftingPatternDetails>> patterns = result
-                .getPatternsBig();
+            .getPatternsBig();
         final AbstractObject2LongMap<IAEStack<?>> inDegree = result.getInDegreeBig();
         final Set<IAEStack<?>> looping = result.getLoopingPatternsBig();
         final Set<IAEStack<?>> traversed = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
@@ -117,7 +121,8 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
 
             final LongObjectPair<ICraftingPatternDetails> pair = patterns.get(current);
             if (pair != null) {
-                for (final IAEStack<?> input : pair.right().getCondensedAEInputs()) {
+                for (final IAEStack<?> input : pair.right()
+                    .getCondensedAEInputs()) {
                     if (addLegacyCount(inDegree, input, -1L) == 0) toTraverse.add(input);
                     if (looping.contains(input)) loopCandidates.add(input);
                 }
@@ -136,7 +141,8 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
         final BigInteger outputPerPattern = outputPerPattern(current, pair);
         if (outputPerPattern.signum() <= 0) throw new IllegalStateException("Pattern has no output");
         final BigInteger multiplier = ceilDiv(count, outputPerPattern);
-        for (final IAEStack<?> input : pair.right().getCondensedAEInputs()) {
+        for (final IAEStack<?> input : pair.right()
+            .getCondensedAEInputs()) {
             final BigInteger inputAmount = BigAEStackValues.get(input);
             if (inputAmount.signum() < 0) throw new IllegalStateException("Pattern has negative inputs");
             addCount(this.missingIngredients, input, inputAmount.multiply(multiplier));
@@ -148,7 +154,8 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
 
     private static BigInteger outputPerPattern(final IAEStack<?> current,
         final LongObjectPair<ICraftingPatternDetails> pair) {
-        for (final IAEStack<?> output : pair.right().getCondensedAEOutputs()) {
+        for (final IAEStack<?> output : pair.right()
+            .getCondensedAEOutputs()) {
             if (output.equals(current)) return BigAEStackValues.get(output);
         }
         return BigInteger.valueOf(pair.leftLong());
@@ -160,7 +167,7 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
         final IAEStack<?> request = stack.copy();
         BigAEStackValues.set(request, count);
         final IAEStack<?> result = ((BigMECraftingInventory) this.context.itemModel)
-                .extractItemsBig(request, Actionable.MODULATE);
+            .extractItemsBig(request, Actionable.MODULATE);
         if (result == null) return count;
         final BigInteger extracted = BigAEStackValues.get(result);
         if (extracted.signum() <= 0) return count;
@@ -182,7 +189,8 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
     }
 
     private static <T> void addCount(final Map<T, BigInteger> map, final T key, final BigInteger delta) {
-        final BigInteger result = map.getOrDefault(key, BigInteger.ZERO).add(delta);
+        final BigInteger result = map.getOrDefault(key, BigInteger.ZERO)
+            .add(delta);
         if (result.signum() < 0) throw new IllegalStateException("Negative crafting count for " + key);
         if (result.signum() == 0) map.remove(key);
         else map.put(key, result);
@@ -198,7 +206,9 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
     }
 
     private static BigInteger ceilDiv(final BigInteger value, final BigInteger divisor) {
-        return value.add(divisor).subtract(BigInteger.ONE).divide(divisor);
+        return value.add(divisor)
+            .subtract(BigInteger.ONE)
+            .divide(divisor);
     }
 
     @Override
@@ -223,10 +233,12 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
     public void populatePlan(final IItemList<IAEStack<?>> plan) {
         calculate();
         for (final Map.Entry<ICraftingPatternDetails, BigInteger> entry : this.tasks.entrySet()) {
-            for (final IAEStack<?> output : entry.getKey().getCondensedAEOutputs()) {
+            for (final IAEStack<?> output : entry.getKey()
+                .getCondensedAEOutputs()) {
                 final IAEStack<?> copy = output.copy();
                 final BigInteger crafts = entry.getValue();
-                final BigInteger total = BigAEStackValues.get(output).multiply(crafts);
+                final BigInteger total = BigAEStackValues.get(output)
+                    .multiply(crafts);
                 BigAEStackValues.set(copy, BigInteger.ZERO);
                 if (copy instanceof BigAEItemStack) {
                     final BigAEItemStack exact = (BigAEItemStack) copy;
@@ -240,12 +252,14 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
             }
         }
         for (final Map.Entry<IAEStack<?>, BigInteger> entry : this.ingredients.entrySet()) {
-            final IAEStack<?> copy = entry.getKey().copy();
+            final IAEStack<?> copy = entry.getKey()
+                .copy();
             BigAEStackValues.set(copy, entry.getValue());
             plan.add(copy);
         }
         for (final Map.Entry<IAEStack<?>, BigInteger> entry : this.missingIngredients.entrySet()) {
-            final IAEStack<?> copy = entry.getKey().copy();
+            final IAEStack<?> copy = entry.getKey()
+                .copy();
             if (this.craftingMode == CraftingMode.IGNORE_MISSING) {
                 BigAEStackValues.set(copy, BigInteger.ZERO);
                 if (copy instanceof BigAEItemStack) ((BigAEItemStack) copy).setCountRequestableBig(entry.getValue());
@@ -301,8 +315,8 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
         }
     }
 
-    private void pullStack(final MECraftingInventory storage, final CraftingCPUCluster cluster,
-        final IAEStack<?> stack, final BigInteger count) {
+    private void pullStack(final MECraftingInventory storage, final CraftingCPUCluster cluster, final IAEStack<?> stack,
+        final BigInteger count) {
         final IAEStack<?> request = stack.copy();
         BigAEStackValues.set(request, count);
         final IAEStack<?> extracted = ((BigMECraftingInventory) storage).extractItemsBig(request, Actionable.MODULATE);

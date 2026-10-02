@@ -35,26 +35,32 @@ public abstract class GuiAdvancedLevelEmitterBigMixin {
         }
     }
 
-
     @Shadow
     private ContainerAdvancedLevelEmitter container;
 
-    @org.spongepowered.asm.mixin.injection.Inject(method = "initGui", at = @At("TAIL"))
+    @org.spongepowered.asm.mixin.injection.Inject(method = { "initGui", "func_73866_w_" }, at = @At("TAIL"))
     private void apeiron$refreshExactFields(final org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        if (!(this.container instanceof BigAdvancedLevelEmitterContainerAccess access) || this.amountFields == null) return;
+        if (!(this.container instanceof BigAdvancedLevelEmitterContainerAccess access) || this.amountFields == null)
+            return;
         for (int slot = 0; slot < this.amountFields.length; slot++) {
             final MEGuiTextField field = this.amountFields[slot];
             if (field != null) {
-                field.setText(access.getLevelBig(slot).toString());
+                field.setText(
+                    access.getLevelBig(slot)
+                        .toString());
                 field.setCursorPositionEnd();
             }
         }
     }
 
     private BigInteger apeiron$parse(final int slot) {
-        if (this.amountFields == null || slot < 0 || slot >= this.amountFields.length
-                || this.amountFields[slot] == null || this.amountFields[slot].getText() == null) return null;
-        final String text = this.amountFields[slot].getText().trim().replace(",", "");
+        if (this.amountFields == null || slot < 0
+            || slot >= this.amountFields.length
+            || this.amountFields[slot] == null
+            || this.amountFields[slot].getText() == null) return null;
+        final String text = this.amountFields[slot].getText()
+            .trim()
+            .replace(",", "");
         if (!text.matches("[0-9]+")) return null;
         try {
             return new BigInteger(text);

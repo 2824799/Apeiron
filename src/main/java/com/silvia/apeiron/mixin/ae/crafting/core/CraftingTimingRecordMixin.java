@@ -25,7 +25,7 @@ public abstract class CraftingTimingRecordMixin implements BigCraftingTimingReco
     @Unique
     private BigInteger apeiron$original;
 
-    @Inject(method = "<init>(JJLappeng/me/diagnostics/CraftingDiagnosticSessionId;)V", at = @At("HEAD"))
+    @Inject(method = "<init>(JJLappeng/me/diagnostics/CraftingDiagnosticSessionId;)V", at = @At("TAIL"))
     private void apeiron$capture(final long toProduce, final long startTick,
         final appeng.me.diagnostics.CraftingDiagnosticSessionId session,
         final CallbackInfo ci) {

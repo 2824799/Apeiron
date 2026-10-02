@@ -31,7 +31,7 @@ public abstract class CraftNotificationBigMixin implements BigCraftNotification 
     @Unique
     private BigInteger apeiron$outputsCount;
 
-    @Inject(method = "<init>(Lappeng/api/storage/data/IAEStack;JJ)V", at = @At("HEAD"))
+    @Inject(method = "<init>(Lappeng/api/storage/data/IAEStack;JJ)V", at = @At("TAIL"))
     private void apeiron$capture(final appeng.api.storage.data.IAEStack<?> finalOutput,
         final long outputsCount, final long elapsedTime, final CallbackInfo ci) {
         this.apeiron$outputsCount = BigCraftNotificationValues.take(outputsCount);

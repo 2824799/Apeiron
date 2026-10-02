@@ -1,0 +1,151 @@
+// Development client/server mods. TST prerequisites verified against current releases on 2026-10-01.
+// Keep these separate from Apeiron's published API dependencies.
+dependencies {
+    runtimeOnlyNonPublishable("apeiron.development:aeinfinitycell:1.0.5:dev")
+    runtimeOnlyNonPublishable("apeiron.development:appeu:1.0.2:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NewHorizonsCoreMod:2.9.82:dev")
+    runtimeOnlyNonPublishable("apeiron.development:TwistSpaceTechnology:0.8.0-RC1.3:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Electro-Magic-Tools:1.7.25:dev") {
+        exclude group: "curse.maven", module: "thaumcraft-nei-plugin-225095"
+    }
+    runtimeOnlyNonPublishable(rfg.deobf("curse.maven:thaumcraft-nei-plugin-225095:2241913"))
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:MagicBees:2.10.12-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:supersolarpanels:1.1.5:dev") {
+        exclude group: "curse.maven", module: "advsolar-362768"
+    }
+    runtimeOnlyNonPublishable(rfg.deobf("curse.maven:advsolar-362768:2885953"))
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Eternal-Singularity:1.4.3:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Universal-Singularities:8.15.4:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:WitcheryExtras:1.4.20:dev") {
+        exclude group: "curse.maven", module: "witchery-69673"
+    }
+    // The WitcheryExtras POM supplies an obfuscated Witchery jar; remap it for the development client.
+    runtimeOnlyNonPublishable(rfg.deobf("curse.maven:witchery-69673:2234410"))
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Natura:2.8.24:dev")
+    runtimeOnlyNonPublishable("apeiron.development:sciencenotleisure:0.2.7-rc1:dev")
+    runtimeOnlyNonPublishable("apeiron.development:programmablehatches:0.2.0p26:dev")
+    runtimeOnlyNonPublishable(rfg.deobf(files("../EndPlan/build/libs/endplan-0.1.0.jar")))
+
+    // Common GregTech prerequisites are resolved transitively from its development jar.
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:GT5-Unofficial:5.09.54.190:dev")
+
+    // GTNL and Programmable Hatches also reference these integrations during initialization.
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Botania:1.13.36-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:EnderIO:2.10.48:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Galaxy-Space-GTNH:1.1.143-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:CropsNH:2.0.134:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Avaritia:1.99:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Avaritiaddons:1.9.6-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ThaumicEnergistics:1.7.61-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:OpenComputers:1.12.63-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Chisel:2.17.33-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:BloodMagic:1.9.14:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:BloodArsenal:1.5.12:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ForestryMC:4.11.38:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:BetterP2P:1.4.8:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:BetterBuildersWands:0.13.12-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughEnergistics:1.7.45:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:AspectRecipeIndex:1.1.5:dev")
+    // The convention plugin maps the usual IC2 coordinate to CurseForge's older 2.2.827 jar.
+    // Fetch the actual 1.7.10 final release directly from the official repository.
+    runtimeOnlyNonPublishable("apeiron.development:industrialcraft-2:2.2.828-experimental:dev")
+    runtimeOnlyNonPublishable("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
+}
+
+// Prevent older transitive declarations from selecting outdated shared prerequisites.
+def developmentModVersions = [
+    "NewHorizonsCoreMod": "2.9.82",
+    "Yamcl": "0.7.5",
+    "Thaumic_Exploration": "1.5.28-GTNH",
+    "Tainted-Magic": "7.7.8-GTNH",
+    "TCNEIAdditions": "1.5.14-pre",
+    "ThaumicBoots": "1.5.13",
+    "Electro-Magic-Tools": "1.7.25",
+    "MagicBees": "2.10.12-GTNH",
+    "supersolarpanels": "1.1.5",
+    "Eternal-Singularity": "1.4.3",
+    "Universal-Singularities": "8.15.4",
+    "WitcheryExtras": "1.4.20",
+    "Natura": "2.8.24",
+    "Applied-Energistics-2-Unofficial": "rv3-beta-1077-GTNH",
+    "GT5-Unofficial": "5.09.54.190",
+    "AE2FluidCraft-Rework": "1.5.110-gtnh",
+    "CodeChickenCore": "1.4.22",
+    "Botania": "1.13.36-GTNH",
+    "Draconic-Evolution": "1.5.33-GTNH",
+    "EnderIO": "2.10.48",
+    "Galaxy-Space-GTNH": "1.1.143-GTNH",
+    "CropsNH": "2.0.134",
+    "Avaritia": "1.99",
+    "NotEnoughItems": "2.8.153-GTNH",
+    "GTNHLib": "0.11.52",
+    "Postea": "1.2.7",
+    "ModularUI": "1.3.4",
+    "ModularUI2": "2.3.91-1.7.10",
+    "Baubles-Expanded": "2.2.24-GTNH",
+    "StructureLib": "1.4.45",
+    "waila": "1.19.34",
+    "Galacticraft": "3.4.34-GTNH",
+    "ForestryMC": "4.11.38",
+    "OpenComputers": "1.12.63-GTNH",
+    "ThaumicEnergistics": "1.7.61-GTNH",
+    "Avaritiaddons": "1.9.6-GTNH",
+    "Chisel": "2.17.33-GTNH",
+    "BloodMagic": "1.9.14",
+    "BloodArsenal": "1.5.12",
+    "Hodgepodge": "2.7.212",
+    "TinkersConstruct": "1.14.117-GTNH",
+    "ProjectRed": "4.12.46-GTNH",
+    "Railcraft": "9.17.31",
+    "EnderCore": "0.5.15",
+    "MrTJPCore": "1.3.7",
+    "ForgeMultipart": "1.7.15",
+    "Mantle": "0.5.4",
+    "ThaumicTinkerer": "2.12.33",
+    "GTNHExtLib": "1.0.5",
+    "ServerUtilities": "2.4.13",
+    "TiC-Tooltips": "1.4.2",
+    "WanionLib": "1.10.1",
+    "ironchest": "6.1.13",
+    "BetterP2P": "1.4.8",
+    "BetterBuildersWands": "0.13.12-GTNH",
+    "NotEnoughEnergistics": "1.7.45",
+    "AspectRecipeIndex": "1.1.5",
+    "BuildCraft": "7.1.63",
+    "Forgelin": "2.0.3-GTNH",
+    "Guide-API": "1.1.1",
+]
+
+configurations.configureEach {
+    resolutionStrategy {
+        developmentModVersions.each { name, version ->
+            force("com.github.GTNewHorizons:${name}:${version}")
+        }
+        force("com.falsepattern:chunkapi-mc1.7.10:0.8.4")
+        force("com.falsepattern:endlessids-mc1.7.10:1.7.4")
+        force("com.falsepattern:falsepatternlib-mc1.7.10:1.12.2")
+        dependencySubstitution {
+            substitute(module("com.github.GTNewHorizons:Baubles"))
+                .using(module("com.github.GTNewHorizons:Baubles-Expanded:2.2.24-GTNH"))
+                .withClassifier("dev")
+                .because("Baubles-Expanded replaces Baubles")
+        }
+    }
+    // CodeChickenCore supplies CodeChickenLib; its separate old artifact duplicates classes.
+    exclude group: "com.github.GTNewHorizons", module: "CodeChickenLib"
+    exclude group: "com.github.GTNewHorizons", module: "NotEnoughIDs"
+    exclude group: "net.industrial-craft", module: "industrialcraft-2"
+    exclude group: "curse.maven", module: "ic2-242638"
+}
+
+def developmentGalaxySpaceConfig = file("gradle/development-config/GalaxySpace/dimensions.conf")
+tasks.named("runClient") {
+    def dimensionsConfig = new File(workingDir, "config/GalaxySpace/dimensions.conf")
+    inputs.file(developmentGalaxySpaceConfig)
+    doFirst {
+        if (!dimensionsConfig.exists()) {
+            dimensionsConfig.parentFile.mkdirs()
+            dimensionsConfig.bytes = developmentGalaxySpaceConfig.bytes
+        }
+    }
+}

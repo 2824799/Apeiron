@@ -1,6 +1,7 @@
 package com.silvia.apeiron.mixin.ae.crafting.gui;
 
 import java.math.BigInteger;
+import java.text.NumberFormat;
 import java.util.Comparator;
 
 import org.spongepowered.asm.mixin.Final;
@@ -13,8 +14,10 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
+import com.silvia.apeiron.ae.crafting.core.BigCraftingConfirmation;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
+import com.silvia.apeiron.math.BigNumberFormatter;
 
 import appeng.api.config.CraftingSortOrder;
 import appeng.api.config.SortDir;
@@ -23,11 +26,24 @@ import appeng.api.storage.data.IItemList;
 import appeng.client.gui.implementations.GuiCraftConfirm;
 import appeng.container.implementations.ContainerCraftConfirm;
 import appeng.util.ReadableNumberConverter;
-import java.text.NumberFormat;
 
 /** Keeps crafting confirmation totals, sorting, labels, and tooltips exact. */
 @Mixin(value = GuiCraftConfirm.class, remap = false)
 public abstract class GuiCraftConfirmBigMixin {
+
+    @Shadow
+    @Final
+    private ContainerCraftConfirm ccc;
+
+    @Redirect(
+        method = "drawFG",
+        at = @At(value = "INVOKE", target = "Lappeng/util/Platform;formatByteDouble(D)Ljava/lang/String;", ordinal = 0),
+        require = 1)
+    private String apeiron$exactPlanBytes(double legacy) {
+        final BigInteger bytes = ((BigCraftingConfirmation) ccc).getUsedBytesBig();
+        return BigAEStackValues.fitsLong(bytes) ? appeng.util.Platform.formatByteDouble(legacy)
+            : BigNumberFormatter.formatBytes(bytes);
+    }
 
     @Shadow
     @Final
@@ -66,26 +82,29 @@ public abstract class GuiCraftConfirmBigMixin {
             final int direction = this.sortDir.sortHint;
             if (this.sortMode == CraftingSortOrder.CRAFTS) {
                 return BigAEStackValues.getCountRequestableCrafts(pendingLeft)
-                        .compareTo(BigAEStackValues.getCountRequestableCrafts(pendingRight)) * direction;
+                    .compareTo(BigAEStackValues.getCountRequestableCrafts(pendingRight)) * direction;
             }
             if (this.sortMode == CraftingSortOrder.AMOUNT) {
                 return apeiron$total(storageLeft, pendingLeft, missingLeft)
-                        .compareTo(apeiron$total(storageRight, pendingRight, missingRight)) * direction;
+                    .compareTo(apeiron$total(storageRight, pendingRight, missingRight)) * direction;
             }
             if (this.sortMode == CraftingSortOrder.NAME) {
-                return left.getDisplayName().compareToIgnoreCase(right.getDisplayName()) * direction;
+                return left.getDisplayName()
+                    .compareToIgnoreCase(right.getDisplayName()) * direction;
             }
             if (this.sortMode == CraftingSortOrder.MOD) {
-                final int value = left.getModId().compareToIgnoreCase(right.getModId());
-                return (value == 0
-                        ? left.getDisplayName().compareToIgnoreCase(right.getDisplayName())
-                        : value) * direction;
+                final int value = left.getModId()
+                    .compareToIgnoreCase(right.getModId());
+                return (value == 0 ? left.getDisplayName()
+                    .compareToIgnoreCase(right.getDisplayName()) : value) * direction;
             }
             if (this.sortMode == CraftingSortOrder.PERCENT) {
                 final float percentLeft = storageLeft != null && pendingLeft == null && missingLeft == null
-                        ? storageLeft.getUsedPercent() : -1;
+                    ? storageLeft.getUsedPercent()
+                    : -1;
                 final float percentRight = storageRight != null && pendingRight == null && missingRight == null
-                        ? storageRight.getUsedPercent() : -1;
+                    ? storageRight.getUsedPercent()
+                    : -1;
                 return Float.compare(percentLeft, percentRight) * direction;
             }
             return 0;
@@ -113,7 +132,9 @@ public abstract class GuiCraftConfirmBigMixin {
 
     @Redirect(
         method = "drawListFG",
-        at = @At(value = "INVOKE", target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
     private String apeiron$formatWide(final ReadableNumberConverter converter, final long value) {
         return BigGuiNumberCapture.formatWideAny(value);
     }
@@ -144,7 +165,9 @@ public abstract class GuiCraftConfirmBigMixin {
 
     @Redirect(
         method = "postUpdate",
-        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEStack;setStackSize(J)Lappeng/api/storage/data/IAEStack;"))
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/api/storage/data/IAEStack;setStackSize(J)Lappeng/api/storage/data/IAEStack;"))
     private IAEStack<?> apeiron$setTotal(final IAEStack<?> stack, final long value) {
         return BigGuiNumberCapture.setPendingTotal(stack, value);
     }
@@ -158,13 +181,17 @@ public abstract class GuiCraftConfirmBigMixin {
 
     @Redirect(
         method = "handleInput",
-        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEStack;setStackSize(J)Lappeng/api/storage/data/IAEStack;"))
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/api/storage/data/IAEStack;setStackSize(J)Lappeng/api/storage/data/IAEStack;"))
     private IAEStack<?> apeiron$setInput(final IAEStack<?> stack, final long value) {
         return BigGuiNumberCapture.setCapturedStack(stack, value);
     }
 
     @Unique
     private static BigInteger apeiron$total(final IAEStack<?> a, final IAEStack<?> b, final IAEStack<?> c) {
-        return BigAEStackValues.get(a).add(BigAEStackValues.get(b)).add(BigAEStackValues.get(c));
+        return BigAEStackValues.get(a)
+            .add(BigAEStackValues.get(b))
+            .add(BigAEStackValues.get(c));
     }
 }

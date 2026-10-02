@@ -12,13 +12,24 @@ package com.silvia.apeiron.mixin.ae.crafting.core;
 
 import java.math.BigInteger;
 import java.util.List;
+
 import net.minecraft.nbt.NBTTagCompound;
-import org.spongepowered.asm.mixin.*;
-import org.spongepowered.asm.mixin.injection.*;
+
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import com.silvia.apeiron.ae.*;
+
+import com.silvia.apeiron.ae.crafting.core.BigCraftingCPUState;
+import com.silvia.apeiron.ae.crafting.core.BigFinalOutput;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigValueCodec;
+
 import appeng.api.config.Actionable;
 import appeng.api.networking.crafting.CraftingItemList;
 import appeng.api.networking.crafting.ICraftingLink;
@@ -29,35 +40,61 @@ import appeng.api.util.CraftUpdateListener;
 import appeng.crafting.CraftingLink;
 import appeng.crafting.MECraftingInventory;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
-import appeng.util.Platform;
-import com.silvia.apeiron.ae.crafting.core.BigCraftingCPUState;
-import com.silvia.apeiron.ae.crafting.core.BigFinalOutput;
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 /** Exact production reception and step accounting, including small transfers against a large job. */
 @SuppressWarnings({ "rawtypes", "unchecked" })
 @Mixin(value = CraftingCPUCluster.class, remap = false)
 public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
-    @Shadow protected IItemList<IAEStack<?>> waitingFor;
-    @Shadow protected IItemList<IAEStack<?>> waitingForMissing;
-    @Shadow protected CraftingCPUCluster.finalOutput finalOutput;
-    @Shadow protected ICraftingLink myLastLink;
-    @Shadow protected boolean waiting;
-    @Shadow protected MECraftingInventory inventory;
-    @Shadow @Final protected List<CraftUpdateListener> craftUpdateListeners;
-    @Shadow protected abstract void postChange(IAEStack<?> diff, BaseActionSource source);
-    @Shadow protected abstract void postCraftingStatusChange(IAEStack<?> diff);
-    @Shadow protected abstract void updateElapsedTime(IAEStack<?> stack);
-    @Shadow protected abstract void recordReturnedOutputs(IAEStack<?> stack);
-    @Shadow protected abstract void completeJob();
-    @Shadow protected abstract void updateCPU();
-    @Shadow public abstract void markDirty();
-    @Shadow protected long lastTime;
-    @Shadow protected long elapsedTime;
-    @Shadow protected long startItemCount;
-    @Shadow protected long remainingItemCount;
-    @Unique private BigInteger apeiron$start;
-    @Unique private BigInteger apeiron$remaining;
+
+    @Shadow
+    protected IItemList<IAEStack<?>> waitingFor;
+    @Shadow
+    protected IItemList<IAEStack<?>> waitingForMissing;
+    @Shadow
+    protected CraftingCPUCluster.finalOutput finalOutput;
+    @Shadow
+    protected ICraftingLink myLastLink;
+    @Shadow
+    protected boolean waiting;
+    @Shadow
+    protected MECraftingInventory inventory;
+    @Shadow
+    @Final
+    protected List<CraftUpdateListener> craftUpdateListeners;
+
+    @Shadow
+    protected abstract void postChange(IAEStack<?> diff, BaseActionSource source);
+
+    @Shadow
+    protected abstract void postCraftingStatusChange(IAEStack<?> diff);
+
+    @Shadow
+    protected abstract void updateElapsedTime(IAEStack<?> stack);
+
+    @Shadow
+    protected abstract void recordReturnedOutputs(IAEStack<?> stack);
+
+    @Shadow
+    protected abstract void completeJob();
+
+    @Shadow
+    protected abstract void updateCPU();
+
+    @Shadow
+    public abstract void markDirty();
+
+    @Shadow
+    protected long lastTime;
+    @Shadow
+    protected long elapsedTime;
+    @Shadow
+    protected long startItemCount;
+    @Shadow
+    protected long remainingItemCount;
+    @Unique
+    private BigInteger apeiron$start;
+    @Unique
+    private BigInteger apeiron$remaining;
 
     /** @author Apeiron @reason Receive exact quantities using the legacy entry point. */
     @Overwrite
@@ -77,7 +114,8 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
             if (is != null && is.getStackSize() > 0) {
                 if (BigAEStackValues.compare(is, what) >= 0) {
                     if (this.finalOutput.isFinalOutput(what)) {
-                        final IAEStack<?> outputToSend = ((BigFinalOutput) this.finalOutput).splitOutputToIngredientBig(what, type);
+                        final IAEStack<?> outputToSend = ((BigFinalOutput) this.finalOutput)
+                            .splitOutputToIngredientBig(what, type);
                         if (outputToSend == null) {
                             return null;
                         }
@@ -93,13 +131,17 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
                 }
 
                 final IAEStack leftOver = what.copy();
-                BigAEStackValues.set(leftOver, BigAEStackValues.get(leftOver).subtract(BigAEStackValues.get(is)));
+                BigAEStackValues.set(
+                    leftOver,
+                    BigAEStackValues.get(leftOver)
+                        .subtract(BigAEStackValues.get(is)));
 
                 final IAEStack<?> used = what.copy();
                 BigAEStackValues.set(used, BigAEStackValues.get(is));
 
                 if (this.finalOutput.isFinalOutput(used)) {
-                    final IAEStack<?> outputToSend = ((BigFinalOutput) this.finalOutput).splitOutputToIngredientBig(used, type);
+                    final IAEStack<?> outputToSend = ((BigFinalOutput) this.finalOutput)
+                        .splitOutputToIngredientBig(used, type);
 
                     if (outputToSend == null) {
                         return leftOver;
@@ -107,7 +149,7 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
 
                     if (this.myLastLink != null) {
                         final IAEStack<?> linkLeftOver = ((CraftingLink) this.myLastLink)
-                                .injectItems(outputToSend.copy(), type);
+                            .injectItems(outputToSend.copy(), type);
                         if (linkLeftOver != null) {
                             leftOver.add(linkLeftOver);
                         }
@@ -126,8 +168,14 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
                 this.postChange(is, src);
 
                 if (BigAEStackValues.compare(is, what) >= 0) {
-                    BigAEStackValues.set(is, BigAEStackValues.get(is).subtract(BigAEStackValues.get(what)));
-                    if (ism != null) BigAEStackValues.set(ism, BigAEStackValues.get(ism).subtract(BigAEStackValues.get(what)));
+                    BigAEStackValues.set(
+                        is,
+                        BigAEStackValues.get(is)
+                            .subtract(BigAEStackValues.get(what)));
+                    if (ism != null) BigAEStackValues.set(
+                        ism,
+                        BigAEStackValues.get(ism)
+                            .subtract(BigAEStackValues.get(what)));
 
                     this.updateElapsedTime(what);
                     this.recordReturnedOutputs(what);
@@ -140,12 +188,16 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
                     }
 
                     if (this.finalOutput.isFinalOutput(what)) {
-                        final IAEStack<?> outputToSend = ((BigFinalOutput) this.finalOutput).splitOutputToIngredientBig(what, type);
+                        final IAEStack<?> outputToSend = ((BigFinalOutput) this.finalOutput)
+                            .splitOutputToIngredientBig(what, type);
                         IAEStack<?> leftover = outputToSend;
                         IAEStack<?> finalOutput = this.finalOutput.findPrecise(what);
 
                         if (outputToSend != null) {
-                            BigAEStackValues.set(finalOutput, BigAEStackValues.get(finalOutput).subtract(BigAEStackValues.get(outputToSend)));
+                            BigAEStackValues.set(
+                                finalOutput,
+                                BigAEStackValues.get(finalOutput)
+                                    .subtract(BigAEStackValues.get(outputToSend)));
                         }
 
                         if (outputToSend != null && this.myLastLink != null) {
@@ -168,7 +220,10 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
 
                 final IAEStack insert = what.copy();
                 BigAEStackValues.set(insert, BigAEStackValues.get(is));
-                BigAEStackValues.set(what, BigAEStackValues.get(what).subtract(BigAEStackValues.get(is)));
+                BigAEStackValues.set(
+                    what,
+                    BigAEStackValues.get(what)
+                        .subtract(BigAEStackValues.get(is)));
 
                 is.setStackSize(0);
                 if (ism != null) ism.setStackSize(0);
@@ -178,18 +233,22 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
                 this.postCraftingStatusChange(is);
 
                 if (this.finalOutput.isFinalOutput(insert)) {
-                    final IAEStack<?> outputToSend = ((BigFinalOutput) this.finalOutput).splitOutputToIngredientBig(insert, type);
+                    final IAEStack<?> outputToSend = ((BigFinalOutput) this.finalOutput)
+                        .splitOutputToIngredientBig(insert, type);
                     IAEStack<?> leftover = what;
                     IAEStack<?> finalOutput = this.finalOutput.findPrecise(insert);
 
                     if (outputToSend != null) {
-                        BigAEStackValues.set(finalOutput, BigAEStackValues.get(finalOutput).subtract(BigAEStackValues.get(outputToSend)));
+                        BigAEStackValues.set(
+                            finalOutput,
+                            BigAEStackValues.get(finalOutput)
+                                .subtract(BigAEStackValues.get(outputToSend)));
                     }
 
                     if (outputToSend != null) {
                         if (this.myLastLink != null) {
                             final IAEStack<?> linkLeftOver = ((CraftingLink) this.myLastLink)
-                                    .injectItems(outputToSend.copy(), type);
+                                .injectItems(outputToSend.copy(), type);
                             if (linkLeftOver != null) {
                                 what.add(linkLeftOver);
                             }
@@ -217,6 +276,7 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
 
         return input;
     }
+
     @Override
     public BigInteger getStartItemCountBig() {
         return this.apeiron$start == null ? BigInteger.valueOf(this.startItemCount) : this.apeiron$start;
@@ -229,7 +289,9 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
 
     @Inject(method = "prepareStepCount", at = @At("HEAD"), cancellable = true)
     private void apeiron$prepareExactSteps(final CallbackInfo ci) {
-        final IItemList<IAEStack<?>> list = appeng.api.AEApi.instance().storage().createAEStackList();
+        final IItemList<IAEStack<?>> list = appeng.api.AEApi.instance()
+            .storage()
+            .createAEStackList();
         final CraftingCPUCluster self = (CraftingCPUCluster) (Object) this;
         self.getModernListOfItem(list, CraftingItemList.ACTIVE);
         self.getModernListOfItem(list, CraftingItemList.PENDING);
@@ -251,7 +313,8 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
         final long now = System.nanoTime();
         this.elapsedTime += now - this.lastTime;
         this.lastTime = now;
-        final BigInteger next = this.getRemainingItemCountBig().subtract(BigAEStackValues.get(stack));
+        final BigInteger next = this.getRemainingItemCountBig()
+            .subtract(BigAEStackValues.get(stack));
         this.remainingItemCount = BigAEStackValues.saturatedLong(next);
         this.apeiron$remaining = BigAEStackValues.fitsLong(next) ? null : next;
         ci.cancel();
@@ -259,8 +322,12 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
 
     @Inject(method = "writeToNBT", at = @At("TAIL"))
     private void apeiron$writeSteps(final NBTTagCompound tag, final CallbackInfo ci) {
-        BigValueCodec.writeNBT(tag, "startItemCount", "ApeironStartItemCount", new AdaptiveInteger(this.getStartItemCountBig()));
-        BigValueCodec.writeNBT(tag, "remainingItemCount", "ApeironRemainingItemCount",
+        BigValueCodec
+            .writeNBT(tag, "startItemCount", "ApeironStartItemCount", new AdaptiveInteger(this.getStartItemCountBig()));
+        BigValueCodec.writeNBT(
+            tag,
+            "remainingItemCount",
+            "ApeironRemainingItemCount",
             new AdaptiveInteger(this.getRemainingItemCountBig()));
     }
 

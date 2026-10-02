@@ -20,47 +20,46 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.ae.crafting.diagnostics.BigCompletedDiagnosticRecord;
-import com.silvia.apeiron.ae.crafting.packets.BigCraftNotificationValues;
-import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingGridDiagnostics;
-import com.silvia.apeiron.ae.crafting.core.BigFinalOutput;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingCPU;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingCPUStorage;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingJob;
+import com.silvia.apeiron.ae.crafting.core.BigFinalOutput;
 import com.silvia.apeiron.ae.crafting.core.BigTaskProgress;
+import com.silvia.apeiron.ae.crafting.diagnostics.BigCompletedDiagnosticRecord;
+import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingGridDiagnostics;
+import com.silvia.apeiron.ae.crafting.packets.BigCraftNotificationValues;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
 import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigValueCodec;
-import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
 
-import appeng.api.config.Actionable;
-import appeng.api.networking.security.BaseActionSource;
 import appeng.api.networking.crafting.CraftingItemList;
+import appeng.api.networking.crafting.ICraftingGrid;
 import appeng.api.networking.crafting.ICraftingJob;
 import appeng.api.networking.crafting.ICraftingLink;
-import appeng.api.networking.crafting.ICraftingRequester;
 import appeng.api.networking.crafting.ICraftingPatternDetails;
+import appeng.api.networking.crafting.ICraftingRequester;
+import appeng.api.networking.security.BaseActionSource;
+import appeng.api.networking.security.MachineSource;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IItemList;
 import appeng.crafting.MECraftingInventory;
-import appeng.me.cluster.implementations.CraftingCPUCluster;
 import appeng.me.cache.CraftingGridCache;
-import appeng.api.networking.crafting.ICraftingGrid;
+import appeng.me.cluster.implementations.CraftingCPUCluster;
+import appeng.me.diagnostics.CraftingDiagnosticSessionId;
 import appeng.tile.crafting.TileCraftingMonitorTile;
 import appeng.tile.crafting.TileCraftingTile;
-import appeng.me.diagnostics.CraftingDiagnosticSessionId;
-import appeng.api.networking.security.MachineSource;
 import appeng.util.Platform;
 
 /** Keeps CPU task counts and pending-output multiplication exact. */
 @Mixin(value = CraftingCPUCluster.class, remap = false)
-public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraftingCPUStorage {
+public abstract class CraftingCPUClusterMixin
+    implements BigCraftingCPU, BigCraftingCPUStorage, com.silvia.apeiron.ae.crafting.core.UnlimitedCraftingCPU {
 
     @Unique
     private static BigInteger apeiron$jobBytes(final ICraftingJob job) {
-        return job instanceof BigCraftingJob
-            ? ((BigCraftingJob) job).getByteTotalBig()
+        return job instanceof BigCraftingJob ? ((BigCraftingJob) job).getByteTotalBig()
             : BigInteger.valueOf(job.getByteTotal());
     }
 
@@ -95,6 +94,20 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
     private BigInteger apeiron$usedStorage;
     @Unique
     private boolean apeiron$insideSubmitJob;
+    @Unique
+    private boolean apeiron$unlimitedStorage;
+    @Unique
+    private boolean apeiron$unlimitedParallel;
+
+    @Override
+    public boolean isCraftingStorageUnlimited() {
+        return apeiron$unlimitedStorage;
+    }
+
+    @Override
+    public boolean isCraftingParallelUnlimited() {
+        return apeiron$unlimitedParallel;
+    }
 
     @Shadow
     @Final
@@ -165,14 +178,22 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
         tile.markDirty();
         this.tiles.push(tile);
 
-        if (tile.isStorage()) {
+        if (tile instanceof com.silvia.apeiron.common.tile.crafting.TileInfiniteCraftingStorage) {
+            if (apeiron$availableStorage == null) apeiron$availableStorage = BigInteger.valueOf(availableStorage);
+            apeiron$unlimitedStorage = true;
+            availableStorage = Long.MAX_VALUE;
+        } else if (tile.isStorage()) {
             this.apeiron$availableStorage = this.getAvailableStorageBig()
-                    .add(BigInteger.valueOf(tile.getStorageBytes()));
-            this.availableStorage = BigAEStackValues.saturatedLong(this.apeiron$availableStorage);
+                .add(BigInteger.valueOf(tile.getStorageBytes()));
+            this.availableStorage = apeiron$unlimitedStorage ? Long.MAX_VALUE
+                : BigAEStackValues.saturatedLong(this.apeiron$availableStorage);
         } else if (tile.isStatus()) {
             this.status.add((TileCraftingMonitorTile) tile);
         } else if (tile.isAccelerator()) {
-            this.accelerator += tile.acceleratorValue();
+            if (tile instanceof com.silvia.apeiron.common.tile.crafting.TileInfiniteCraftingUnit)
+                apeiron$unlimitedParallel = true;
+            this.accelerator = apeiron$unlimitedParallel ? Integer.MAX_VALUE
+                : (int) Math.min(Integer.MAX_VALUE - 1L, (long) this.accelerator + tile.acceleratorValue());
         }
     }
 
@@ -205,7 +226,8 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
 
     @Overwrite
     protected boolean hasRemainingTasks() {
-        this.tasks.entrySet().removeIf(entry -> valueOf(entry.getValue()).signum() <= 0);
+        this.tasks.entrySet()
+            .removeIf(entry -> valueOf(entry.getValue()).signum() <= 0);
         return !this.tasks.isEmpty();
     }
 
@@ -217,10 +239,14 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
             }
             case PENDING -> {
                 for (final Map.Entry<ICraftingPatternDetails, CraftingCPUCluster.TaskProgress> entry : this.tasks
-                        .entrySet()) {
-                    for (IAEItemStack stack : entry.getKey().getCondensedOutputs()) {
+                    .entrySet()) {
+                    for (IAEItemStack stack : entry.getKey()
+                        .getCondensedOutputs()) {
                         final IAEItemStack copy = stack.copy();
-                        BigAEStackValues.set(copy, BigAEStackValues.get(copy).multiply(valueOf(entry.getValue())));
+                        BigAEStackValues.set(
+                            copy,
+                            BigAEStackValues.get(copy)
+                                .multiply(valueOf(entry.getValue())));
                         list.add(copy);
                     }
                 }
@@ -230,10 +256,14 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
                 this.inventory.getAvailableItems(list);
                 for (final IAEStack<?> stack : this.waitingFor) list.add(Platform.stackConvert(stack));
                 for (final Map.Entry<ICraftingPatternDetails, CraftingCPUCluster.TaskProgress> entry : this.tasks
-                        .entrySet()) {
-                    for (IAEItemStack stack : entry.getKey().getCondensedOutputs()) {
+                    .entrySet()) {
+                    for (IAEItemStack stack : entry.getKey()
+                        .getCondensedOutputs()) {
                         final IAEItemStack copy = stack.copy();
-                        BigAEStackValues.set(copy, BigAEStackValues.get(copy).multiply(valueOf(entry.getValue())));
+                        BigAEStackValues.set(
+                            copy,
+                            BigAEStackValues.get(copy)
+                                .multiply(valueOf(entry.getValue())));
                         list.add(copy);
                     }
                 }
@@ -260,9 +290,13 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
     @Unique
     private void addPendingModern(final IItemList<IAEStack<?>> list) {
         for (final Map.Entry<ICraftingPatternDetails, CraftingCPUCluster.TaskProgress> entry : this.tasks.entrySet()) {
-            for (IAEStack<?> stack : entry.getKey().getCondensedAEOutputs()) {
+            for (IAEStack<?> stack : entry.getKey()
+                .getCondensedAEOutputs()) {
                 final IAEStack<?> copy = stack.copy();
-                BigAEStackValues.set(copy, BigAEStackValues.get(copy).multiply(valueOf(entry.getValue())));
+                BigAEStackValues.set(
+                    copy,
+                    BigAEStackValues.get(copy)
+                        .multiply(valueOf(entry.getValue())));
                 list.add(copy);
             }
         }
@@ -281,9 +315,7 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
             this.tasks.put(details, progress);
         }
         ((BigTaskProgress) progress).setValueBig(valueOf(progress).add(crafts));
-        ((BigTaskProgress) progress).addCraftsToSessionBig(
-                this.currentPlanningDiagnosticSessionId,
-                crafts);
+        ((BigTaskProgress) progress).addCraftsToSessionBig(this.currentPlanningDiagnosticSessionId, crafts);
     }
 
     @Override
@@ -301,10 +333,13 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
             case PENDING: {
                 BigInteger amount = BigInteger.ZERO;
                 for (final Map.Entry<ICraftingPatternDetails, CraftingCPUCluster.TaskProgress> entry : this.tasks
-                        .entrySet()) {
-                    for (final IAEStack<?> stack : entry.getKey().getCondensedAEOutputs()) {
+                    .entrySet()) {
+                    for (final IAEStack<?> stack : entry.getKey()
+                        .getCondensedAEOutputs()) {
                         if (Objects.equals(stack, what)) {
-                            amount = amount.add(BigAEStackValues.get(stack).multiply(valueOf(entry.getValue())));
+                            amount = amount.add(
+                                BigAEStackValues.get(stack)
+                                    .multiply(valueOf(entry.getValue())));
                         }
                     }
                 }
@@ -338,7 +373,8 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
 
     @Overwrite
     public long getAvailableStorage() {
-        return BigAEStackValues.saturatedLong(this.getAvailableStorageBig());
+        return apeiron$unlimitedStorage ? Long.MAX_VALUE
+            : BigAEStackValues.saturatedLong(this.getAvailableStorageBig());
     }
 
     @Overwrite
@@ -346,53 +382,73 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
         return BigAEStackValues.saturatedLong(this.getUsedStorageBig());
     }
 
-    @Inject(method = "submitJob", at = @At("HEAD"))
-    private void apeiron$beginSubmit(final CallbackInfo ci) {
+    @Inject(
+        method = "submitJob(Lappeng/api/networking/IGrid;Lappeng/api/networking/crafting/ICraftingJob;Lappeng/api/networking/security/BaseActionSource;Lappeng/api/networking/crafting/ICraftingRequester;)Lappeng/api/networking/crafting/ICraftingLink;",
+        at = @At("HEAD"),
+        require = 1)
+    private void apeiron$beginSubmit(final CallbackInfoReturnable<ICraftingLink> cir) {
         if (this.apeiron$usedStorage == null) {
             this.apeiron$usedStorage = BigInteger.valueOf(this.usedStorage);
         }
         this.apeiron$insideSubmitJob = true;
     }
 
-    @Inject(method = "submitJob", at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "submitJob(Lappeng/api/networking/IGrid;Lappeng/api/networking/crafting/ICraftingJob;Lappeng/api/networking/security/BaseActionSource;Lappeng/api/networking/crafting/ICraftingRequester;)Lappeng/api/networking/crafting/ICraftingLink;",
+        at = @At("HEAD"),
+        cancellable = true,
+        require = 1)
     private void apeiron$checkExactJobStorage(final appeng.api.networking.IGrid grid, final ICraftingJob job,
         final BaseActionSource source, final ICraftingRequester requestingMachine,
         final CallbackInfoReturnable<ICraftingLink> cir) {
-        if (!(job instanceof BigCraftingJob)) return;
-        final BigInteger free = this.getAvailableStorageBig().subtract(this.getUsedStorageBig());
+        if (apeiron$unlimitedStorage || !(job instanceof BigCraftingJob)) return;
+        final BigInteger free = this.getAvailableStorageBig()
+            .subtract(this.getUsedStorageBig());
         if (free.compareTo(apeiron$jobBytes(job)) < 0) {
             this.apeiron$insideSubmitJob = false;
             cir.setReturnValue(null);
         }
     }
 
-    @Inject(method = "submitJob", at = @At("RETURN"))
+    @Inject(
+        method = "submitJob(Lappeng/api/networking/IGrid;Lappeng/api/networking/crafting/ICraftingJob;Lappeng/api/networking/security/BaseActionSource;Lappeng/api/networking/crafting/ICraftingRequester;)Lappeng/api/networking/crafting/ICraftingLink;",
+        at = @At("RETURN"),
+        require = 1)
     private void apeiron$finishSubmit(final appeng.api.networking.IGrid grid, final ICraftingJob job,
         final BaseActionSource source, final ICraftingRequester requestingMachine,
         final CallbackInfoReturnable<ICraftingLink> cir) {
         if (cir.getReturnValue() != null) {
             final BigInteger bytes = apeiron$jobBytes(job);
-            this.apeiron$usedStorage = this.getUsedStorageBig().add(bytes);
+            this.apeiron$usedStorage = this.getUsedStorageBig()
+                .add(bytes);
             this.usedStorage = BigAEStackValues.saturatedLong(this.apeiron$usedStorage);
         }
         this.apeiron$insideSubmitJob = false;
     }
 
-    @Inject(method = "mergeJob", at = @At("HEAD"))
+    @Inject(
+        method = "mergeJob(Lappeng/api/networking/IGrid;Lappeng/api/networking/crafting/ICraftingJob;Lappeng/api/networking/security/BaseActionSource;Lappeng/api/networking/crafting/ICraftingRequester;)Lappeng/api/networking/crafting/ICraftingLink;",
+        at = @At("HEAD"),
+        require = 1)
     private void apeiron$beginDirectMerge(final appeng.api.networking.IGrid grid, final ICraftingJob job,
-        final BaseActionSource source, final ICraftingRequester requestingMachine, final CallbackInfo ci) {
+        final BaseActionSource source, final ICraftingRequester requestingMachine,
+        final CallbackInfoReturnable<ICraftingLink> cir) {
         if (this.apeiron$usedStorage == null) {
             this.apeiron$usedStorage = BigInteger.valueOf(this.usedStorage);
         }
     }
 
-    @Inject(method = "mergeJob", at = @At("RETURN"))
+    @Inject(
+        method = "mergeJob(Lappeng/api/networking/IGrid;Lappeng/api/networking/crafting/ICraftingJob;Lappeng/api/networking/security/BaseActionSource;Lappeng/api/networking/crafting/ICraftingRequester;)Lappeng/api/networking/crafting/ICraftingLink;",
+        at = @At("RETURN"),
+        require = 1)
     private void apeiron$finishDirectMerge(final appeng.api.networking.IGrid grid, final ICraftingJob job,
         final BaseActionSource source, final ICraftingRequester requestingMachine,
         final CallbackInfoReturnable<ICraftingLink> cir) {
         if (!this.apeiron$insideSubmitJob && cir.getReturnValue() != null) {
             final BigInteger bytes = apeiron$jobBytes(job);
-            this.apeiron$usedStorage = this.getUsedStorageBig().add(bytes);
+            this.apeiron$usedStorage = this.getUsedStorageBig()
+                .add(bytes);
             this.usedStorage = BigAEStackValues.saturatedLong(this.apeiron$usedStorage);
         }
     }
@@ -408,10 +464,12 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
     }
 
     @Overwrite
-    protected void pushDiagnosticSample(final appeng.me.cluster.implementations.CraftingCpuDiagnostics.CompletedDiagnosticRecord record) {
+    protected void pushDiagnosticSample(
+        final appeng.me.cluster.implementations.CraftingCpuDiagnostics.CompletedDiagnosticRecord record) {
         if (record.getElapsedTicks() <= 0L || this.getGrid() == null) return;
 
-        final ICraftingGrid craftingGrid = this.getGrid().getCache(ICraftingGrid.class);
+        final ICraftingGrid craftingGrid = this.getGrid()
+            .getCache(ICraftingGrid.class);
         if (craftingGrid instanceof CraftingGridCache cache && cache.isDiagnosticsEnabled()
             && cache instanceof BigCraftingGridDiagnostics exact) {
             exact.recordDiagnosticSampleBig(
@@ -425,23 +483,23 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
 
     @Inject(method = "writeToNBT", at = @At("TAIL"))
     private void apeiron$writeExactTaskProgress(final NBTTagCompound data, final CallbackInfo ci) {
+        BigValueCodec
+            .writeNBT(data, "usedStorage", "ApeironUsedStorage", new AdaptiveInteger(this.getUsedStorageBig()));
         BigValueCodec.writeNBT(
-                data,
-                "usedStorage",
-                "ApeironUsedStorage",
-                new AdaptiveInteger(this.getUsedStorageBig()));
-        BigValueCodec.writeNBT(
-                data,
-                "availableStorage",
-                "ApeironAvailableStorage",
-                new AdaptiveInteger(this.getAvailableStorageBig()));
+            data,
+            "availableStorage",
+            "ApeironAvailableStorage",
+            new AdaptiveInteger(this.getAvailableStorageBig()));
         final NBTTagList serialized = data.getTagList("tasks", 10);
         int index = 0;
         for (final CraftingCPUCluster.TaskProgress progress : this.tasks.values()) {
             if (index >= serialized.tagCount()) break;
             final NBTTagCompound tag = serialized.getCompoundTagAt(index++);
             final BigTaskProgress exact = (BigTaskProgress) progress;
-            if (exact.isValueBig()) tag.setByteArray("ApeironCraftingProgress", exact.getValueBig().toByteArray());
+            if (exact.isValueBig()) tag.setByteArray(
+                "ApeironCraftingProgress",
+                exact.getValueBig()
+                    .toByteArray());
             else tag.removeTag("ApeironCraftingProgress");
         }
     }
@@ -449,12 +507,12 @@ public abstract class CraftingCPUClusterMixin implements BigCraftingCPU, BigCraf
     @Inject(method = "readFromNBT", at = @At("TAIL"))
     private void apeiron$readExactTaskProgress(final NBTTagCompound data, final CallbackInfo ci) {
         this.apeiron$usedStorage = data.hasKey("ApeironUsedStorage", 7)
-                ? BigValueCodec.readNBT(data, "usedStorage", "ApeironUsedStorage").toBigInteger()
-                : BigInteger.valueOf(this.usedStorage);
+            ? BigValueCodec.readNBT(data, "usedStorage", "ApeironUsedStorage")
+                .toBigInteger()
+            : BigInteger.valueOf(this.usedStorage);
         if (data.hasKey("ApeironAvailableStorage", 7)) {
-            this.apeiron$availableStorage = BigValueCodec
-                    .readNBT(data, "availableStorage", "ApeironAvailableStorage")
-                    .toBigInteger();
+            this.apeiron$availableStorage = BigValueCodec.readNBT(data, "availableStorage", "ApeironAvailableStorage")
+                .toBigInteger();
         } else if (this.apeiron$availableStorage == null) {
             this.apeiron$availableStorage = BigInteger.valueOf(this.availableStorage);
         }

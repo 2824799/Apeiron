@@ -17,7 +17,6 @@ import appeng.api.config.Actionable;
 import appeng.api.implementations.items.IBiometricCard;
 import appeng.api.networking.security.BaseActionSource;
 import appeng.api.storage.data.IAEItemStack;
-import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IItemList;
 import appeng.me.storage.SecurityInventory;
 import appeng.tile.misc.TileSecurity;
@@ -72,23 +71,36 @@ public abstract class SecurityInventoryMixin implements BigIMEInventory {
         return result;
     }
 
-    @Inject(method = "injectItems", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyInject(IAEStack<?> input, Actionable mode, BaseActionSource source,
-        CallbackInfoReturnable<IAEStack<?>> cir) {
-        if (input instanceof IAEItemStack && BigAEItemStacks.isStackSizeBig((IAEItemStack) input)) {
-            cir.setReturnValue(injectItemsBig((IAEItemStack) input, mode, source));
+    // Select the typed implementation explicitly: javac also generates an IAEStack bridge with this name.
+    @Inject(
+        method = "injectItems(Lappeng/api/storage/data/IAEItemStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEItemStack;",
+        at = @At("HEAD"),
+        cancellable = true,
+        require = 1)
+    private void apeiron$legacyInject(IAEItemStack input, Actionable mode, BaseActionSource source,
+        CallbackInfoReturnable<IAEItemStack> cir) {
+        if (BigAEItemStacks.isStackSizeBig(input)) {
+            cir.setReturnValue(injectItemsBig(input, mode, source));
         }
     }
 
-    @Inject(method = "extractItems", at = @At("HEAD"), cancellable = true)
-    private void apeiron$legacyExtract(IAEStack<?> request, Actionable mode, BaseActionSource source,
-        CallbackInfoReturnable<IAEStack<?>> cir) {
-        if (request instanceof IAEItemStack && BigAEItemStacks.isStackSizeBig((IAEItemStack) request)) {
-            cir.setReturnValue(extractItemsBig((IAEItemStack) request, mode, source));
+    @Inject(
+        method = "extractItems(Lappeng/api/storage/data/IAEItemStack;Lappeng/api/config/Actionable;Lappeng/api/networking/security/BaseActionSource;)Lappeng/api/storage/data/IAEItemStack;",
+        at = @At("HEAD"),
+        cancellable = true,
+        require = 1)
+    private void apeiron$legacyExtract(IAEItemStack request, Actionable mode, BaseActionSource source,
+        CallbackInfoReturnable<IAEItemStack> cir) {
+        if (BigAEItemStacks.isStackSizeBig(request)) {
+            cir.setReturnValue(extractItemsBig(request, mode, source));
         }
     }
 
-    @Inject(method = "getAvailableItem", at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "getAvailableItem(Lappeng/api/storage/data/IAEItemStack;I)Lappeng/api/storage/data/IAEItemStack;",
+        at = @At("HEAD"),
+        cancellable = true,
+        require = 1)
     private void apeiron$legacyAvailable(IAEItemStack request, int iteration,
         CallbackInfoReturnable<IAEItemStack> cir) {
         IAEItemStack target = storedItems.findPrecise(request);

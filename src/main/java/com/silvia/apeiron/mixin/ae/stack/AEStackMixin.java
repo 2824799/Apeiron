@@ -23,15 +23,35 @@ import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigNumberFormatter;
 
 import appeng.api.config.TerminalFontSize;
-import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IAEItemStack;
+import appeng.api.storage.data.IAEStack;
 import appeng.client.render.StackSizeRenderer;
 import appeng.util.item.AEStack;
 import io.netty.buffer.ByteBuf;
 
 /** Render exact item counts in AE terminal overlays. */
 @Mixin(value = AEStack.class, remap = false)
-public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack {
+public abstract class AEStackMixin
+    implements BigAEStack, BigAERequestableStack, com.silvia.apeiron.ae.stack.InfiniteAEStack {
+
+    @Unique
+    private boolean apeiron$infinite;
+
+    @Override
+    public boolean isInfinite() {
+        return apeiron$infinite;
+    }
+
+    @Override
+    public void setInfinite(boolean value) {
+        ((IAEStack<?>) (Object) this).setStackSize(0);
+        apeiron$infinite = value;
+    }
+
+    @Inject(method = "isMeaningful", at = @At("HEAD"), cancellable = true)
+    private void apeiron$meaningful(CallbackInfoReturnable<Boolean> cir) {
+        if (apeiron$infinite) cir.setReturnValue(true);
+    }
 
     @Shadow
     private long stackSize;
@@ -53,12 +73,14 @@ public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack 
 
     @Override
     public BigInteger getStackSizeBig() {
+        if (apeiron$infinite) return BigInteger.valueOf(Long.MAX_VALUE);
         return this.apeiron$stackSizeBig == null ? BigInteger.valueOf(this.stackSize)
             : this.apeiron$stackSizeBig.toBigInteger();
     }
 
     @Override
     public IAEStack<?> setStackSizeBig(final BigInteger value) {
+        apeiron$infinite = false;
         if (AdaptiveInteger.fitsLong(value)) {
             this.apeiron$stackSizeBig = null;
             this.stackSize = value.longValue();
@@ -71,12 +93,18 @@ public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack 
 
     @Override
     public void incStackSizeBig(final BigInteger amount) {
-        this.setStackSizeBig(this.getStackSizeBig().add(amount));
+        if (apeiron$infinite) return;
+        this.setStackSizeBig(
+            this.getStackSizeBig()
+                .add(amount));
     }
 
     @Override
     public void decStackSizeBig(final BigInteger amount) {
-        this.setStackSizeBig(this.getStackSizeBig().subtract(amount));
+        if (apeiron$infinite) return;
+        this.setStackSizeBig(
+            this.getStackSizeBig()
+                .subtract(amount));
     }
 
     @Override
@@ -86,11 +114,13 @@ public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack 
 
     @Inject(method = "getStackSize", at = @At("RETURN"), cancellable = true)
     private void apeiron$getSaturatedStackSize(final CallbackInfoReturnable<Long> cir) {
-        if (this.apeiron$stackSizeBig != null) cir.setReturnValue(this.apeiron$stackSizeBig.longValueSaturated());
+        if (apeiron$infinite) cir.setReturnValue(Long.MAX_VALUE);
+        else if (this.apeiron$stackSizeBig != null) cir.setReturnValue(this.apeiron$stackSizeBig.longValueSaturated());
     }
 
     @Inject(method = "setStackSize", at = @At("HEAD"), cancellable = true)
     private void apeiron$setLegacyStackSize(final long value, final CallbackInfoReturnable<IAEStack<?>> cir) {
+        apeiron$infinite = false;
         this.apeiron$stackSizeBig = null;
         this.stackSize = value;
         cir.setReturnValue((IAEStack<?>) (Object) this);
@@ -98,6 +128,10 @@ public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack 
 
     @Inject(method = "incStackSize", at = @At("HEAD"), cancellable = true)
     private void apeiron$incLegacyStackSize(final long amount, final CallbackInfo ci) {
+        if (apeiron$infinite) {
+            ci.cancel();
+            return;
+        }
         if (this.apeiron$stackSizeBig != null) {
             this.apeiron$stackSizeBig.add(amount);
             this.stackSize = this.apeiron$stackSizeBig.longValueSaturated();
@@ -116,6 +150,10 @@ public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack 
 
     @Inject(method = "decStackSize", at = @At("HEAD"), cancellable = true)
     private void apeiron$decLegacyStackSize(final long amount, final CallbackInfo ci) {
+        if (apeiron$infinite) {
+            ci.cancel();
+            return;
+        }
         if (this.apeiron$stackSizeBig != null) {
             this.apeiron$stackSizeBig.subtract(amount);
             this.stackSize = this.apeiron$stackSizeBig.longValueSaturated();
@@ -134,6 +172,7 @@ public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack 
 
     @Inject(method = "reset", at = @At("HEAD"))
     private void apeiron$resetExactStackSize(final CallbackInfoReturnable<IAEStack<?>> cir) {
+        apeiron$infinite = false;
         this.apeiron$stackSizeBig = null;
         this.apeiron$requestableBig = null;
         this.apeiron$requestableCraftsBig = null;
@@ -159,12 +198,16 @@ public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack 
 
     @Override
     public void incCountRequestableBig(final BigInteger amount) {
-        this.setCountRequestableBig(this.getCountRequestableBig().add(amount));
+        this.setCountRequestableBig(
+            this.getCountRequestableBig()
+                .add(amount));
     }
 
     @Override
     public void decCountRequestableBig(final BigInteger amount) {
-        this.setCountRequestableBig(this.getCountRequestableBig().subtract(amount));
+        this.setCountRequestableBig(
+            this.getCountRequestableBig()
+                .subtract(amount));
     }
 
     @Override
@@ -192,7 +235,9 @@ public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack 
 
     @Override
     public void incCountRequestableCraftsBig(final BigInteger amount) {
-        this.setCountRequestableCraftsBig(this.getCountRequestableCraftsBig().add(amount));
+        this.setCountRequestableCraftsBig(
+            this.getCountRequestableCraftsBig()
+                .add(amount));
     }
 
     @Override
@@ -287,6 +332,22 @@ public abstract class AEStackMixin implements BigAEStack, BigAERequestableStack 
         } else if (this instanceof BigAEStack) {
             BigAEStackPackets.write(out, (IAEStack<?>) (Object) this);
         }
+    }
+
+    @Inject(method = "drawOverlayInGui", at = @At("HEAD"), cancellable = true)
+    private void apeiron$infinityOverlay(net.minecraft.client.Minecraft mc, int x, int y, boolean amount,
+        boolean always, boolean craftText, boolean craftIcon, CallbackInfo ci) {
+        if (!apeiron$infinite) return;
+        if (amount) {
+            org.lwjgl.opengl.GL11.glPushMatrix();
+            org.lwjgl.opengl.GL11.glTranslatef(0, 0, 200);
+            org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_LIGHTING);
+            StackSizeRenderer
+                .drawStackSize(x, y, "∞", mc.fontRenderer, appeng.core.AEConfig.instance.getTerminalFontSize());
+            org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_LIGHTING);
+            org.lwjgl.opengl.GL11.glPopMatrix();
+        }
+        ci.cancel();
     }
 
     @Redirect(

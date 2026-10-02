@@ -16,7 +16,7 @@ public final class BigNumberFormatter {
     private BigNumberFormatter() {}
 
     /**
-     * Uses three significant digits and an uppercase E for values outside the legacy long range.
+     * Uses one decimal place and an uppercase E for values outside the legacy long range.
      */
     public static String formatCompact(BigInteger value) {
         if (value == null) throw new NullPointerException("value");
@@ -27,9 +27,9 @@ public final class BigNumberFormatter {
         int exponent = absolute.toString()
             .length() - 1;
         BigDecimal mantissa = new BigDecimal(absolute).movePointLeft(exponent)
-            .setScale(2, RoundingMode.HALF_UP);
+            .setScale(1, RoundingMode.HALF_UP);
         if (mantissa.compareTo(BigDecimal.TEN) >= 0) {
-            mantissa = mantissa.movePointLeft(1);
+            mantissa = BigDecimal.ONE.setScale(1);
             exponent++;
         }
 
@@ -53,6 +53,8 @@ public final class BigNumberFormatter {
             scaled = scaled.divide(BigDecimal.valueOf(1024), 2, RoundingMode.HALF_UP);
             unit++;
         }
-        return scaled.stripTrailingZeros().toPlainString() + " " + BYTE_UNITS[unit];
+        return scaled.stripTrailingZeros()
+            .toPlainString() + " "
+            + BYTE_UNITS[unit];
     }
 }

@@ -11,8 +11,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.core.BigMECraftingInventory;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 import appeng.api.config.Actionable;
 import appeng.api.storage.data.IAEStack;
@@ -41,6 +41,13 @@ public abstract class MECraftingInventoryMixin implements BigMECraftingInventory
     private IItemList<IAEStack<?>> injectedCache;
 
     @Override
+    public IAEStack<?> getStoredStackBig(final IAEStack<?> type) {
+        final IItemList<IAEStack> list = type == null ? null : this.inventoryMap.get(type.getStackType());
+        final IAEStack<?> stored = list == null ? null : list.findPrecise(type);
+        return stored == null ? null : stored.copy();
+    }
+
+    @Override
     public IAEStack<?> extractItemsBig(final IAEStack<?> request, final Actionable mode) {
         if (request == null) return null;
         final IItemList<IAEStack> list = this.inventoryMap.get(request.getStackType());
@@ -48,6 +55,10 @@ public abstract class MECraftingInventoryMixin implements BigMECraftingInventory
         final IAEStack<?> stored = list.findPrecise(request);
         if (stored == null) return null;
 
+        if (BigAEStackValues.isInfinite(stored)) {
+            if (mode == Actionable.MODULATE && this.logExtracted) this.extractedCache.add(request);
+            return request.copy();
+        }
         final BigInteger available = BigAEStackValues.get(stored);
         if (available.signum() <= 0) return null;
         final BigInteger requested = BigAEStackValues.get(request);
@@ -73,21 +84,26 @@ public abstract class MECraftingInventoryMixin implements BigMECraftingInventory
     @Override
     public void injectItemsBig(final IAEStack<?> input, final Actionable mode) {
         if (input == null || mode != Actionable.MODULATE) return;
-        this.inventoryMap.get(input.getStackType()).add(input);
+        this.inventoryMap.get(input.getStackType())
+            .add(input);
         if (this.logInjections) this.injectedCache.add(input);
     }
 
     @Inject(method = "extractItems", at = @At("HEAD"), cancellable = true)
     private <StackType extends IAEStack<StackType>> void apeiron$extractExact(final StackType request,
         final Actionable mode, final CallbackInfoReturnable<StackType> cir) {
-        if (BigAEStackValues.isBig(request)) {
+        final IItemList<IAEStack> list = request == null ? null : inventoryMap.get(request.getStackType());
+        if (BigAEStackValues.isBig(request) || list != null && BigAEStackValues.isInfinite(list.findPrecise(request))) {
             @SuppressWarnings("unchecked")
             final StackType result = (StackType) extractItemsBig(request, mode);
             cir.setReturnValue(result);
         }
     }
 
-    @Inject(method = "injectItems(Lappeng/api/storage/data/IAEStack;Lappeng/api/config/Actionable;)V", at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "injectItems(Lappeng/api/storage/data/IAEStack;Lappeng/api/config/Actionable;)V",
+        at = @At("HEAD"),
+        cancellable = true)
     private void apeiron$injectExact(final IAEStack<?> input, final Actionable mode, final CallbackInfo ci) {
         if (BigAEStackValues.isBig(input)) {
             injectItemsBig(input, mode);

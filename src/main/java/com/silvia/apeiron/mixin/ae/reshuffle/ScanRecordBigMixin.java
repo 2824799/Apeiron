@@ -27,7 +27,7 @@ public abstract class ScanRecordBigMixin implements BigScanRecord {
     @Unique
     private BigInteger apeiron$bytesTotal;
 
-    @Inject(method = "<init>(ILnet/minecraft/item/ItemStack;JJJJLappeng/api/util/DimensionalCoord;Ljava/util/List;)V", at = @At("HEAD"))
+    @Inject(method = "<init>(ILnet/minecraft/item/ItemStack;JJJJLappeng/api/util/DimensionalCoord;Ljava/util/List;)V", at = @At("TAIL"))
     private void apeiron$capture(final int slot, final net.minecraft.item.ItemStack itemStack, final long typesUsed,
         final long typesTotal, final long bytesUsed, final long bytesTotal,
         final appeng.api.util.DimensionalCoord dc, final java.util.List<?> topStoredItems, final CallbackInfo ci) {

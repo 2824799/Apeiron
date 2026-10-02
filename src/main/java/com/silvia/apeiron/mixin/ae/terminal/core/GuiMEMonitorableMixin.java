@@ -50,7 +50,8 @@ public abstract class GuiMEMonitorableMixin {
         IAEStack<?> aeStack = hoveredSlot.getAEStack();
         if (!(aeStack instanceof BigAEStack)) return;
         BigAEStack exact = (BigAEStack) aeStack;
-        if (!exact.isStackSizeBig()) return;
+        boolean infinite = com.silvia.apeiron.ae.stack.BigAEStackValues.isInfinite(aeStack);
+        if (!infinite && !exact.isStackSizeBig()) return;
 
         BigInteger count = exact.getStackSizeBig();
         if (count.signum() <= 0) return;
@@ -61,7 +62,8 @@ public abstract class GuiMEMonitorableMixin {
         String legacyLine = EnumChatFormatting.GRAY + String.format(local, legacyAmount);
         currentToolTip.remove(legacyLine);
 
-        String exactLine = EnumChatFormatting.GRAY + String.format(local, BigNumberFormatter.formatExact(count));
+        String exactLine = EnumChatFormatting.GRAY
+            + String.format(local, infinite ? "∞" : BigNumberFormatter.formatExact(count));
         if (!currentToolTip.contains(exactLine)) currentToolTip.add(exactLine);
     }
 }

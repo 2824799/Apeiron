@@ -1,0 +1,49 @@
+package com.silvia.apeiron.common.machine.block;
+
+import java.util.List;
+
+import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.item.Item;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.World;
+
+import com.silvia.apeiron.common.machine.registration.ApeironMachines;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+import gregtech.common.blocks.BlockMachines;
+import gregtech.common.blocks.MaterialMachines;
+
+/** Apeiron-owned block/item registration using GregTech's machine placement and rendering implementation. */
+public final class ApeironMachineBlock extends BlockMachines {
+
+    public ApeironMachineBlock() {
+        super(ApeironMachineItem.class, "apeiron.machines", new MaterialMachines());
+        this.setCreativeTab(ApeironMachines.CREATIVE_TAB);
+    }
+
+    @Override
+    public String getUnlocalizedName() {
+        return "machines";
+    }
+
+    @Override
+    public TileEntity createTileEntity(final World world, final int metadata) {
+        return new ApeironMachineTile();
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    public void getSubBlocks(final Item item, final CreativeTabs tab, final List stacks) {
+        if (ApeironMachines.itemOutputBus != null) stacks.add(ApeironMachines.itemOutputBus.getStackForm(1L));
+        if (ApeironMachines.fluidOutputHatch != null) stacks.add(ApeironMachines.fluidOutputHatch.getStackForm(1L));
+        if (ApeironMachines.mixedOutputAssembly != null)
+            stacks.add(ApeironMachines.mixedOutputAssembly.getStackForm(1L));
+        if (ApeironMachines.infiniteEnergyHatch != null)
+            stacks.add(ApeironMachines.infiniteEnergyHatch.getStackForm(1L));
+        if (ApeironMachines.patternInputAssembly != null)
+            stacks.add(ApeironMachines.patternInputAssembly.getStackForm(1L));
+        if (ApeironMachines.patternInputMirror != null) stacks.add(ApeironMachines.patternInputMirror.getStackForm(1L));
+    }
+}

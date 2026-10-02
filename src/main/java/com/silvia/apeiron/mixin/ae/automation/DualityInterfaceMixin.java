@@ -10,22 +10,9 @@
 
 package com.silvia.apeiron.mixin.ae.automation;
 
-import java.util.ArrayList;
-import java.util.ListIterator;
-import net.minecraft.inventory.InventoryCrafting;
-import appeng.api.config.LockCraftingMode;
-import appeng.api.implementations.tiles.ICraftingMachine;
-import appeng.api.storage.data.IAEFluidStack;
-import appeng.util.ScheduledReason;
-import appeng.util.inv.AdaptorDualityInterface;
-import appeng.util.inv.AdaptorMEChest;
-import appeng.util.inv.MEInventoryCrafting;
-import static appeng.util.Platform.stackConvertPacket;
-
 import java.math.BigInteger;
 import java.util.EnumSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
@@ -39,6 +26,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.silvia.apeiron.ae.stack.BigAEItemStacks;
@@ -51,7 +39,6 @@ import appeng.api.config.Actionable;
 import appeng.api.config.InsertionMode;
 import appeng.api.config.Upgrades;
 import appeng.api.networking.crafting.ICraftingGrid;
-import appeng.api.networking.crafting.ICraftingPatternDetails;
 import appeng.api.networking.energy.IEnergySource;
 import appeng.api.networking.security.BaseActionSource;
 import appeng.api.storage.IMEInventory;
@@ -386,176 +373,62 @@ public abstract class DualityInterfaceMixin implements com.silvia.apeiron.ae.sto
         cir.setReturnValue(this.injectItemsBig(input, mode, source));
     }
 
-    @Shadow public List<ICraftingPatternDetails> craftingList;
-    @Shadow private ScheduledReason scheduledReason;
-    @Shadow private boolean isFluidInterface;
-    @Shadow private int lastInputHash;
-    @Shadow public abstract LockCraftingMode getCraftingLockedReason();
-    @Shadow private boolean isBlocking() { throw new AssertionError(); }
-    @Shadow private boolean isSmartBlocking() { throw new AssertionError(); }
-    @Shadow private boolean inventoryCountsAsEmpty(TileEntity tile, InventoryAdaptor adaptor, ForgeDirection side) {
-        throw new AssertionError();
+    @Shadow
+    private void addToSendList(IAEStack<?> stack) { throw new AssertionError(); }
+
+    @Unique
+    private BigInteger apeiron$patternInputAmount;
+
+    @Unique
+    private IAEStack<?> apeiron$patternRemainder;
+
+    @Redirect(
+        method = "pushPattern",
+        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEStack;getStackSize()J", ordinal = 0))
+    private long apeiron$capturePatternInput(final IAEStack<?> stack) {
+        this.apeiron$patternInputAmount = BigAEStackValues.get(stack);
+        this.apeiron$patternRemainder = null;
+        return BigAEStackValues.saturatedLong(this.apeiron$patternInputAmount);
     }
-    @Shadow private void onPushPatternSuccess(TileEntity tile, ForgeDirection side, ICraftingPatternDetails pattern) {
-        throw new AssertionError();
+
+    @Redirect(
+        method = "pushPattern",
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/util/InventoryAdaptor;addStack(Lappeng/api/storage/data/IAEStack;Lappeng/api/config/InsertionMode;)Lappeng/api/storage/data/IAEStack;"))
+    private IAEStack<?> apeiron$pushPatternInput(final InventoryAdaptor adaptor, final IAEStack<?> stack,
+        final InsertionMode mode) {
+        this.apeiron$patternRemainder = BigInventoryAdaptors.addStackBig(adaptor, stack, mode, false);
+        return this.apeiron$patternRemainder;
     }
-    @Shadow private void addToSendList(IAEStack<?> stack) { throw new AssertionError(); }
 
-    /**
-     * @author Apeiron
-     * @reason Compare and forward the exact remaining amounts of crafting pattern inputs.
-     */
-    @org.spongepowered.asm.mixin.Overwrite
-    public boolean pushPattern(final ICraftingPatternDetails patternDetails, final InventoryCrafting table) {
-        if (this.hasItemsToSend() || !this.gridProxy.isActive() || !this.craftingList.contains(patternDetails)) {
-            scheduledReason = ScheduledReason.SOMETHING_STUCK;
-            return false;
+    @Redirect(
+        method = "pushPattern",
+        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEStack;getStackSize()J", ordinal = 1))
+    private long apeiron$comparePatternRemainder(final IAEStack<?> remainder) {
+        final BigInteger exactRemainder = BigAEStackValues.get(remainder);
+        final long legacyRemainder = BigAEStackValues.saturatedLong(exactRemainder);
+        final long legacyInput = BigAEStackValues.saturatedLong(this.apeiron$patternInputAmount);
+        // This read is used only by AE's equality check. Distinguish exact counts whose long projections coincide.
+        if (legacyRemainder == legacyInput && !exactRemainder.equals(this.apeiron$patternInputAmount)) {
+            return legacyRemainder == Long.MIN_VALUE ? Long.MAX_VALUE : legacyRemainder - 1;
         }
-        if (getCraftingLockedReason() != LockCraftingMode.NONE) {
-            scheduledReason = ScheduledReason.LOCK_MODE;
-            return false;
-        }
+        return legacyRemainder;
+    }
 
-        final TileEntity tile = this.iHost.getTileEntity();
-        final World w = tile.getWorldObj();
+    @Redirect(
+        method = "pushPattern",
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/api/storage/data/IAEStack;setStackSize(J)Lappeng/api/storage/data/IAEStack;",
+            ordinal = 0))
+    private IAEStack<?> apeiron$keepPatternRemainder(final IAEStack<?> stack, final long legacy) {
+        return BigAEStackValues.set(stack, BigAEStackValues.get(this.apeiron$patternRemainder));
+    }
 
-        final EnumSet<ForgeDirection> possibleDirections = this.iHost.getTargets();
-        boolean foundReason = false;
-        boolean foundTarget = false;
-        boolean hadAcceptedSome = false;
-        boolean hasNotItemOrFluid = false;
-
-        final List<IAEStack<?>> stacksToPush = new ArrayList<>(table.getSizeInventory());
-        for (int x = 0; x < table.getSizeInventory(); x++) {
-            IAEStack<?> aes = ((MEInventoryCrafting) table).getAEStackInSlot(x);
-
-            if (aes instanceof IAEItemStack) {
-                stacksToPush.add(aes);
-            } else if (aes instanceof IAEFluidStack) {
-                if (isFluidInterface) {
-                    stacksToPush.add(aes);
-                } else {
-                    stacksToPush.add(stackConvertPacket(aes));
-                }
-            } else if (aes != null) {
-                hasNotItemOrFluid = true;
-                stacksToPush.add(aes);
-            }
-        }
-
-        final ArrayList<com.silvia.apeiron.ae.automation.BigPatternTarget> verifiedSides = new ArrayList<>();
-
-        for (final ForgeDirection s : possibleDirections) {
-            final TileEntity te = w
-                    .getTileEntity(tile.xCoord + s.offsetX, tile.yCoord + s.offsetY, tile.zCoord + s.offsetZ);
-
-            if (te == null) continue;
-
-            if (te.getClass().getName().equals("li.cil.oc.common.tileentity.Adapter")) continue;
-
-            if (te instanceof ICraftingMachine cm) {
-                if (cm.acceptsPlans()) {
-                    if (cm.pushPattern(patternDetails, table, s.getOpposite())) {
-                        onPushPatternSuccess(te, s.getOpposite(), patternDetails);
-                        return true;
-                    }
-                    continue;
-                }
-            }
-
-            if (te instanceof IInterfaceHost ih) {
-                try {
-                    final DualityInterface di = ih.getInterfaceDuality();
-
-                    if (!di.getProxy().isActive()) continue;
-
-                    if (di.getProxy().getGrid() == this.gridProxy.getGrid()) {
-                        if (!foundReason) {
-                            foundReason = true;
-                            scheduledReason = ScheduledReason.SAME_NETWORK;
-                        }
-                        continue;
-                    }
-                } catch (final GridAccessException e) {
-                    continue;
-                }
-            }
-
-            final InventoryAdaptor ad = InventoryAdaptor.getAdaptor(te, s.getOpposite());
-            if (ad != null) {
-                foundTarget = true;
-                if (hasNotItemOrFluid && !(ad instanceof AdaptorDualityInterface) && !(ad instanceof AdaptorMEChest)) {
-                    scheduledReason = ScheduledReason.UNSUPPORTED_STACK;
-                    continue;
-                }
-
-                if (this.isBlocking() && !(this.isSmartBlocking() && this.lastInputHash == patternDetails.hashCode())
-                        && ad.containsItems()
-                        && !inventoryCountsAsEmpty(te, ad, s.getOpposite())) {
-                    foundReason = true;
-                    scheduledReason = ScheduledReason.BLOCKING_MODE;
-
-                    if (isFluidInterface) return false;
-
-                    continue;
-                }
-
-                verifiedSides.add(new com.silvia.apeiron.ae.automation.BigPatternTarget(te, s, ad));
-            }
-        }
-
-        for (com.silvia.apeiron.ae.automation.BigPatternTarget va : verifiedSides) {
-            final TileEntity te = va.te;
-            final ForgeDirection s = va.side;
-            final InventoryAdaptor ad = va.ad;
-
-            boolean hadAcceptedSomeOnFace = false;
-            ListIterator<IAEStack<?>> iter = stacksToPush.listIterator();
-            while (iter.hasNext()) {
-                IAEStack<?> aes = iter.next();
-                if (aes == null) {
-                    iter.remove();
-                    continue;
-                }
-
-                BigInteger amountToPush = BigAEStackValues.get(aes);
-                IAEStack<?> leftover = BigInventoryAdaptors.addStackBig(ad, aes, getInsertionMode(), false);
-                if (leftover != null && BigAEStackValues.get(leftover).equals(amountToPush)) {
-                    continue;
-                }
-
-                hadAcceptedSome = true;
-                hadAcceptedSomeOnFace = true;
-                if (leftover != null && leftover.getStackSize() > 0) {
-                    BigAEStackValues.set(aes, BigAEStackValues.get(leftover));
-                } else {
-                    aes.setStackSize(0);
-                    iter.remove();
-                }
-            }
-
-            if (hadAcceptedSomeOnFace) {
-                onPushPatternSuccess(te, s.getOpposite(), patternDetails);
-                if (stacksToPush.isEmpty()) {
-                    return true;
-                }
-            }
-        }
-
-        if (hadAcceptedSome) {
-            for (IAEStack<?> aes : stacksToPush) {
-                this.addToSendList(aes);
-            }
-
-            return true;
-        } else if (foundTarget && scheduledReason != ScheduledReason.UNSUPPORTED_STACK
-                && scheduledReason != ScheduledReason.BLOCKING_MODE) {
-                    foundReason = true;
-                    scheduledReason = ScheduledReason.SOMETHING_STUCK;
-                }
-
-        if (!foundReason) scheduledReason = ScheduledReason.NO_TARGET;
-
-        return false;
+    @Inject(method = "pushPattern", at = @At("RETURN"))
+    private void apeiron$clearPatternCapture(final CallbackInfoReturnable<Boolean> cir) {
+        this.apeiron$patternInputAmount = null;
+        this.apeiron$patternRemainder = null;
     }
 }

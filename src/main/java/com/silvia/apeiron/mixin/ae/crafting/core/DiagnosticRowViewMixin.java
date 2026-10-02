@@ -24,7 +24,7 @@ public abstract class DiagnosticRowViewMixin implements BigDiagnosticRow {
     @Unique
     private BigInteger apeiron$sampleCount;
 
-    @Inject(method = "<init>(Lappeng/api/storage/data/IAEStack;JJJ)V", at = @At("HEAD"))
+    @Inject(method = "<init>(Lappeng/api/storage/data/IAEStack;JJJ)V", at = @At("TAIL"))
     private void apeiron$capture(final appeng.api.storage.data.IAEStack<?> stack, final long totalProduced,
         final long elapsedTimeTicks, final long sampleCount, final CallbackInfo ci) {
         final BigInteger[] values = BigDiagnosticRowValues.take();

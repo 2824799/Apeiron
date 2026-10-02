@@ -11,11 +11,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.silvia.apeiron.ae.sync.BigIntegerSyncCodec;
 import com.silvia.apeiron.ae.automation.BigSuperMEReplenisher;
+import com.silvia.apeiron.ae.sync.BigIntegerSyncCodec;
 import com.silvia.apeiron.ae.sync.BigSyncRegistrarAccess;
 
-import appeng.container.AEBaseContainer;
 import appeng.container.implementations.ContainerSuperMEReplenisher;
 import appeng.container.sync.handlers.ObjectSyncHandler;
 import appeng.tile.misc.TileSuperMEReplenisher;
@@ -24,23 +23,28 @@ import appeng.tile.misc.TileSuperMEReplenisher;
 @Mixin(value = ContainerSuperMEReplenisher.class, remap = false)
 public abstract class ContainerSuperMEReplenisherBigMixin implements BigSuperMEReplenisher {
 
-    @Shadow private TileSuperMEReplenisher tile;
+    @Shadow
+    private TileSuperMEReplenisher tile;
 
-    @Unique private ObjectSyncHandler<BigInteger> apeiron$totalBig;
-    @Unique private ObjectSyncHandler<BigInteger> apeiron$usedBig;
+    @Unique
+    private ObjectSyncHandler<BigInteger> apeiron$totalBig;
+    @Unique
+    private ObjectSyncHandler<BigInteger> apeiron$usedBig;
 
-    @Inject(method = "<init>(Lnet/minecraft/entity/player/InventoryPlayer;Lappeng/tile/misc/TileSuperMEReplenisher;)V", at = @At("TAIL"))
+    @Inject(
+        method = "<init>(Lnet/minecraft/entity/player/InventoryPlayer;Lappeng/tile/misc/TileSuperMEReplenisher;)V",
+        at = @At("TAIL"))
     private void apeiron$registerExactSync(final InventoryPlayer inventory, final TileSuperMEReplenisher tile,
         final CallbackInfo ci) {
         final BigSuperMEReplenisher exact = (BigSuperMEReplenisher) tile;
         final BigSyncRegistrarAccess registrarAccess = (BigSyncRegistrarAccess) (Object) this;
-        this.apeiron$totalBig = registrarAccess.apeiron$syncRegistrar().objectS2C(
-                "apeironTotalBytes", BigIntegerSyncCodec.INSTANCE, exact.getTotalBytesBig());
-        this.apeiron$usedBig = registrarAccess.apeiron$syncRegistrar().objectS2C(
-                "apeironUsedBytes", BigIntegerSyncCodec.INSTANCE, exact.getUsedBytesBig());
+        this.apeiron$totalBig = registrarAccess.apeiron$syncRegistrar()
+            .objectS2C("apeironTotalBytes", BigIntegerSyncCodec.INSTANCE, exact.getTotalBytesBig());
+        this.apeiron$usedBig = registrarAccess.apeiron$syncRegistrar()
+            .objectS2C("apeironUsedBytes", BigIntegerSyncCodec.INSTANCE, exact.getUsedBytesBig());
     }
 
-    @Inject(method = "detectAndSendChanges", at = @At("HEAD"))
+    @Inject(method = { "detectAndSendChanges", "func_75142_b" }, at = @At("HEAD"))
     private void apeiron$sendExact(final CallbackInfo ci) {
         if (this.apeiron$totalBig == null) return;
         final BigSuperMEReplenisher exact = (BigSuperMEReplenisher) this.tile;

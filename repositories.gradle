@@ -1,5 +1,77 @@
 // Add any additional repositories for your dependencies here.
 
 repositories {
-
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = "AE2 Infinity Cell releases"
+                url = uri("https://github.com/DancingSnow0517/AE2InfinityCell/releases/download/")
+                patternLayout { artifact("[revision]/[artifact]-[revision](-[classifier]).[ext]") }
+                metadataSources { artifact() }
+            }
+        }
+        filter { includeModule("apeiron.development", "aeinfinitycell") }
+    }
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = "AppEU releases"
+                url = uri("https://github.com/DancingSnow0517/Applied-Energistics-EU-Network/releases/download/")
+                patternLayout { artifact("[revision]/[artifact]-[revision](-[classifier]).[ext]") }
+                metadataSources { artifact() }
+            }
+        }
+        filter { includeModule("apeiron.development", "appeu") }
+    }
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = "Twist Space Technology releases"
+                url = uri("https://github.com/Nxer/Twist-Space-Technology-Mod/releases/download/")
+                patternLayout { artifact("[revision]/[artifact]-[revision](-[classifier]).[ext]") }
+                metadataSources { artifact() }
+            }
+        }
+        filter { includeModule("apeiron.development", "TwistSpaceTechnology") }
+    }
+    // These projects distribute their development jars as GitHub release assets.
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = "GT Not Leisure releases"
+                url = uri("https://github.com/ABKQPO/GT-Not-Leisure/releases/download/")
+                patternLayout {
+                    artifact("[revision]/[artifact]-[revision](-[classifier]).[ext]")
+                }
+                metadataSources { artifact() }
+            }
+        }
+        filter { includeModule("apeiron.development", "sciencenotleisure") }
+    }
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = "Programmable Hatches releases"
+                url = uri("https://github.com/reobf/Programmable-Hatches-Mod/releases/download/")
+                patternLayout {
+                    artifact("v[revision]-beta/[artifact]-[revision](-[classifier]).[ext]")
+                }
+                metadataSources { artifact() }
+            }
+        }
+        filter { includeModule("apeiron.development", "programmablehatches") }
+    }
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = "IndustrialCraft official development releases"
+                url = uri("https://maven.ic2.player.to/")
+                patternLayout {
+                    artifact("net/industrial-craft/industrialcraft-2/[revision]/industrialcraft-2-[revision](-[classifier]).[ext]")
+                }
+                metadataSources { artifact() }
+            }
+        }
+        filter { includeModule("apeiron.development", "industrialcraft-2") }
+    }
 }

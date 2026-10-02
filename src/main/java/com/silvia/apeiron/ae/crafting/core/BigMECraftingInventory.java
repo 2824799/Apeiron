@@ -8,6 +8,9 @@ import appeng.api.storage.data.IAEStack;
 /** Exact operations for AE's crafting calculation inventory. */
 public interface BigMECraftingInventory {
 
+    /** Returns a snapshot of the entire stored amount, including renewable supply. */
+    IAEStack<?> getStoredStackBig(IAEStack<?> type);
+
     IAEStack<?> extractItemsBig(IAEStack<?> request, Actionable mode);
 
     void injectItemsBig(IAEStack<?> input, Actionable mode);

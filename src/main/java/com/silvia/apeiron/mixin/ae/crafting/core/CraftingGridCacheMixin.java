@@ -5,16 +5,16 @@ import java.util.concurrent.Future;
 
 import net.minecraft.world.World;
 
-import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingGridDiagnostics;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingNetworkDiagnostics;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.crafting.BigCraftingJobFast;
 
 import appeng.api.config.CraftingMode;
@@ -29,7 +29,8 @@ import appeng.me.diagnostics.CraftingNetworkDiagnostics;
 
 /** Routes large requests through Apeiron's exact fast planner. */
 @Mixin(value = CraftingGridCache.class, remap = false)
-public abstract class CraftingGridCacheMixin implements com.silvia.apeiron.ae.storage.BigMEInventory, BigCraftingGridDiagnostics {
+public abstract class CraftingGridCacheMixin
+    implements com.silvia.apeiron.ae.storage.BigMEInventory, BigCraftingGridDiagnostics {
 
     @Shadow
     @Final
@@ -45,8 +46,14 @@ public abstract class CraftingGridCacheMixin implements com.silvia.apeiron.ae.st
     private void apeiron$beginExactJob(final World world, final IGrid grid, final BaseActionSource source,
         final IAEStack<?> stack, final CraftingMode mode, final boolean lite, final ICraftingCallback callback,
         final CallbackInfoReturnable<Future<ICraftingJob>> cir) {
-        if (!BigAEStackValues.isBig(stack)) return;
-        final BigCraftingJobFast<?> job = new BigCraftingJobFast<>(world, grid, source, (IAEStack) stack, mode, callback);
+        if (stack == null || !BigAEStackValues.isBig(stack)) return;
+        final BigCraftingJobFast<?> job = new BigCraftingJobFast<>(
+            world,
+            grid,
+            source,
+            (IAEStack) stack,
+            mode,
+            callback);
         cir.setReturnValue((Future) job.schedule());
     }
 
@@ -58,17 +65,15 @@ public abstract class CraftingGridCacheMixin implements com.silvia.apeiron.ae.st
 
     @Override
     public IAEStack<?> extractItemsBig(final IAEStack<?> request, final appeng.api.config.Actionable mode,
-        final BaseActionSource source) { return null; }
+        final BaseActionSource source) {
+        return null;
+    }
 
     @Override
     public void recordDiagnosticSampleBig(final IAEStack<?> output, final CraftingDiagnosticSessionId sessionId,
         final BigInteger producedAmount, final long observedStartTick, final long observedEndTick) {
-        ((BigCraftingNetworkDiagnostics) (Object) this.diagnostics).recordSampleBig(
-            output,
-            sessionId,
-            producedAmount,
-            observedStartTick,
-            observedEndTick);
+        ((BigCraftingNetworkDiagnostics) (Object) this.diagnostics)
+            .recordSampleBig(output, sessionId, producedAmount, observedStartTick, observedEndTick);
         this.diagnosticsRevision = this.diagnostics.getRevision();
     }
 }

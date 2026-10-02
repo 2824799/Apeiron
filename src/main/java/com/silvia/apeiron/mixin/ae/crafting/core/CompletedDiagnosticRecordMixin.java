@@ -25,7 +25,7 @@ public abstract class CompletedDiagnosticRecordMixin implements BigCompletedDiag
 
     @Inject(
         method = "<init>(Lappeng/api/storage/data/IAEStack;Lappeng/me/diagnostics/CraftingDiagnosticSessionId;JJJJ)V",
-        at = @At("HEAD"))
+        at = @At("TAIL"))
     private void apeiron$capture(final IAEStack<?> output, final CraftingDiagnosticSessionId session,
         final long produced, final long startTick, final long endTick, final long elapsedTicks, final CallbackInfo ci) {
         this.apeiron$produced = BigCraftingDiagnosticsValues.takeCompleted(produced);

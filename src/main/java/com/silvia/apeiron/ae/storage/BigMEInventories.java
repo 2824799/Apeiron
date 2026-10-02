@@ -3,19 +3,42 @@ package com.silvia.apeiron.ae.storage;
 import java.util.Objects;
 import java.util.Optional;
 
+import com.silvia.apeiron.ae.stack.BigAEItemStacks;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
+
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.BaseActionSource;
 import appeng.api.storage.IMEInventory;
+import appeng.api.storage.IMEInventoryHandler;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.util.item.ItemList;
-import com.silvia.apeiron.ae.stack.BigAEItemStacks;
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 /** Dispatch exact-count operations without silently passing a saturated long to a legacy backend. */
 public final class BigMEInventories {
 
     private BigMEInventories() {}
+
+    public static boolean hasUnlimitedCapacity(final IMEInventory<?> inventory) {
+        Object current = inventory;
+        for (int depth = 0; depth < 8 && current != null; depth++) {
+            if (current instanceof BigUnlimitedMEInventory) return true;
+            if (!(current instanceof IMEInventoryHandler)) return false;
+            final Object next = ((IMEInventoryHandler<?>) current).getInternal();
+            if (next == current) return false;
+            current = next;
+        }
+        return false;
+    }
+
+    public static boolean isUnlimitedCell(final net.minecraft.item.ItemStack stack,
+        final appeng.api.storage.data.IAEStackType<?> type) {
+        return stack != null && hasUnlimitedCapacity(
+            appeng.api.AEApi.instance()
+                .registries()
+                .cell()
+                .getCellInventory(stack, null, type));
+    }
 
     /** Dispatch an exact operation for any AE stack type without passing a saturated long to legacy code. */
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -107,9 +130,11 @@ public final class BigMEInventories {
         StackType request, int iteration) {
         Objects.requireNonNull(inventory, "inventory");
         Objects.requireNonNull(request, "request");
-        StackType stack = (StackType) inventory
-            .getAvailableItems(request.getStackType().createList(), iteration,
-                Optional.of(item -> item.isSameType(request)))
+        StackType stack = (StackType) inventory.getAvailableItems(
+            request.getStackType()
+                .createList(),
+            iteration,
+            Optional.of(item -> item.isSameType(request)))
             .findPrecise(request);
         return stack == null ? null : (StackType) stack.copy();
     }

@@ -27,7 +27,9 @@ public abstract class AEItemListsMixin {
 
     @Inject(method = "addStorage(Lappeng/api/storage/data/IAEItemStack;)V", at = @At("HEAD"), cancellable = true)
     private void apeiron$addStorageExact(IAEItemStack option, CallbackInfo ci) {
-        if (option == null || !(option instanceof BigAEItemStack) || !((BigAEItemStack) option).isStackSizeBig()) {
+        if (option == null || !(option instanceof BigAEItemStack)
+            || !((BigAEItemStack) option).isStackSizeBig()
+                && !com.silvia.apeiron.ae.stack.BigAEStackValues.isInfinite(option)) {
             return;
         }
         IAEItemStack stored = findPrecise(option);

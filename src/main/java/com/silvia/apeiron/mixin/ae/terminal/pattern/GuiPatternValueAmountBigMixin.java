@@ -17,8 +17,10 @@ import appeng.client.gui.implementations.GuiPatternValueAmount;
 public abstract class GuiPatternValueAmountBigMixin {
 
     @Redirect(
-        method = "actionPerformed",
-        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEStack;setStackSize(J)Lappeng/api/storage/data/IAEStack;"))
+        method = { "actionPerformed", "func_146284_a" },
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/api/storage/data/IAEStack;setStackSize(J)Lappeng/api/storage/data/IAEStack;"))
     private IAEStack<?> apeiron$setExact(final IAEStack<?> stack, final long legacyAmount) {
         final BigInteger exact = ((BigAmountGui) (Object) this).getAmountBig();
         return exact == null ? stack.setStackSize(legacyAmount) : BigAEStackValues.set(stack, exact);

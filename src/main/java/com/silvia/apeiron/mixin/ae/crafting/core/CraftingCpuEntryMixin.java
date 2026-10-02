@@ -35,7 +35,7 @@ public abstract class CraftingCpuEntryMixin implements BigCraftingCpuEntry {
 
     @Inject(
         method = "<init>(Lappeng/api/storage/data/IAEStack;JJJLappeng/util/ScheduledReason;)V",
-        at = @At("HEAD"))
+        at = @At("TAIL"))
     private void apeiron$captureConstructor(final IAEStack<?> stack, final long stored, final long active,
         final long pending, final ScheduledReason reason, final CallbackInfo ci) {
         final BigInteger[] values = BigCraftingCpuEntries.take(stored, active, pending);

@@ -11,10 +11,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.ae.stack.BigAEItemStack;
-import com.silvia.apeiron.ae.crafting.packets.BigCraftPackets;
 import com.silvia.apeiron.ae.crafting.core.BigCraftRequest;
+import com.silvia.apeiron.ae.crafting.packets.BigCraftPackets;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.BigValueCodec;
 
 import appeng.api.storage.data.IAEStack;
@@ -54,7 +53,7 @@ public abstract class PacketCraftRequestMixin implements BigCraftRequest {
             value = "INVOKE",
             target = "Lappeng/api/storage/data/IAEStack;setStackSize(J)Lappeng/api/storage/data/IAEStack;"))
     private IAEStack<?> apeiron$setExactCraftAmount(final IAEStack<?> stack, final long legacyAmount) {
-        if (this.apeiron$amountBig != null && stack instanceof BigAEItemStack) {
+        if (this.apeiron$amountBig != null) {
             return BigAEStackValues.set(stack, this.apeiron$amountBig);
         }
         return stack.setStackSize(legacyAmount);

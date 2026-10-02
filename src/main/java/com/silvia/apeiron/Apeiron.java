@@ -18,7 +18,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
     name = Apeiron.NAME,
     version = Tags.VERSION,
     acceptedMinecraftVersions = "[1.7.10]",
-    dependencies = "required-after:appliedenergistics2")
+    dependencies = "required-after:appliedenergistics2;required-after:gregtech;after:tectech;after:sciencenotleisure;after:programmablehatches;after:TwistSpaceTechnology;after:aeinfinitycell;after:appeu")
 public final class Apeiron {
 
     public static final String MODID = "apeiron";
@@ -44,11 +44,33 @@ public final class Apeiron {
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
         if ("1".equals(System.getenv("APEIRON_VERIFY_STACK"))) {
+            com.silvia.apeiron.ae.smoke.AEProductionEntrypointSmoke.verify();
+            com.silvia.apeiron.ae.smoke.AEMixinTargetSmoke.verify();
             AEItemStackSmoke.verify();
             AEInventorySmoke.verify();
+            com.silvia.apeiron.ae.smoke.InfiniteCapabilitiesSmoke.verify();
+            com.silvia.apeiron.ae.smoke.AESecurityInventorySmoke.verify();
+            com.silvia.apeiron.ae.smoke.AECraftingCPUSmoke.verify();
+            com.silvia.apeiron.ae.smoke.AECraftingPlanningSmoke.verify();
             com.silvia.apeiron.ae.smoke.AEBackendSmoke.verify();
+            com.silvia.apeiron.common.machine.me.output.verification.BoundlessMEOutputSmoke.verify();
+            com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke.verify();
+            com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
+            com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
+            com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyOutputSmoke.verify();
+            if (cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology")) {
+                com.silvia.apeiron.common.machine.tst.verification.TstOutputSmoke.verify();
+            } else {
+                LOG.info("TST not installed; optional output integration skipped");
+            }
+            if (cpw.mods.fml.common.Loader.isModLoaded("aeinfinitycell")) {
+                com.silvia.apeiron.common.integration.aeinfinitycell.verification.InfinityCellSmoke.verify();
+            } else {
+                LOG.info("AE2 Infinity Cell not installed; optional storage integration skipped");
+            }
             if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) {
-                cpw.mods.fml.common.FMLCommonHandler.instance().exitJava(0, false);
+                cpw.mods.fml.common.FMLCommonHandler.instance()
+                    .exitJava(0, false);
             }
         }
     }

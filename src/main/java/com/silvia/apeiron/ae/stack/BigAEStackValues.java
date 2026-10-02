@@ -12,6 +12,10 @@ public final class BigAEStackValues {
 
     private BigAEStackValues() {}
 
+    public static boolean isInfinite(IAEStack<?> stack) {
+        return stack instanceof InfiniteAEStack && ((InfiniteAEStack) stack).isInfinite();
+    }
+
     public static BigInteger get(final IAEStack<?> stack) {
         if (stack == null) return BigInteger.ZERO;
         if (stack instanceof BigAEStack) {
@@ -54,6 +58,7 @@ public final class BigAEStackValues {
     }
 
     public static int compare(final IAEStack<?> left, final IAEStack<?> right) {
+        if (isInfinite(left) || isInfinite(right)) return Boolean.compare(isInfinite(left), isInfinite(right));
         if (!isBig(left) && !isBig(right)) return Long.compare(left.getStackSize(), right.getStackSize());
         return get(left).compareTo(get(right));
     }
@@ -64,6 +69,11 @@ public final class BigAEStackValues {
     }
 
     public static void addStorage(final IAEStack<?> target, final IAEStack<?> source) {
+        if (isInfinite(target)) return;
+        if (isInfinite(source)) {
+            ((InfiniteAEStack) target).setInfinite(true);
+            return;
+        }
         if (isBig(source)) {
             set(target, get(target).add(get(source)));
         } else {
@@ -84,6 +94,8 @@ public final class BigAEStackValues {
     }
 
     public static BigInteger min(final IAEStack<?> left, final IAEStack<?> right) {
+        if (isInfinite(left)) return get(right);
+        if (isInfinite(right)) return get(left);
         return get(left).min(get(right));
     }
 

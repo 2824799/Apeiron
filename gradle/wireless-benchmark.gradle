@@ -1,0 +1,30 @@
+// Runs the real GT wireless API in isolated JVMs, independently of a Minecraft world or game client.
+sourceSets {
+    wirelessBenchmark {
+        java.srcDir 'benchmarks/wireless/src/main/java'
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+dependencies {
+    wirelessBenchmarkImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    wirelessBenchmarkAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
+}
+
+tasks.register('benchmarkWirelessEnergy', JavaExec) {
+    group = 'verification'
+    description = 'Measure the real GregTech wireless debit and Apeiron direct debit without launching Minecraft.'
+    dependsOn tasks.named('wirelessBenchmarkClasses')
+    classpath = sourceSets.wirelessBenchmark.runtimeClasspath
+    mainClass = 'org.openjdk.jmh.Main'
+    jvmArgs '-Xms512m', '-Xmx512m'
+    def report = layout.buildDirectory.file('reports/jmh/wireless-energy.json')
+    doFirst {
+        report.get().asFile.parentFile.mkdirs()
+    }
+    args 'com.silvia.apeiron.bench.WirelessEnergyBenchmark',
+        '-wi', '2', '-i', '3', '-w', '500ms', '-r', '500ms', '-f', '1',
+        '-bm', 'avgt', '-tu', 'ns', '-prof', 'gc',
+        '-rf', 'json', '-rff', report.get().asFile.absolutePath
+}

@@ -4,15 +4,18 @@ import java.math.BigInteger;
 import java.text.NumberFormat;
 import java.util.Locale;
 
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.math.BigNumberFormatter;
 
 import appeng.api.storage.data.IAEStack;
 import appeng.util.ReadableNumberConverter;
-import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
 /** Bridges AE's long-only GUI calls to exact values without changing its public GUI APIs. */
 public final class BigGuiNumberCapture {
 
+    private static final ThreadLocal<Boolean> STACK_INFINITE = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> TOTAL_INFINITE = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> PENDING_INFINITE = new ThreadLocal<>();
     private static final ThreadLocal<BigInteger> STACK = new ThreadLocal<>();
     private static final ThreadLocal<BigInteger> CRAFTS = new ThreadLocal<>();
     private static final ThreadLocal<BigInteger> REQUESTABLE = new ThreadLocal<>();
@@ -35,6 +38,7 @@ public final class BigGuiNumberCapture {
     private BigGuiNumberCapture() {}
 
     public static long captureStack(final IAEStack<?> stack) {
+        STACK_INFINITE.set(BigAEStackValues.isInfinite(stack));
         final BigInteger value = BigAEStackValues.get(stack);
         STACK.set(value);
         return BigAEStackValues.saturatedLong(value);
@@ -60,49 +64,53 @@ public final class BigGuiNumberCapture {
     }
 
     public static String formatWideStack(final long legacy) {
+        if (Boolean.TRUE.equals(takeFlag(STACK_INFINITE))) {
+            STACK.remove();
+            return "∞";
+        }
         final BigInteger value = take(STACK);
         return value == null || BigAEStackValues.fitsLong(value)
-                ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
-                : BigNumberFormatter.formatCompact(value);
+            ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
+            : BigNumberFormatter.formatCompact(value);
     }
 
     public static String formatWideCrafts(final long legacy) {
         final BigInteger value = CRAFTS.get();
         return value == null || BigAEStackValues.fitsLong(value)
-                ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
-                : BigNumberFormatter.formatCompact(value);
+            ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
+            : BigNumberFormatter.formatCompact(value);
     }
 
     public static String formatWideAny(final long legacy) {
-        final BigInteger crafts = CRAFTS.get();
+        final BigInteger crafts = take(CRAFTS);
         if (crafts != null) {
-            return BigAEStackValues.fitsLong(crafts)
-                    ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
-                    : BigNumberFormatter.formatCompact(crafts);
+            return BigAEStackValues.fitsLong(crafts) ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
+                : BigNumberFormatter.formatCompact(crafts);
         }
         return formatWideStack(legacy);
     }
 
     public static String formatExactStack(final long legacy) {
+        if (Boolean.TRUE.equals(takeFlag(STACK_INFINITE))) {
+            STACK.remove();
+            return "∞";
+        }
         final BigInteger value = take(STACK);
-        return value == null || BigAEStackValues.fitsLong(value)
-                ? NumberFormat.getNumberInstance(Locale.US).format(legacy)
-                : BigNumberFormatter.formatExact(value);
+        return value == null || BigAEStackValues.fitsLong(value) ? NumberFormat.getNumberInstance(Locale.US)
+            .format(legacy) : BigNumberFormatter.formatExact(value);
     }
 
     public static String formatExactCrafts(final long legacy) {
         final BigInteger value = take(CRAFTS);
-        return value == null || BigAEStackValues.fitsLong(value)
-                ? NumberFormat.getNumberInstance(Locale.US).format(legacy)
-                : BigNumberFormatter.formatExact(value);
+        return value == null || BigAEStackValues.fitsLong(value) ? NumberFormat.getNumberInstance(Locale.US)
+            .format(legacy) : BigNumberFormatter.formatExact(value);
     }
 
     public static String formatExactAny(final long legacy) {
         final BigInteger crafts = take(CRAFTS);
         if (crafts != null) {
-            return BigAEStackValues.fitsLong(crafts)
-                    ? NumberFormat.getNumberInstance(Locale.US).format(legacy)
-                    : BigNumberFormatter.formatExact(crafts);
+            return BigAEStackValues.fitsLong(crafts) ? NumberFormat.getNumberInstance(Locale.US)
+                .format(legacy) : BigNumberFormatter.formatExact(crafts);
         }
         return formatExactStack(legacy);
     }
@@ -110,15 +118,14 @@ public final class BigGuiNumberCapture {
     public static String formatWideRequestable(final long legacy) {
         final BigInteger value = REQUESTABLE.get();
         return value == null || BigAEStackValues.fitsLong(value)
-                ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
-                : BigNumberFormatter.formatCompact(value);
+            ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
+            : BigNumberFormatter.formatCompact(value);
     }
 
     public static String formatExactRequestable(final long legacy) {
         final BigInteger value = take(REQUESTABLE);
-        return value == null || BigAEStackValues.fitsLong(value)
-                ? NumberFormat.getNumberInstance(Locale.US).format(legacy)
-                : BigNumberFormatter.formatExact(value);
+        return value == null || BigAEStackValues.fitsLong(value) ? NumberFormat.getNumberInstance(Locale.US)
+            .format(legacy) : BigNumberFormatter.formatExact(value);
     }
 
     /** Formats GuiOptimizePatterns' first wide value and records its multiplier shift. */
@@ -130,9 +137,8 @@ public final class BigGuiNumberCapture {
         final int calls = OPTIMIZER_WIDE_CALLS.get() == null ? 0 : OPTIMIZER_WIDE_CALLS.get();
         OPTIMIZER_WIDE_CALLS.set(calls + 1);
         if (calls == 0) {
-            return BigAEStackValues.fitsLong(crafts)
-                    ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
-                    : BigNumberFormatter.formatCompact(crafts);
+            return BigAEStackValues.fitsLong(crafts) ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
+                : BigNumberFormatter.formatCompact(crafts);
         }
 
         final int multiplier = powerOfTwoExponent(legacy);
@@ -146,7 +152,7 @@ public final class BigGuiNumberCapture {
         final BigInteger per = take(REQUESTABLE);
         if (current == null || per == null) {
             return appeng.container.implementations.ContainerOptimizePatterns
-                    .getBitMultiplier(currentLegacy, perLegacy, maximumLegacy);
+                .getBitMultiplier(currentLegacy, perLegacy, maximumLegacy);
         }
         if (current.signum() <= 0 || per.signum() <= 0 || maximumLegacy <= 0) return 0;
         final BigInteger crafted = current.multiply(per);
@@ -174,9 +180,8 @@ public final class BigGuiNumberCapture {
             REQUESTABLE.remove();
             REQUESTABLE_FORMATS.remove();
         }
-        return exact == null || BigAEStackValues.fitsLong(exact)
-                ? NumberFormat.getNumberInstance(Locale.US).format(legacy)
-                : BigNumberFormatter.formatExact(exact);
+        return exact == null || BigAEStackValues.fitsLong(exact) ? NumberFormat.getNumberInstance(Locale.US)
+            .format(legacy) : BigNumberFormatter.formatExact(exact);
     }
 
     public static String formatPower(final long legacy, final boolean isRate) {
@@ -299,16 +304,15 @@ public final class BigGuiNumberCapture {
         BigInteger total = SCAN_TYPES_TOTAL.get();
         if (used != null) SCAN_TYPES_USED.remove();
         if (total != null) SCAN_TYPES_TOTAL.remove();
-        return (used == null ? Long.toString(usedLegacy) : BigNumberFormatter.formatExact(used))
-                + " / "
-                + (total == null ? Long.toString(totalLegacy) : BigNumberFormatter.formatExact(total));
+        return (used == null ? Long.toString(usedLegacy) : BigNumberFormatter.formatExact(used)) + " / "
+            + (total == null ? Long.toString(totalLegacy) : BigNumberFormatter.formatExact(total));
     }
 
     public static Object[] formatScanTypeArgs(final Object[] args) {
-        final long used = args != null && args.length > 0 && args[0] instanceof Number
-            ? ((Number) args[0]).longValue() : 0L;
-        final long total = args != null && args.length > 1 && args[1] instanceof Number
-            ? ((Number) args[1]).longValue() : 0L;
+        final long used = args != null && args.length > 0 && args[0] instanceof Number ? ((Number) args[0]).longValue()
+            : 0L;
+        final long total = args != null && args.length > 1 && args[1] instanceof Number ? ((Number) args[1]).longValue()
+            : 0L;
         return new Object[] { formatScanInteger(used), formatScanInteger(total) };
     }
 
@@ -320,15 +324,14 @@ public final class BigGuiNumberCapture {
     public static String formatWideAmount(final long legacy) {
         final BigInteger value = AMOUNT.get();
         return value == null || BigAEStackValues.fitsLong(value)
-                ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
-                : BigNumberFormatter.formatCompact(value);
+            ? ReadableNumberConverter.INSTANCE.toWideReadableForm(legacy)
+            : BigNumberFormatter.formatCompact(value);
     }
 
     public static String formatExactAmount(final long legacy) {
         final BigInteger value = take(AMOUNT);
-        return value == null || BigAEStackValues.fitsLong(value)
-                ? NumberFormat.getNumberInstance(Locale.US).format(legacy)
-                : BigNumberFormatter.formatExact(value);
+        return value == null || BigAEStackValues.fitsLong(value) ? NumberFormat.getNumberInstance(Locale.US)
+            .format(legacy) : BigNumberFormatter.formatExact(value);
     }
 
     public static double captureReport(final BigInteger value, final double legacy) {
@@ -343,9 +346,8 @@ public final class BigGuiNumberCapture {
     public static String formatReport(final double legacy) {
         BigInteger value = take(REPORT);
         if (value == null) value = take(STACK);
-        return value == null || BigAEStackValues.fitsLong(value)
-                ? appeng.util.Platform.fmt(legacy)
-                : BigNumberFormatter.formatCompact(value);
+        return value == null || BigAEStackValues.fitsLong(value) ? appeng.util.Platform.fmt(legacy)
+            : BigNumberFormatter.formatCompact(value);
     }
 
     public static long captureReportLong(final BigInteger value, final long legacy) {
@@ -354,6 +356,9 @@ public final class BigGuiNumberCapture {
     }
 
     public static void clear() {
+        STACK_INFINITE.remove();
+        TOTAL_INFINITE.remove();
+        PENDING_INFINITE.remove();
         STACK.remove();
         CRAFTS.remove();
         REQUESTABLE.remove();
@@ -373,17 +378,19 @@ public final class BigGuiNumberCapture {
 
     public static String longString(final long legacy) {
         final BigInteger value = take(STACK);
-        return value == null || BigAEStackValues.fitsLong(value)
-                ? Long.toString(legacy)
-                : BigNumberFormatter.formatCompact(value);
+        return value == null || BigAEStackValues.fitsLong(value) ? Long.toString(legacy)
+            : BigNumberFormatter.formatCompact(value);
     }
 
     public static void beginTotal() {
+        TOTAL_INFINITE.set(false);
+        PENDING_INFINITE.remove();
         TOTAL.set(BigInteger.ZERO);
         PENDING_SET.remove();
     }
 
     public static long addToTotal(final IAEStack<?> stack) {
+        if (BigAEStackValues.isInfinite(stack)) TOTAL_INFINITE.set(true);
         final BigInteger value = BigAEStackValues.get(stack);
         final BigInteger total = TOTAL.get();
         TOTAL.set((total == null ? BigInteger.ZERO : total).add(value));
@@ -391,6 +398,7 @@ public final class BigGuiNumberCapture {
     }
 
     public static long finishTotal(final long legacy) {
+        PENDING_INFINITE.set(takeFlag(TOTAL_INFINITE));
         final BigInteger total = TOTAL.get();
         TOTAL.remove();
         final BigInteger exact = total == null ? BigInteger.valueOf(legacy) : total;
@@ -399,14 +407,30 @@ public final class BigGuiNumberCapture {
     }
 
     public static IAEStack<?> setPendingTotal(final IAEStack<?> stack, final long legacy) {
+        if (Boolean.TRUE.equals(takeFlag(PENDING_INFINITE))) {
+            PENDING_SET.remove();
+            ((com.silvia.apeiron.ae.stack.InfiniteAEStack) stack).setInfinite(true);
+            return stack;
+        }
         final BigInteger exact = PENDING_SET.get();
         PENDING_SET.remove();
         return exact == null ? stack.setStackSize(legacy) : BigAEStackValues.set(stack, exact);
     }
 
     public static IAEStack<?> setCapturedStack(final IAEStack<?> stack, final long legacy) {
+        if (Boolean.TRUE.equals(takeFlag(STACK_INFINITE))) {
+            STACK.remove();
+            ((com.silvia.apeiron.ae.stack.InfiniteAEStack) stack).setInfinite(true);
+            return stack;
+        }
         final BigInteger exact = take(STACK);
         return exact == null ? stack.setStackSize(legacy) : BigAEStackValues.set(stack, exact);
+    }
+
+    private static Boolean takeFlag(ThreadLocal<Boolean> flag) {
+        Boolean value = flag.get();
+        flag.remove();
+        return value;
     }
 
     private static BigInteger take(final ThreadLocal<BigInteger> local) {
@@ -421,6 +445,8 @@ public final class BigGuiNumberCapture {
     }
 
     private static BigInteger ceilDivide(final BigInteger numerator, final BigInteger denominator) {
-        return numerator.add(denominator).subtract(BigInteger.ONE).divide(denominator);
+        return numerator.add(denominator)
+            .subtract(BigInteger.ONE)
+            .divide(denominator);
     }
 }

@@ -23,16 +23,18 @@ public abstract class GuiLevelEmitterBigMixin {
     @Shadow
     private ContainerLevelEmitter container;
 
-    @org.spongepowered.asm.mixin.injection.Inject(method = "initGui", at = @At("TAIL"))
+    @org.spongepowered.asm.mixin.injection.Inject(method = { "initGui", "func_73866_w_" }, at = @At("TAIL"))
     private void apeiron$refreshExactField(final org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
         if (this.container instanceof BigLevelEmitterContainerAccess access && this.amountTextField != null) {
-            this.amountTextField.setText(access.getLevelBig().toString());
+            this.amountTextField.setText(
+                access.getLevelBig()
+                    .toString());
             this.amountTextField.setCursorPositionEnd();
         }
     }
 
     @Redirect(
-        method = "actionPerformed",
+        method = { "actionPerformed", "func_146284_a" },
         at = @org.spongepowered.asm.mixin.injection.At(
             value = "INVOKE",
             target = "Lappeng/container/implementations/ContainerLevelEmitter;setLevel(J)V"))
@@ -47,7 +49,9 @@ public abstract class GuiLevelEmitterBigMixin {
 
     private BigInteger apeiron$parse() {
         if (this.amountTextField == null || this.amountTextField.getText() == null) return null;
-        final String text = this.amountTextField.getText().trim().replace(",", "");
+        final String text = this.amountTextField.getText()
+            .trim()
+            .replace(",", "");
         if (!text.matches("[0-9]+")) return null;
         try {
             return new BigInteger(text);

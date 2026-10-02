@@ -9,13 +9,19 @@ import org.junit.Test;
 public class BigNumberFormatterTest {
 
     @Test
-    public void formatsCompactCountsWithThreeSignificantDigits() {
+    public void formatsCompactCountsWithOneDecimalPlace() {
         assertEquals(
-            "9.22E18",
+            "9.2E18",
             BigNumberFormatter.formatCompact(
                 BigInteger.valueOf(Long.MAX_VALUE)
                     .add(BigInteger.ONE)));
-        assertEquals("1.00E19", BigNumberFormatter.formatCompact(BigInteger.TEN.pow(19)));
+        assertEquals("1.0E19", BigNumberFormatter.formatCompact(BigInteger.TEN.pow(19)));
+        assertEquals("9.9E19", BigNumberFormatter.formatCompact(new BigInteger("99400000000000000000")));
+        assertEquals("1.0E20", BigNumberFormatter.formatCompact(new BigInteger("99600000000000000000")));
+        assertEquals("-1.0E20", BigNumberFormatter.formatCompact(new BigInteger("-99600000000000000000")));
+        assertEquals(
+            Long.toString(Long.MAX_VALUE),
+            BigNumberFormatter.formatCompact(BigInteger.valueOf(Long.MAX_VALUE)));
     }
 
     @Test

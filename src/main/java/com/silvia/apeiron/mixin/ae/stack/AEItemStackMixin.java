@@ -44,6 +44,7 @@ public abstract class AEItemStackMixin extends AEStack<IAEItemStack> implements 
 
     @Override
     public void incStackSize(long amount) {
+        if (com.silvia.apeiron.ae.stack.BigAEStackValues.isInfinite((IAEItemStack) (Object) this)) return;
         if (apeiron$stackSizeBig != null) {
             apeiron$stackSizeBig.add(amount);
             apeiron$syncStackSize();
@@ -62,6 +63,7 @@ public abstract class AEItemStackMixin extends AEStack<IAEItemStack> implements 
 
     @Override
     public void decStackSize(long amount) {
+        if (com.silvia.apeiron.ae.stack.BigAEStackValues.isInfinite((IAEItemStack) (Object) this)) return;
         if (apeiron$stackSizeBig != null) {
             apeiron$stackSizeBig.subtract(amount);
             apeiron$syncStackSize();
@@ -100,6 +102,7 @@ public abstract class AEItemStackMixin extends AEStack<IAEItemStack> implements 
 
     @Override
     public void incStackSizeBig(BigInteger amount) {
+        if (com.silvia.apeiron.ae.stack.BigAEStackValues.isInfinite((IAEItemStack) (Object) this)) return;
         if (AdaptiveInteger.fitsLong(amount)) {
             incStackSize(amount.longValue());
         } else {
@@ -109,6 +112,7 @@ public abstract class AEItemStackMixin extends AEStack<IAEItemStack> implements 
 
     @Override
     public void decStackSizeBig(BigInteger amount) {
+        if (com.silvia.apeiron.ae.stack.BigAEStackValues.isInfinite((IAEItemStack) (Object) this)) return;
         if (AdaptiveInteger.fitsLong(amount)) {
             decStackSize(amount.longValue());
         } else {
@@ -285,28 +289,8 @@ public abstract class AEItemStackMixin extends AEStack<IAEItemStack> implements 
         if (other == null) {
             return;
         }
-        if (other instanceof BigAEItemStack) {
-            BigAEItemStack exact = (BigAEItemStack) other;
-            if (exact.isStackSizeBig()) {
-                incStackSizeBig(exact.getStackSizeBig());
-            } else {
-                incStackSize(other.getStackSize());
-            }
-            if (exact.isCountRequestableBig()) {
-                incCountRequestableBig(exact.getCountRequestableBig());
-            } else {
-                incCountRequestable(other.getCountRequestable());
-            }
-            if (exact.isCountRequestableCraftsBig()) {
-                incCountRequestableCraftsBig(exact.getCountRequestableCraftsBig());
-            } else {
-                apeiron$addRequestableCrafts(other.getCountRequestableCrafts());
-            }
-        } else {
-            incStackSize(other.getStackSize());
-            incCountRequestable(other.getCountRequestable());
-            apeiron$addRequestableCrafts(other.getCountRequestableCrafts());
-        }
+        BigAEItemStacks.addStorage((IAEItemStack) (Object) this, other);
+        BigAEItemStacks.addRequestable((IAEItemStack) (Object) this, other, true);
         setCraftable(isCraftable() || other.isCraftable());
         setUsedPercent(getUsedPercent() + other.getUsedPercent());
     }
@@ -337,6 +321,8 @@ public abstract class AEItemStackMixin extends AEStack<IAEItemStack> implements 
 
     @Inject(method = "<init>(Lappeng/util/item/AEItemStack;)V", at = @At("TAIL"))
     private void apeiron$copyExactValues(AEItemStack source, CallbackInfo ci) {
+        if (com.silvia.apeiron.ae.stack.BigAEStackValues.isInfinite(source))
+            ((com.silvia.apeiron.ae.stack.InfiniteAEStack) (Object) this).setInfinite(true);
         BigAEItemStack exact = (BigAEItemStack) (Object) source;
         if (exact.isStackSizeBig()) setStackSizeBig(exact.getStackSizeBig());
         if (exact.isCountRequestableBig()) setCountRequestableBig(exact.getCountRequestableBig());
@@ -345,6 +331,9 @@ public abstract class AEItemStackMixin extends AEStack<IAEItemStack> implements 
 
     @Inject(method = "writeToNBT", at = @At("TAIL"))
     private void apeiron$writeExactNBT(NBTTagCompound tag, CallbackInfo ci) {
+        if (com.silvia.apeiron.ae.stack.BigAEStackValues.isInfinite((IAEItemStack) (Object) this))
+            tag.setBoolean("ApeironInfinite", true);
+        else tag.removeTag("ApeironInfinite");
         if (apeiron$stackSizeBig != null) {
             BigValueCodec.writeNBT(tag, "Cnt", "ApeironCnt", apeiron$stackSizeBig);
         } else {
@@ -366,6 +355,7 @@ public abstract class AEItemStackMixin extends AEStack<IAEItemStack> implements 
     private static void apeiron$readExactNBT(NBTTagCompound tag, CallbackInfoReturnable<IAEItemStack> cir) {
         IAEItemStack stack = cir.getReturnValue();
         if (stack == null) return;
+        if (tag.getBoolean("ApeironInfinite")) ((com.silvia.apeiron.ae.stack.InfiniteAEStack) stack).setInfinite(true);
         BigAEItemStack exact = (BigAEItemStack) stack;
         if (tag.hasKey("ApeironCnt")) {
             exact.setStackSizeBig(

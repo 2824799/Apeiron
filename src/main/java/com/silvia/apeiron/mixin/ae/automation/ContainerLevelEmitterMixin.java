@@ -10,18 +10,17 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.silvia.apeiron.ae.sync.BigIntegerSyncCodec;
 import com.silvia.apeiron.ae.automation.BigLevelEmitterAccess;
 import com.silvia.apeiron.ae.automation.BigLevelEmitterContainerAccess;
-import com.silvia.apeiron.math.BigNumberFormatter;
+import com.silvia.apeiron.ae.sync.BigIntegerSyncCodec;
 
 import appeng.api.parts.ILevelEmitter;
+import appeng.client.gui.widgets.MEGuiTextField;
 import appeng.container.implementations.ContainerLevelEmitter;
 import appeng.container.sync.handlers.ObjectSyncHandler;
-import appeng.client.gui.widgets.MEGuiTextField;
-import cpw.mods.fml.relauncher.SideOnly;
-import cpw.mods.fml.relauncher.Side;
 import appeng.util.Platform;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 /** Adds an exact threshold channel beside AE's legacy long channel. */
 @Mixin(value = ContainerLevelEmitter.class, remap = false)
@@ -38,29 +37,31 @@ public abstract class ContainerLevelEmitterMixin implements BigLevelEmitterConta
     @Unique
     private ObjectSyncHandler<BigInteger> apeiron$levelBigSync;
 
-    @Inject(method = "<init>(Lnet/minecraft/entity/player/InventoryPlayer;Lappeng/api/parts/ILevelEmitter;)V", at = @At("TAIL"))
+    @Inject(
+        method = "<init>(Lnet/minecraft/entity/player/InventoryPlayer;Lappeng/api/parts/ILevelEmitter;)V",
+        at = @At("TAIL"))
     private void apeiron$registerBigSync(final CallbackInfo ci) {
         final BigInteger initial = BigInteger.valueOf(apeiron$getEmitter().getReportingValue());
         this.apeiron$levelBigSync = ((ContainerLevelEmitter) (Object) this).getSyncManager()
-                .root()
-                .object("apeironEmitterValueBig", BigIntegerSyncCodec.INSTANCE, initial)
-                .onClientChange((oldValue, newValue) -> {
-                    if (this.textField != null && newValue != null) {
-                        this.textField.setText(newValue.toString());
-                        this.textField.setCursorPositionEnd();
-                    }
-                })
-                .onServerChange((oldValue, newValue) -> {
-                    if (newValue != null && apeiron$getEmitter() instanceof BigLevelEmitterAccess access) {
-                        access.setReportingValueBig(newValue.max(BigInteger.ZERO));
-                    }
-                });
+            .root()
+            .object("apeironEmitterValueBig", BigIntegerSyncCodec.INSTANCE, initial)
+            .onClientChange((oldValue, newValue) -> {
+                if (this.textField != null && newValue != null) {
+                    this.textField.setText(newValue.toString());
+                    this.textField.setCursorPositionEnd();
+                }
+            })
+            .onServerChange((oldValue, newValue) -> {
+                if (newValue != null && apeiron$getEmitter() instanceof BigLevelEmitterAccess access) {
+                    access.setReportingValueBig(newValue.max(BigInteger.ZERO));
+                }
+            });
     }
 
-    @Inject(method = "detectAndSendChanges", at = @At("HEAD"))
+    @Inject(method = { "detectAndSendChanges", "func_75142_b" }, at = @At("HEAD"))
     private void apeiron$syncBigValue(final CallbackInfo ci) {
         if (Platform.isServer() && this.apeiron$levelBigSync != null
-                && apeiron$getEmitter() instanceof BigLevelEmitterAccess access) {
+            && apeiron$getEmitter() instanceof BigLevelEmitterAccess access) {
             this.apeiron$levelBigSync.set(access.getReportingValueBig());
         }
     }
@@ -70,9 +71,8 @@ public abstract class ContainerLevelEmitterMixin implements BigLevelEmitterConta
         if (this.apeiron$levelBigSync != null && this.apeiron$levelBigSync.get() != null) {
             return this.apeiron$levelBigSync.get();
         }
-        return apeiron$getEmitter() instanceof BigLevelEmitterAccess access
-                ? access.getReportingValueBig()
-                : BigInteger.valueOf(apeiron$getEmitter().getReportingValue());
+        return apeiron$getEmitter() instanceof BigLevelEmitterAccess access ? access.getReportingValueBig()
+            : BigInteger.valueOf(apeiron$getEmitter().getReportingValue());
     }
 
     @Override

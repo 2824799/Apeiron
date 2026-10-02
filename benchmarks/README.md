@@ -1,5 +1,7 @@
 # 数值计数基准测试
 
+GT 无线电网的真实接口基准使用根项目的 `benchmarkWirelessEnergy` 任务，见 [无线电网基准说明](wireless/README.md)。以下为独立数值累加测试。
+
 这是与 Forge 构建隔离的 JMH 小工程，用来比较一次数量累加及读取的成本：
 
 | 测项 | 含义 |

@@ -66,6 +66,7 @@ public final class AEBackendSmoke {
                 "appeng.parts.automation.PartFormationPlane", "appeng.tile.storage.TileIOPort" }) {
                 Class.forName(name, false, AEBackendSmoke.class.getClassLoader());
             }
+            AEProtocolSmoke.verify();
         } catch (ReflectiveOperationException | AppEngException error) {
             throw new IllegalStateException("AE backend verification failed", error);
         }
@@ -118,6 +119,18 @@ public final class AEBackendSmoke {
     }
 
     private static void verifyFluidNetwork() throws AppEngException {
+        final appeng.util.item.FluidList merged = new appeng.util.item.FluidList();
+        merged.addStorage(water(HUGE));
+        merged.addStorage(water(HUGE));
+        check(BigAEStackValues.get(merged.findPrecise(water(BigInteger.ONE)))
+            .equals(HUGE.multiply(BigInteger.valueOf(2))), "fluid list truncated an existing entry merge");
+        final appeng.util.item.FluidList requests = new appeng.util.item.FluidList();
+        final IAEFluidStack requestable = water(BigInteger.ZERO);
+        ((com.silvia.apeiron.ae.stack.BigAERequestableStack) requestable).setCountRequestableBig(HUGE);
+        requests.addRequestable(requestable);
+        requests.addRequestable(requestable);
+        check(BigAEStackValues.getCountRequestable(requests.findPrecise(water(BigInteger.ONE)))
+            .equals(HUGE.multiply(BigInteger.valueOf(2))), "fluid list truncated requestable counts");
         final ItemStack firstItem = new ItemStack(new FluidVerificationCell());
         final FluidCellInventory first = new FluidCellInventory(firstItem, null);
         final FluidCellInventory second = new FluidCellInventory(new ItemStack(new FluidVerificationCell()), null);
