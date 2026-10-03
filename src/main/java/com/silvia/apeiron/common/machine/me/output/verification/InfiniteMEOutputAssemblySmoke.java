@@ -21,6 +21,10 @@ import com.silvia.apeiron.config.ApeironConfig;
 import com.silvia.apeiron.math.BigNumberFormatter;
 import com.silvia.apeiron.math.BigValueCodec;
 
+import gregtech.api.enums.HatchElement;
+import gregtech.api.metatileentity.BaseMetaTileEntity;
+import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
+import gregtech.common.tileentities.machines.multi.MTEElectricBlastFurnace;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -39,6 +43,7 @@ public final class InfiniteMEOutputAssemblySmoke {
     }
 
     public static void verify() {
+        verifyGenericRegistration();
         final MTEInfiniteMEOutputAssembly assembly = assembly();
         check(
             com.silvia.apeiron.common.machine.registration.ApeironMachines.mixedOutputAssembly != null,
@@ -123,6 +128,61 @@ public final class InfiniteMEOutputAssemblySmoke {
         Apeiron.LOG.info("Infinite ME Output Assembly dual-channel, persistence and shared-node verification passed");
     }
 
+    private static void verifyGenericRegistration() {
+        final MTEElectricBlastFurnace ordinary = new MTEElectricBlastFurnace("apeiron.verification.generic_output");
+        ordinary.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        assertRegistration(ordinary);
+        if (cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology")) {
+            try {
+                final MTEMultiBlockBase tst = (MTEMultiBlockBase) Class
+                    .forName("com.Nxer.TwistSpaceTechnology.common.machine.GT_TileEntity_PhysicalFormSwitcher")
+                    .getConstructor(String.class)
+                    .newInstance("apeiron.verification.physical_form_output");
+                tst.setBaseMetaTileEntity(new BaseMetaTileEntity());
+                assertRegistration(tst);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("Physical form switcher registration verification failed", e);
+            }
+        }
+        Apeiron.LOG.info(
+            "Mixed output generic registration verification passed: GT/TST, both hatch counts, repeat scan and rebuild");
+    }
+
+    private static void assertRegistration(MTEMultiBlockBase controller) {
+        final MTEInfiniteMEOutputAssembly assembly = assembly();
+        check(
+            HatchElement.OutputHatch.matchesHatch(assembly) && HatchElement.OutputBus.matchesHatch(assembly),
+            "hybrid does not match both structure element types");
+        check(!controller.addToMachineList(null, 0), "null hatch was accepted");
+        for (int scan = 0; scan < 2; scan++) {
+            controller.mOutputBusses.clear();
+            controller.mOutputHatches.clear();
+            for (int repeat = 0; repeat < 3; repeat++) {
+                check(
+                    controller.addToMachineList(assembly.getBaseMetaTileEntity(), 0),
+                    "generic hatch adder rejected assembly");
+            }
+            check(
+                controller.mOutputBusses.size() == 1 && controller.mOutputHatches.size() == 1,
+                "generic scan must register both output types exactly once");
+            check(controller.mOutputHatches.get(0) == assembly.getFluidOutput(), "wrong fluid view registered");
+            check(
+                HatchElement.OutputHatch.count(controller) == 1 && HatchElement.OutputBus.count(controller) == 1,
+                "structure reports no output hatch or bus");
+            check(
+                controller.addOutputBusToMachineList(assembly.getBaseMetaTileEntity(), 0)
+                    && controller.addOutputHatchToMachineList(assembly.getBaseMetaTileEntity(), 0),
+                "specialized adders regressed");
+            check(
+                controller.mOutputBusses.size() == 1 && controller.mOutputHatches.size() == 1,
+                "specialized adder duplicated generic registration");
+            check(
+                assembly.getBaseMetaTileEntity()
+                    .getMetaTileEntity() == assembly,
+                "fluid view replaced the physical assembly");
+        }
+    }
+
     private static void verifyWaila(MTEInfiniteMEOutputAssembly assembly) {
         final NBTTagCompound tag = new NBTTagCompound();
         assembly.getWailaNBTData(null, (TileEntity) assembly.getBaseMetaTileEntity(), tag, null, 0, 0, 0);
@@ -148,6 +208,9 @@ public final class InfiniteMEOutputAssemblySmoke {
                 .toBigInteger()
                 .equals(HUGE.multiply(BigInteger.valueOf(3))),
             "Waila fluid amount");
+        if (!cpw.mods.fml.common.FMLCommonHandler.instance()
+            .getSide()
+            .isClient()) return;
         final List<String> lines = new ArrayList<>();
         BigMEOutputProvider.WailaHelper.getWailaAdvancedBody("item", lines, tag);
         BigMEOutputProvider.WailaHelper.getWailaAdvancedBody("fluid", lines, fluids);

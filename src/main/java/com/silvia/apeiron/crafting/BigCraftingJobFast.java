@@ -16,6 +16,7 @@ import com.silvia.apeiron.ae.crafting.core.BigCraftingCPU;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingJob;
 import com.silvia.apeiron.ae.crafting.core.BigMECraftingInventory;
 import com.silvia.apeiron.ae.crafting.core.BigSccResult;
+import com.silvia.apeiron.ae.crafting.core.CraftingTreeSource;
 import com.silvia.apeiron.ae.stack.BigAEItemStack;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 
@@ -42,7 +43,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 /** Exact-count version of AE2's fast crafting calculator for large item requests. */
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
-    implements ICraftingJob<StackType>, BigCraftingJob {
+    implements ICraftingJob<StackType>, BigCraftingJob, CraftingTreeSource {
 
     private final CraftingContext context;
     private final StackType output;
@@ -51,6 +52,7 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
     private final Map<ICraftingPatternDetails, BigInteger> tasks = new Object2ObjectOpenHashMap<>();
     private final Map<IAEStack<?>, BigInteger> ingredients = new Object2ObjectOpenHashMap<>();
     private final Map<IAEStack<?>, BigInteger> missingIngredients = new Object2ObjectOpenHashMap<>();
+    private final Map<IAEStack<?>, ICraftingPatternDetails> treePatterns = new Object2ObjectOpenHashMap<>();
     private boolean calculated;
     private boolean simulated;
     private BigInteger byteCost = BigInteger.ZERO;
@@ -72,6 +74,13 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
     public void forEachPatternBig(java.util.function.BiConsumer<ICraftingPatternDetails, BigInteger> consumer) {
         calculate();
         tasks.forEach(consumer);
+    }
+
+    @Override
+    public BigCraftingTree getJobTree() {
+        calculate();
+        return BigCraftingTree
+            .create(context, output, craftingMode, byteCost, errorMessage, treePatterns, tasks, ingredients);
     }
 
     private void calculate() {
@@ -148,6 +157,7 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
             addCount(this.missingIngredients, input, inputAmount.multiply(multiplier));
         }
         addCount(this.tasks, pair.right(), multiplier);
+        this.treePatterns.put(current, pair.right());
         addByteCost(current, multiplier.multiply(outputPerPattern));
         addCount(this.missingIngredients, current, count.negate());
     }

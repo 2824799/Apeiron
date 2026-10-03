@@ -2,18 +2,23 @@ package com.silvia.apeiron.mixin.ae.crafting.core;
 
 import java.math.BigInteger;
 
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.inventory.Container;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.silvia.apeiron.ae.crafting.core.BigCraftingConfirmation;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingCpuStatus;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingJob;
 import com.silvia.apeiron.ae.crafting.core.BigMECraftingInventory;
+import com.silvia.apeiron.ae.crafting.core.CraftingTreeSource;
 import com.silvia.apeiron.ae.crafting.core.UnlimitedCraftingCPU;
 import com.silvia.apeiron.ae.stack.BigAERequestableStack;
 import com.silvia.apeiron.ae.stack.BigAEStack;
@@ -28,11 +33,14 @@ import appeng.api.storage.data.IAEStack;
 import appeng.container.guisync.GuiSync;
 import appeng.container.implementations.ContainerCraftConfirm;
 import appeng.container.implementations.CraftingCPUStatus;
+import appeng.core.AELog;
+import appeng.core.sync.network.NetworkHandler;
+import appeng.core.sync.packets.PacketCraftingTreeData;
 import appeng.crafting.MECraftingInventory;
 
 /** Keeps the crafting confirmation plan exact while it is converted into update packets. */
 @Mixin(value = ContainerCraftConfirm.class, remap = false)
-public abstract class ContainerCraftConfirmMixin implements BigCraftingConfirmation {
+public abstract class ContainerCraftConfirmMixin extends Container implements BigCraftingConfirmation {
 
     @Shadow
     protected ICraftingJob result;
@@ -49,6 +57,29 @@ public abstract class ContainerCraftConfirmMixin implements BigCraftingConfirmat
 
     @Unique
     private BigInteger apeiron$simulatedExtracted = BigInteger.ZERO;
+
+    @Inject(
+        method = { "detectAndSendChanges", "func_75142_b" },
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/container/implementations/ContainerCraftConfirm;setJob(Ljava/util/concurrent/Future;)V"),
+        require = 1)
+    private void apeiron$sendFastTree(CallbackInfo ci) {
+        if (!(result instanceof CraftingTreeSource)) return;
+        try {
+            final java.util.List<PacketCraftingTreeData> chunks = PacketCraftingTreeData
+                .createChunks(((CraftingTreeSource) result).getJobTree());
+            for (Object crafter : crafters) {
+                if (crafter instanceof EntityPlayerMP) {
+                    for (PacketCraftingTreeData chunk : chunks) {
+                        NetworkHandler.instance.sendTo(chunk, (EntityPlayerMP) crafter);
+                    }
+                }
+            }
+        } catch (RuntimeException error) {
+            AELog.warn(error, "Could not send the fast crafting plan tree");
+        }
+    }
 
     @Override
     public BigInteger getUsedBytesBig() {

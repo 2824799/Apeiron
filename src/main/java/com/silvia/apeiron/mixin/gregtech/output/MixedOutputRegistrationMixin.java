@@ -15,6 +15,14 @@ import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 @Mixin(value = MTEMultiBlockBase.class, remap = false)
 public abstract class MixedOutputRegistrationMixin {
 
+    @Inject(method = "addToMachineList", at = @At("HEAD"), cancellable = true, require = 1)
+    private void apeiron$registerGenericHybrid(IGregTechTileEntity tile, int texture,
+        CallbackInfoReturnable<Boolean> cir) {
+        if (tile == null || !(tile.getMetaTileEntity() instanceof MTEInfiniteMEOutputAssembly)) return;
+        ((MTEMultiBlockBase) (Object) this).addOutputBusToMachineList(tile, texture);
+        cir.setReturnValue(true);
+    }
+
     @Inject(method = "addOutputBusToMachineList", at = @At("HEAD"), cancellable = true, require = 1)
     private void apeiron$deduplicate(IGregTechTileEntity tile, int texture, CallbackInfoReturnable<Boolean> cir) {
         if (tile == null || !(tile.getMetaTileEntity() instanceof MTEInfiniteMEOutputAssembly)) return;

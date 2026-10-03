@@ -20,6 +20,7 @@ public class CommonProxy {
     }
 
     public void init(FMLInitializationEvent event) {
+        com.silvia.apeiron.crafting.BigCraftingTree.register();
         ApeironMachines.registerMachines();
         appeng.api.AEApi.instance()
             .registries()

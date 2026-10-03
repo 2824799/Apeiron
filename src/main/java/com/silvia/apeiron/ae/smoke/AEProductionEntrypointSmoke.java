@@ -27,6 +27,8 @@ public final class AEProductionEntrypointSmoke {
         final String prefix = "com/silvia/apeiron/mixin/ae/";
         final List<String> mixins = Arrays.asList(
             "crafting/core/ContainerCraftConfirmMixin",
+            "crafting/gui/GuiCraftingTreeTaskBigMixin",
+            "crafting/gui/GuiCraftingTreeBigMixin",
             "replenisher/ContainerSuperMEReplenisherBigMixin",
             "terminal/core/ContainerNetworkStatusBigMixin",
             "automation/ContainerLevelEmitterMixin",
@@ -82,8 +84,10 @@ public final class AEProductionEntrypointSmoke {
                         Object selectors = value(injection, "method");
                         if (!(selectors instanceof List)) continue;
                         final List<?> names = (List<?>) selectors;
-                        if (nativeOnly && names.stream()
-                            .noneMatch(selector -> isNativeSelector(selector.toString()))) continue;
+                        if (nativeOnly && !name.contains("GuiCraftingTree")
+                            && names.stream()
+                                .noneMatch(selector -> isNativeSelector(selector.toString())))
+                            continue;
                         final List<MethodNode> matched = new ArrayList<>();
                         for (MethodNode method : target.methods) {
                             if (names.stream()

@@ -43,6 +43,13 @@ public final class Apeiron {
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
+        if ("1".equals(System.getenv("APEIRON_VERIFY_TREE"))) {
+            com.silvia.apeiron.ae.smoke.AEProductionEntrypointSmoke.verify();
+            com.silvia.apeiron.ae.smoke.AECraftingTreeSmoke.verify();
+            com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke.verify();
+            if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()
+                .exitJava(0, false);
+        }
         if ("1".equals(System.getenv("APEIRON_VERIFY_WAILA"))) {
             com.silvia.apeiron.common.integration.waila.verification.WailaSnapshotSmoke.verify();
             if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()
@@ -73,6 +80,7 @@ public final class Apeiron {
             com.silvia.apeiron.ae.smoke.AESecurityInventorySmoke.verify();
             com.silvia.apeiron.ae.smoke.AECraftingCPUSmoke.verify();
             com.silvia.apeiron.ae.smoke.AECraftingPlanningSmoke.verify();
+            com.silvia.apeiron.ae.smoke.AECraftingTreeSmoke.verify();
             com.silvia.apeiron.ae.smoke.AEBackendSmoke.verify();
             com.silvia.apeiron.common.machine.me.output.verification.BoundlessMEOutputSmoke.verify();
             com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke.verify();
