@@ -3,8 +3,6 @@ plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
 
-extra["modVersion"] = "alpha0.0.1"
-
 minecraft {
     extraRunJvmArguments.addAll("-Xms1G", "-Xmx8G")
 }
