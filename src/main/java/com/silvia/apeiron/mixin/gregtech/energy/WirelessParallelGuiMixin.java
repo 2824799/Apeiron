@@ -13,6 +13,7 @@ import com.cleanroommc.modularui.value.sync.BooleanSyncValue;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
+import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
 import com.silvia.apeiron.client.gui.machine.energy.WirelessPowerWidgets;
 
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
@@ -27,18 +28,20 @@ public abstract class WirelessParallelGuiMixin {
 
     @Inject(method = "showMaxParallelRow", at = @At("RETURN"), cancellable = true, require = 1)
     private void apeiron$showRow(CallbackInfoReturnable<Boolean> cir) {
-        if (multiblock instanceof BigWirelessController) cir.setReturnValue(true);
+        if (multiblock instanceof BigWirelessController && InfiniteEnergyHatches.find(multiblock) != null)
+            cir.setReturnValue(true);
     }
 
     @Inject(method = "openPowerControlPanel", at = @At("RETURN"), require = 1)
     private void apeiron$panel(PanelSyncManager sync, ModularPanel parent, CallbackInfoReturnable<ModularPanel> cir) {
-        cir.getReturnValue()
-            .size(120, 170);
+        if (multiblock instanceof BigWirelessController && InfiniteEnergyHatches.find(multiblock) != null)
+            cir.getReturnValue()
+                .size(120, 170);
     }
 
     @Inject(method = "makeParallelConfigurator", at = @At("RETURN"), cancellable = true, require = 1)
     private void apeiron$exactRow(PanelSyncManager sync, CallbackInfoReturnable<IWidget> cir) {
-        if (!(multiblock instanceof BigWirelessController)) return;
+        if (!(multiblock instanceof BigWirelessController) || InfiniteEnergyHatches.find(multiblock) == null) return;
         BooleanSyncValue installed = WirelessPowerWidgets.installed(sync, multiblock);
         IWidget nativeRow = cir.getReturnValue();
         cir.setReturnValue(

@@ -41,6 +41,7 @@ public abstract class LegacyWirelessParallelGuiMixin {
     private void apeiron$legacyParallelField(EntityPlayer player, CallbackInfoReturnable<ModularWindow> cir,
         @Local ModularWindow.Builder builder, @Local NumericWidget textField) {
         MTEMultiBlockBase machine = (MTEMultiBlockBase) (Object) this;
+        if (InfiniteEnergyHatches.find(machine) == null) return;
         BigWirelessController controller = (BigWirelessController) (Object) this;
         builder.widget(
             new FakeSyncWidget.BooleanSyncer(
