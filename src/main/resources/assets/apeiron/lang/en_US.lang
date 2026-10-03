@@ -60,3 +60,22 @@ tile.apeiron.infinite_crafting_storage.name=Infinite Crafting Storage
 apeiron.machine.stored.installed=Retained inventory items: %s
 apeiron.machine.energy.per_tick=Per tick:
 apeiron.machine.energy.wireless=Wireless
+
+gt.blockmachines.apeiron.infinite_circuit_provider.name=Infinite Programming Circuit Provider
+gt.blockmachines.apeiron.infinite_storage_input_bus.name=Infinite Storage Input Bus
+gt.blockmachines.apeiron.infinite_storage_input_hatch.name=Infinite Storage Input Hatch
+gt.blockmachines.apeiron.infinite_storage_input_assembly.name=Infinite Storage Input Assembly
+apeiron.machine.infinite_circuit_provider.desc=ME network operation costs a fixed 1024 EU/t\n81 physical sample slots (9x9)\nSamples become renewable programming circuits with unlimited supply\nInsert a prefabricated provider to expose its entire circuit set\nSamples remain in the block; power and channels are required\nRequires Programmable Hatches\nWire cutter changes ME connection sides
+apeiron.machine.stocking.marks=Selections (360 slots)
+apeiron.machine.stocking.available=Available in the ME network
+apeiron.machine.stocking.auto=Automatically select network contents
+apeiron.machine.stocking.configure=Minimum amount, refresh interval and combined filters
+apeiron.machine.stocking.minimum=Minimum selection amount
+apeiron.machine.stocking.refresh=Refresh interval (ticks)
+apeiron.machine.stocking.mod=Item mod ID
+apeiron.machine.stocking.item=Item ID / fluid name
+apeiron.machine.stocking.meta=Item damage (32767 = any)
+apeiron.machine.stocking.ore=Item ore dictionary (* allowed)
+apeiron.machine.infinite_storage_input_bus.desc=Reads and consumes items directly from the ME network\n360 scrolling selection slots\nAutomatic and manual selections with a configurable refresh interval\nCombine item mod ID, item ID, damage and ore dictionary filters\nFluid filters use registry names, independently of item damage and ore names\nExact minimum amounts accept 1E18 and 1e18\nCounts are not limited to int or long\nSelections are phantom; only recipe consumption extracts resources\nWire cutter changes connections; data sticks copy configurations
+apeiron.machine.infinite_storage_input_hatch.desc=Reads and consumes fluids directly from the ME network\n360 scrolling selection slots\nAutomatic and manual selections with a configurable refresh interval\nCombine item mod ID, item ID, damage and ore dictionary filters\nFluid filters use registry names, independently of item damage and ore names\nExact minimum amounts accept 1E18 and 1e18\nCounts are not limited to int or long\nSelections are phantom; only recipe consumption extracts resources\nWire cutter changes connections; data sticks copy configurations
+apeiron.machine.infinite_storage_input_assembly.desc=Reads and consumes items and fluids directly from the ME network\n360 scrolling selection slots\nAutomatic and manual selections with a configurable refresh interval\nCombine item mod ID, item ID, damage and ore dictionary filters\nFluid filters use registry names, independently of item damage and ore names\nExact minimum amounts accept 1E18 and 1e18\nCounts are not limited to int or long\nSelections are phantom; only recipe consumption extracts resources\nWire cutter changes connections; data sticks copy configurations

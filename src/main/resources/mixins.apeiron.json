@@ -7,6 +7,7 @@
   "target": "@env(DEFAULT)",
   "compatibilityLevel": "JAVA_8",
   "client": [
+    "network.CustomPayloadDiagnosticsMixin",
     "aeinfinitycell.stack.EUStackRendererBigMixin",
     "aeinfinitycell.nei.InfinityPreviewCountAccessor",
     "aeinfinitycell.nei.InfinityPreviewBigMixin"
@@ -143,6 +144,7 @@
     "gregtech.energy.ProcessingLogicAccessor",
     "gregtech.energy.ProcessingLogicBigParallelMixin",
     "gregtech.energy.WirelessControllerStateMixin",
+    "gregtech.energy.NativeMachineWailaMixin",
     "gregtech.energy.WirelessRunningTickMixin",
     "gregtech.energy.WirelessParallelGuiMixin",
     "proghatches.PatternInputOptimizationMixin",

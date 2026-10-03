@@ -31,6 +31,10 @@ public final class ParallelLimit {
         return bound == null;
     }
 
+    public java.util.Optional<BigInteger> getBound() {
+        return java.util.Optional.ofNullable(bound);
+    }
+
     public BigInteger applyTo(final BigInteger resourceBound) {
         Objects.requireNonNull(resourceBound, "resourceBound");
         if (resourceBound.signum() < 0) throw new IllegalArgumentException("Negative resource bound");

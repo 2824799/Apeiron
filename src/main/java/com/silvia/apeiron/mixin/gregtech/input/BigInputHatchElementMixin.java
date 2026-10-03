@@ -24,6 +24,7 @@ public abstract class BigInputHatchElementMixin {
         List<Class<? extends IMetaTileEntity>> types = new ArrayList<>(cir.getReturnValue());
         types.add(MTEInfinitePatternInputAssembly.class);
         types.add(MTEInfinitePatternInputMirror.class);
+        types.add(com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputAssembly.class);
         cir.setReturnValue(types);
     }
 }

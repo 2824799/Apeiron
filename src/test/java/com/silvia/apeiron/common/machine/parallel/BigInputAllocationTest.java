@@ -11,6 +11,32 @@ import com.silvia.apeiron.api.machine.parallel.ParallelLimit;
 public class BigInputAllocationTest {
 
     @Test
+    public void renewableCircuitSupplyDoesNotLimitFiniteMaterials() {
+        BigInputAllocation allocation = new BigInputAllocation(
+            new BigInteger[] { BigInteger.ZERO, BigInteger.TEN.pow(60) },
+            new BigInteger[] { BigInteger.ONE, BigInteger.valueOf(2) },
+            new boolean[][] { { true, false }, { false, true } },
+            new boolean[] { true, false });
+        assertEquals(
+            BigInteger.TEN.pow(60)
+                .divide(BigInteger.valueOf(2)),
+            allocation.maximum(ParallelLimit.unlimited()));
+        assertNotNull(allocation.allocate(BigInteger.TEN.pow(40)));
+    }
+
+    @Test
+    public void whollyRenewableInputsUseTheActualMachineLimit() {
+        BigInteger limit = BigInteger.TEN.pow(90);
+        BigInputAllocation allocation = new BigInputAllocation(
+            new BigInteger[] { BigInteger.ZERO },
+            new BigInteger[] { BigInteger.valueOf(3), BigInteger.valueOf(2) },
+            new boolean[][] { { true }, { true } },
+            new boolean[] { true });
+        assertEquals(limit, allocation.maximum(ParallelLimit.bounded(limit)));
+        assertArrayEquals(new BigInteger[] { limit.multiply(BigInteger.valueOf(5)) }, allocation.allocate(limit));
+    }
+
+    @Test
     public void sharedIngredientsAreNotSpentTwice() {
         BigInputAllocation allocation = new BigInputAllocation(
             new BigInteger[] { BigInteger.TEN.pow(60) },

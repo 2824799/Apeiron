@@ -68,6 +68,10 @@ public final class BigCacheCounter<T> {
         return this.amounts.isEmpty();
     }
 
+    public int size() {
+        return this.amounts.size();
+    }
+
     public void clear() {
         this.amounts.clear();
         this.total.set(0L);

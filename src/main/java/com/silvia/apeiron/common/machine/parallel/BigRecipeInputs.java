@@ -2,15 +2,23 @@ package com.silvia.apeiron.common.machine.parallel;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.ae.stack.InfiniteAEStack;
 import com.silvia.apeiron.api.machine.me.input.BigDualInputHatch;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 import com.silvia.apeiron.common.machine.me.input.storage.BigPatternBuffer;
+import com.silvia.apeiron.common.machine.me.stocking.StockingInputHost;
+import com.silvia.apeiron.common.machine.me.stocking.StockingInputLogic;
 
 import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
@@ -27,6 +35,8 @@ public final class BigRecipeInputs {
 
     private final List<IAEStack<?>> stocks = new ArrayList<>();
     private final List<Object> physical = new ArrayList<>();
+    private final List<StockingInputLogic> owners = new ArrayList<>();
+    private final List<Integer> ownerSlots = new ArrayList<>();
     private final BigPatternBuffer buffer;
     private final BigInputAllocation allocation;
 
@@ -41,14 +51,19 @@ public final class BigRecipeInputs {
         buffer = found;
         if (buffer != null) stocks.addAll(buffer.getStacksBig());
         else {
-            java.util.Set<Object> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+            List<StockingInputLogic> networks = new ArrayList<>();
+            List<Object> hatches = new ArrayList<>();
+            hatches.addAll(machine.mInputBusses);
+            hatches.addAll(machine.mInputHatches);
+            hatches.addAll(machine.mDualInputHatches);
+            for (Object hatch : hatches)
+                if (hatch instanceof StockingInputHost) networks.add(((StockingInputHost) hatch).getStockingInput());
+            Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
             for (ItemStack item : items) if (item != null && item.stackSize > 0 && seen.add(item)) {
-                stocks.add(AEItemStack.create(item));
-                physical.add(item);
+                addPhysical(item, AEItemStack.create(item), networks);
             }
             for (FluidStack fluid : fluids) if (fluid != null && fluid.amount > 0 && seen.add(fluid)) {
-                stocks.add(AEFluidStack.create(fluid));
-                physical.add(fluid);
+                addPhysical(fluid, AEFluidStack.create(fluid), networks);
             }
         }
         List<BigInteger> costs = new ArrayList<>();
@@ -84,7 +99,34 @@ public final class BigRecipeInputs {
         allocation = new BigInputAllocation(
             available,
             costs.toArray(new BigInteger[0]),
-            matches.toArray(new boolean[0][]));
+            matches.toArray(new boolean[0][]),
+            renewable());
+    }
+
+    private boolean[] renewable() {
+        boolean[] result = new boolean[stocks.size()];
+        for (int i = 0; i < result.length; i++) result[i] = BigAEStackValues.isInfinite(stocks.get(i));
+        return result;
+    }
+
+    private void addPhysical(Object view, IAEStack<?> fallback, List<StockingInputLogic> networks) {
+        StockingInputLogic owner = null;
+        int slot = -1;
+        for (StockingInputLogic candidate : networks) {
+            int index = candidate.viewIndex(view);
+            if (index >= 0) {
+                owner = candidate;
+                slot = index;
+                break;
+            }
+        }
+        stocks.add(
+            owner == null ? fallback
+                : owner.stock(slot)
+                    .copy());
+        physical.add(view);
+        owners.add(owner);
+        ownerSlots.add(slot);
     }
 
     public BigInputAllocation allocation() {
@@ -103,13 +145,37 @@ public final class BigRecipeInputs {
                 if (debit[i].signum() > 0) buffer.removeBig(stocks.get(i), debit[i]);
         } else {
             for (int i = 0; i < physical.size(); i++) {
+                if (owners.get(i) != null) {
+                    IAEStack<?> current = owners.get(i)
+                        .stock(ownerSlots.get(i));
+                    if (!BigAEStackValues.get(current)
+                        .equals(BigAEStackValues.get(stocks.get(i))))
+                        throw new IllegalStateException("Network input changed during planning");
+                    continue;
+                }
                 Object value = physical.get(i);
                 int amount = value instanceof ItemStack ? ((ItemStack) value).stackSize : ((FluidStack) value).amount;
                 if (!BigInteger.valueOf(amount)
                     .equals(BigAEStackValues.get(stocks.get(i))))
                     throw new IllegalStateException("Physical input changed during planning");
             }
+            Map<StockingInputLogic, List<IAEStack<?>>> networkDebits = new LinkedHashMap<>();
+            for (int i = 0; i < physical.size(); i++) if (owners.get(i) != null && debit[i].signum() > 0) {
+                IAEStack<?> request = stocks.get(i)
+                    .copy();
+                if (request instanceof InfiniteAEStack) ((InfiniteAEStack) request).setInfinite(false);
+                BigAEStackValues.set(request, debit[i]);
+                networkDebits.computeIfAbsent(owners.get(i), key -> new ArrayList<>())
+                    .add(request);
+            }
+            if (!StockingInputLogic.commit(networkDebits))
+                throw new IllegalStateException("Network cannot satisfy exact input debit");
             for (int i = 0; i < physical.size(); i++) {
+                if (owners.get(i) != null) {
+                    owners.get(i)
+                        .recordCommitted(ownerSlots.get(i), debit[i]);
+                    continue;
+                }
                 Object value = physical.get(i);
                 int amount = debit[i].intValueExact();
                 if (value instanceof ItemStack) ((ItemStack) value).stackSize -= amount;

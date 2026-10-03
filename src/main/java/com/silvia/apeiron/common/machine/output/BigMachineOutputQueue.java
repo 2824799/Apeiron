@@ -83,6 +83,27 @@ public final class BigMachineOutputQueue {
         return result;
     }
 
+    /** HUDs only need a few rows; do not copy and sort the entire ledger for a hover update. */
+    public List<IAEStack<?>> previewOutputs(int limit) {
+        final List<IAEStack<?>> result = new ArrayList<>();
+        if (limit <= 0) return result;
+        java.util.function.BiConsumer<IAEStack<?>, BigInteger> select = (type, amount) -> {
+            int index = 0;
+            while (index < result.size() && BigAEStackValues.get(result.get(index))
+                .compareTo(amount) >= 0) index++;
+            if (index >= limit) return;
+            result.add(index, BigAEStackValues.copyWithSize(type, amount));
+            if (result.size() > limit) result.remove(limit);
+        };
+        items.iterateAllBig(select::accept);
+        fluids.iterateAllBig(select::accept);
+        return result;
+    }
+
+    public int outputTypes() {
+        return items.size() + fluids.size();
+    }
+
     public void moveTo(final BigMachineOutputQueue target) {
         if (target == this) throw new IllegalArgumentException("Cannot move a queue into itself");
         items.iterateAllBig((type, amount) -> target.addItem(type.getItemStack(), amount));

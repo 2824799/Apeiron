@@ -12,9 +12,16 @@ public final class BigInputAllocation {
     private final BigInteger[] available;
     private final BigInteger[] costs;
     private final boolean[][] matches;
+    private final boolean[] renewable;
 
     public BigInputAllocation(BigInteger[] available, BigInteger[] costs, boolean[][] matches) {
+        this(available, costs, matches, new boolean[available.length]);
+    }
+
+    public BigInputAllocation(BigInteger[] available, BigInteger[] costs, boolean[][] matches, boolean[] renewable) {
         this.available = available.clone();
+        if (renewable.length != available.length) throw new IllegalArgumentException("Invalid renewable resources");
+        this.renewable = renewable.clone();
         this.costs = costs.clone();
         this.matches = new boolean[matches.length][];
         if (matches.length != costs.length) throw new IllegalArgumentException("Invalid ingredient matrix");
@@ -32,11 +39,17 @@ public final class BigInputAllocation {
         BigInteger upper = null;
         for (int i = 0; i < costs.length; i++) {
             BigInteger stock = BigInteger.ZERO;
-            for (int j = 0; j < available.length; j++) if (matches[i][j]) stock = stock.add(available[j]);
+            boolean infinite = false;
+            for (int j = 0; j < available.length; j++) if (matches[i][j]) {
+                stock = stock.add(available[j]);
+                infinite |= renewable[j];
+            }
+            if (infinite) continue;
             BigInteger bound = stock.divide(costs[i]);
             upper = upper == null ? bound : upper.min(bound);
         }
-        upper = limit.applyTo(upper);
+        upper = upper == null ? limit.getBound()
+            .orElse(BigInteger.ONE) : limit.applyTo(upper);
         if (allocate(upper) != null) return upper;
         BigInteger lower = BigInteger.ZERO;
         while (lower.compareTo(upper) < 0) {
@@ -56,10 +69,11 @@ public final class BigInputAllocation {
         BigInteger[][] capacity = new BigInteger[sink + 1][sink + 1];
         for (BigInteger[] row : capacity) Arrays.fill(row, BigInteger.ZERO);
         BigInteger required = BigInteger.ZERO;
-        for (int j = 0; j < available.length; j++) capacity[0][resourceStart + j] = available[j];
+        for (BigInteger cost : costs) required = required.add(cost.multiply(parallels));
+        for (int j = 0; j < available.length; j++)
+            capacity[0][resourceStart + j] = renewable[j] ? required : available[j];
         for (int i = 0; i < costs.length; i++) {
             BigInteger amount = costs[i].multiply(parallels);
-            required = required.add(amount);
             capacity[needStart + i][sink] = amount;
             for (int j = 0; j < available.length; j++)
                 if (matches[i][j]) capacity[resourceStart + j][needStart + i] = amount;
@@ -89,7 +103,8 @@ public final class BigInputAllocation {
             flow = flow.add(moved);
         }
         BigInteger[] debits = new BigInteger[available.length];
-        for (int j = 0; j < available.length; j++) debits[j] = available[j].subtract(capacity[0][resourceStart + j]);
+        for (int j = 0; j < available.length; j++)
+            debits[j] = (renewable[j] ? required : available[j]).subtract(capacity[0][resourceStart + j]);
         return debits;
     }
 }

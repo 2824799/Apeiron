@@ -9,11 +9,15 @@ import com.silvia.apeiron.Apeiron;
 import com.silvia.apeiron.common.machine.block.ApeironMachineBlock;
 import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
 import com.silvia.apeiron.common.machine.energy.MTEInfiniteEnergyHatch;
+import com.silvia.apeiron.common.machine.me.circuit.MTEInfiniteProgrammingCircuitProvider;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputMirror;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch;
 import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
+import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputAssembly;
+import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputBus;
+import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputHatch;
 import com.silvia.apeiron.config.ApeironConfig;
 
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -30,6 +34,14 @@ public final class ApeironMachines {
     public static MTEInfiniteEnergyHatch infiniteEnergyHatch;
     public static final int PATTERN_INPUT_ASSEMBLY_OFFSET = 4;
     public static final int PATTERN_INPUT_MIRROR_OFFSET = 5;
+    public static final int CIRCUIT_PROVIDER_OFFSET = 6;
+    public static final int STORAGE_INPUT_BUS_OFFSET = 7;
+    public static final int STORAGE_INPUT_HATCH_OFFSET = 8;
+    public static final int STORAGE_INPUT_ASSEMBLY_OFFSET = 9;
+    public static MTEInfiniteProgrammingCircuitProvider circuitProvider;
+    public static MTEInfiniteStorageInputBus storageInputBus;
+    public static MTEInfiniteStorageInputHatch storageInputHatch;
+    public static MTEInfiniteStorageInputAssembly storageInputAssembly;
     public static MTEInfinitePatternInputAssembly patternInputAssembly;
     public static MTEInfinitePatternInputMirror patternInputMirror;
     public static ApeironMachineBlock block;
@@ -85,6 +97,22 @@ public final class ApeironMachines {
             ApeironConfig.getMachineId(PATTERN_INPUT_MIRROR_OFFSET),
             "apeiron.infinite_pattern_input_mirror",
             "Infinite Pattern Input Assembly Mirror");
+        circuitProvider = new MTEInfiniteProgrammingCircuitProvider(
+            ApeironConfig.getMachineId(CIRCUIT_PROVIDER_OFFSET),
+            "apeiron.infinite_circuit_provider",
+            "Infinite Programming Circuit Provider");
+        storageInputBus = new MTEInfiniteStorageInputBus(
+            ApeironConfig.getMachineId(STORAGE_INPUT_BUS_OFFSET),
+            "apeiron.infinite_storage_input_bus",
+            "Infinite Storage Input Bus");
+        storageInputHatch = new MTEInfiniteStorageInputHatch(
+            ApeironConfig.getMachineId(STORAGE_INPUT_HATCH_OFFSET),
+            "apeiron.infinite_storage_input_hatch",
+            "Infinite Storage Input Hatch");
+        storageInputAssembly = new MTEInfiniteStorageInputAssembly(
+            ApeironConfig.getMachineId(STORAGE_INPUT_ASSEMBLY_OFFSET),
+            "apeiron.infinite_storage_input_assembly",
+            "Infinite Storage Input Assembly");
         Apeiron.LOG.info(
             "Apeiron machine ID reservation: {}..{} ({} IDs); ME outputs: {}, {}, {}",
             ApeironConfig.getMachineIdStart(),
@@ -113,7 +141,11 @@ public final class ApeironMachines {
                 || existing == mixedOutputAssembly
                 || existing == infiniteEnergyHatch
                 || existing == patternInputAssembly
-                || existing == patternInputMirror)) continue;
+                || existing == patternInputMirror
+                || existing == circuitProvider
+                || existing == storageInputBus
+                || existing == storageInputHatch
+                || existing == storageInputAssembly)) continue;
             if (existing != null) {
                 throw new IllegalStateException(
                     "Apeiron's configured 100-ID reservation conflicts at ID " + id

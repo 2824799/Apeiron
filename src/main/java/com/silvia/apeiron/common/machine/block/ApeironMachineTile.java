@@ -18,6 +18,12 @@ public final class ApeironMachineTile extends BaseMetaTileEntity {
         int patterns = 0;
         long installed = 0;
         gregtech.api.interfaces.metatileentity.IMetaTileEntity machine = getMetaTileEntity();
+        if (machine instanceof com.silvia.apeiron.common.machine.me.stocking.StockingInputHost) {
+            com.silvia.apeiron.common.machine.me.stocking.StockingInputLogic stock = ((com.silvia.apeiron.common.machine.me.stocking.StockingInputHost) machine)
+                .getStockingInput();
+            items = stock.getRefundAmount(false);
+            fluids = stock.getRefundAmount(true);
+        }
         if (machine instanceof com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus)
             items = ((com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus) machine).getProvider()
                 .getCachedAmountBig();

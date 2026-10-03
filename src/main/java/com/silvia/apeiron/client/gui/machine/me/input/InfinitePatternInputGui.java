@@ -8,7 +8,6 @@ import java.util.regex.Pattern;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.fluids.FluidStack;
 
 import org.jetbrains.annotations.NotNull;
@@ -17,11 +16,9 @@ import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.Interactable;
 import com.cleanroommc.modularui.screen.ModularPanel;
-import com.cleanroommc.modularui.utils.serialization.ByteBufAdapters;
 import com.cleanroommc.modularui.value.ObjectValue;
 import com.cleanroommc.modularui.value.sync.BigIntSyncValue;
 import com.cleanroommc.modularui.value.sync.BooleanSyncValue;
-import com.cleanroommc.modularui.value.sync.GenericSyncValue;
 import com.cleanroommc.modularui.value.sync.IntSyncValue;
 import com.cleanroommc.modularui.value.sync.InteractionSyncHandler;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
@@ -39,6 +36,7 @@ import com.cleanroommc.modularui.widgets.slot.ItemSlot;
 import com.cleanroommc.modularui.widgets.slot.ModularSlot;
 import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.client.gui.sync.ChunkedNbtSyncValue;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 import com.silvia.apeiron.common.machine.me.input.storage.BigPatternBuffer;
 import com.silvia.apeiron.common.machine.me.input.storage.PatternBufferQuickMove;
@@ -355,15 +353,11 @@ public final class InfinitePatternInputGui extends MTEHatchBaseGui<MTEInfinitePa
         }).allowC2S();
         sync.syncValue("apeiron_buffer_page", page);
         BigPatternBuffer preview = new BigPatternBuffer();
-        GenericSyncValue<NBTTagCompound, ?> snapshot = GenericSyncValue.builder(NBTTagCompound.class)
-            .getter(
-                () -> machine.getBuffers()
-                    .get(selected[0])
-                    .writeNBT())
-            .setter(preview::readNBT)
-            .adapter(ByteBufAdapters.NBT)
-            .copy(tag -> (NBTTagCompound) tag.copy())
-            .build();
+        ChunkedNbtSyncValue snapshot = new ChunkedNbtSyncValue(
+            () -> machine.getBuffers()
+                .get(selected[0])
+                .writeNBT(),
+            preview::readNBT);
         sync.syncValue("apeiron_buffer_snapshot", snapshot);
         panel.child(
             IKey.dynamic(

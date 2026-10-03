@@ -43,6 +43,11 @@ public final class Apeiron {
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
+        if ("1".equals(System.getenv("APEIRON_VERIFY_STOCKING"))) {
+            com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
+            if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()
+                .exitJava(0, false);
+        }
         if ("1".equals(System.getenv("APEIRON_VERIFY_STACK"))) {
             com.silvia.apeiron.ae.smoke.AEProductionEntrypointSmoke.verify();
             com.silvia.apeiron.ae.smoke.AEMixinTargetSmoke.verify();

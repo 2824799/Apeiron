@@ -20,6 +20,7 @@ public final class WirelessRecipeState {
     private BigRecipeParallelHelper prepared;
     private int preparedDuration;
     private BigMachineOutputQueue recipeOutputs = new BigMachineOutputQueue();
+    private java.util.List<appeng.api.storage.data.IAEStack<?>> hudOutputs;
     private final BigMachineOutputQueue pendingOutputs = new BigMachineOutputQueue();
 
     public BigInteger getParallelSettingBig() {
@@ -67,6 +68,16 @@ public final class WirelessRecipeState {
         return tag;
     }
 
+    public java.util.List<appeng.api.storage.data.IAEStack<?>> getHudOutputs() {
+        if (!running) return java.util.Collections.emptyList();
+        if (hudOutputs == null) hudOutputs = recipeOutputs.previewOutputs(3);
+        return hudOutputs;
+    }
+
+    public int getOutputTypeCount() {
+        return running ? recipeOutputs.outputTypes() : 0;
+    }
+
     public BigMachineOutputQueue pending() {
         return pendingOutputs;
     }
@@ -98,6 +109,7 @@ public final class WirelessRecipeState {
         this.euPerTick = eut;
         this.duration = duration;
         this.recipeOutputs = outputs;
+        this.hudOutputs = null;
         running = true;
     }
 
@@ -141,6 +153,7 @@ public final class WirelessRecipeState {
     }
 
     public void load(NBTTagCompound tag) {
+        hudOutputs = null;
         discardPreparedRecipe();
         parallelSetting = BigValueCodec.readNBT(tag, "parallelSetting", "parallelSettingBig")
             .toBigInteger()

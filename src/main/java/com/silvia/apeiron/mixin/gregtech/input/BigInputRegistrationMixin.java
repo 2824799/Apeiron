@@ -20,8 +20,11 @@ public abstract class BigInputRegistrationMixin {
         require = 1)
     private void apeiron$deduplicateBigInput(IGregTechTileEntity tile, int texture,
         CallbackInfoReturnable<Boolean> cir) {
-        if (tile == null || !(tile.getMetaTileEntity() instanceof BigDualInputHatch)) return;
-        BigDualInputHatch hatch = (BigDualInputHatch) tile.getMetaTileEntity();
+        if (tile == null || !(tile.getMetaTileEntity() instanceof BigDualInputHatch || tile
+            .getMetaTileEntity() instanceof com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputAssembly))
+            return;
+        gregtech.common.tileentities.machines.IDualInputHatch hatch = (gregtech.common.tileentities.machines.IDualInputHatch) tile
+            .getMetaTileEntity();
         MTEMultiBlockBase controller = (MTEMultiBlockBase) (Object) this;
         if (controller.mDualInputHatches.contains(hatch)) {
             hatch.updateTexture(texture);
