@@ -13,8 +13,8 @@ import com.cleanroommc.modularui.value.sync.BooleanSyncValue;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
-import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
 import com.silvia.apeiron.client.gui.machine.energy.WirelessPowerWidgets;
+import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
 
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
