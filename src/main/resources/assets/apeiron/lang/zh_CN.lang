@@ -56,6 +56,7 @@ apeiron.machine.pattern_input.terminal_visible=允许在样板管理终端中显
 apeiron.machine.pattern_input.lock_buffer=锁定当前缓冲配方；耗尽后保留配方，禁止其他配方占用
 apeiron.machine.pattern_input.state.locked=锁定
 apeiron.machine.pattern_input.possible_batches=  可执行份数：%s
+apeiron.machine.pattern_input.more_recipe=  另有 %s 项配方输入／电路，可在 UI 查看
 apeiron.machine.me_output.unlimited_cache=缓存：∞
 apeiron.machine.stored.items=保留物品：%s
 apeiron.machine.stored.fluids=保留流体：%s L

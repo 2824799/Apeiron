@@ -839,25 +839,42 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
             NBTTagCompound status = new NBTTagCompound();
             status.setInteger("slot", i);
             status.setInteger("pattern", buffer.getPatternSlot());
-            status.setBoolean("empty", buffer.isEmpty());
-            status.setBoolean("processing", processing && !buffer.isEmpty());
-            status.setBoolean("locked", buffer.isLocked() || buffer.hasRecipe() && !buffer.isEmpty());
-            status.setBoolean("recipe", buffer.hasRecipe() && (!buffer.isEmpty() || buffer.isLocked()));
-            status.setString("copies", BigNumberFormatter.formatExact(buffer.getPossibleBatchesBig()));
-            NBTTagList recipe = new NBTTagList();
-            for (IAEStack<?> ingredient : buffer.getRecipeInputs()) recipe
-                .appendTag(com.silvia.apeiron.common.machine.me.input.storage.BigPatternStackCodec.write(ingredient));
-            status.setTag("ingredients", recipe);
-            NBTTagList circuits = new NBTTagList();
-            for (ItemStack circuit : buffer.getSelectors())
-                circuits.appendTag(circuit.writeToNBT(new NBTTagCompound()));
-            status.setTag("circuits", circuits);
+            boolean empty = buffer.isEmpty();
+            boolean showRecipe = buffer.hasRecipe() && (!empty || buffer.isLocked());
+            status.setBoolean("empty", empty);
+            status.setBoolean("processing", processing && !empty);
+            status.setBoolean("locked", buffer.isLocked() || buffer.hasRecipe() && !empty);
+            status.setBoolean("recipe", showRecipe);
+            if (showRecipe) {
+                status.setString("copies", BigNumberFormatter.formatCompact(buffer.getPossibleBatchesBig()));
+                NBTTagList recipe = new NBTTagList();
+                for (IAEStack<?> ingredient : buffer.getRecipeInputs(8)) {
+                    NBTTagCompound row = new NBTTagCompound();
+                    row.setString("name", previewName(ingredient.getDisplayName()));
+                    row.setString("amount", BigNumberFormatter.formatCompact(BigAEStackValues.get(ingredient)));
+                    recipe.appendTag(row);
+                }
+                status.setTag("ingredients", recipe);
+                status.setInteger("moreIngredients", buffer.getRecipeInputCount() - recipe.tagCount());
+                NBTTagList circuits = new NBTTagList();
+                for (ItemStack circuit : buffer.getSelectors(4)) {
+                    NBTTagCompound row = new NBTTagCompound();
+                    row.setString("name", previewName(circuit.getDisplayName()));
+                    circuits.appendTag(row);
+                }
+                status.setTag("circuits", circuits);
+                status.setInteger("moreCircuits", buffer.getSelectorCount() - circuits.tagCount());
+            }
             status.setString("items", BigNumberFormatter.formatCompact(buffer.getItemAmountBig()));
             status.setString("fluids", BigNumberFormatter.formatCompact(buffer.getFluidAmountBig()));
             statuses.appendTag(status);
         }
         tag.setTag("ApeironBufferStatus", statuses);
-        tag.setString("ApeironSavedPushCalls", BigNumberFormatter.formatExact(savedPushCalls));
+        tag.setString("ApeironSavedPushCalls", BigNumberFormatter.formatCompact(savedPushCalls));
+    }
+
+    private static String previewName(String name) {
+        return name.length() > 128 ? name.substring(0, 127) + "…" : name;
     }
 
     @Override
@@ -901,8 +918,14 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
                         status.getString("copies")));
                 NBTTagList recipe = status.getTagList("ingredients", 10);
                 for (int j = 0; j < recipe.tagCount(); j++) {
+                    NBTTagCompound row = recipe.getCompoundTagAt(j);
+                    if (row.hasKey("name")) {
+                        tooltip.add("  " + row.getString("name") + " \u00d7 " + row.getString("amount"));
+                        continue;
+                    }
+                    // Accept an in-flight packet from the previous preview format during reload.
                     IAEStack<?> ingredient = com.silvia.apeiron.common.machine.me.input.storage.BigPatternStackCodec
-                        .read(recipe.getCompoundTagAt(j));
+                        .read(row);
                     if (ingredient == null) continue;
                     String name = ingredient instanceof IAEItemStack ? ((IAEItemStack) ingredient).getItemStack()
                         .getDisplayName()
@@ -913,9 +936,18 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
                 }
                 NBTTagList circuits = status.getTagList("circuits", 10);
                 for (int j = 0; j < circuits.tagCount(); j++) {
-                    ItemStack circuit = ItemStack.loadItemStackFromNBT(circuits.getCompoundTagAt(j));
+                    NBTTagCompound row = circuits.getCompoundTagAt(j);
+                    if (row.hasKey("name")) {
+                        tooltip.add("  \u00a7b" + row.getString("name") + "\u00a7r");
+                        continue;
+                    }
+                    ItemStack circuit = ItemStack.loadItemStackFromNBT(row);
                     if (circuit != null) tooltip.add("  \u00a7b" + circuit.getDisplayName() + "\u00a7r");
                 }
+                int more = status.getInteger("moreIngredients") + status.getInteger("moreCircuits");
+                if (more > 0) tooltip.add(
+                    net.minecraft.util.StatCollector
+                        .translateToLocalFormatted("apeiron.machine.pattern_input.more_recipe", more));
             } else if (!status.getBoolean("empty"))
                 tooltip.add("  " + status.getString("items") + " / " + status.getString("fluids") + " L");
         }

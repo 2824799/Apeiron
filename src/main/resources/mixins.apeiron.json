@@ -158,6 +158,7 @@
     "gregtech.energy.WirelessRecipeGuiMixin",
     "gregtech.energy.LegacyWirelessRecipeGuiMixin",
     "compat.omniocular.WirelessTooltipMixin",
+    "compat.waila.WailaPacketBudgetMixin",
     "gregtech.energy.GodforgeWirelessEnergyMixin",
     "gregtech.energy.GodforgeWirelessGuiMixin",
     "gregtech.energy.TecTechWirelessRunningMixin",

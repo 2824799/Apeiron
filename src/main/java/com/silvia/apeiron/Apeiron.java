@@ -43,6 +43,11 @@ public final class Apeiron {
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
+        if ("1".equals(System.getenv("APEIRON_VERIFY_WAILA"))) {
+            com.silvia.apeiron.common.integration.waila.verification.WailaSnapshotSmoke.verify();
+            if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()
+                .exitJava(0, false);
+        }
         if ("1".equals(System.getenv("APEIRON_VERIFY_ENERGY"))) {
             com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
             com.silvia.apeiron.common.machine.energy.verification.WirelessMachineIntegrationSmoke.verify();

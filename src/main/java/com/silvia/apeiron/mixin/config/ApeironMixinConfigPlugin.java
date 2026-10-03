@@ -34,13 +34,19 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(final String targetClassName, final String mixinClassName) {
         if (mixinClassName.startsWith("com.silvia.apeiron.mixin.compat.omniocular."))
-            return ApeironConfig.areAeMixinsEnabled() && getClass().getClassLoader()
-                .getResource("me/exz/omniocular/waila/TileEntityHandler.class") != null;
+            return (ApeironConfig.areAeMixinsEnabled() || ApeironConfig.isLightweightWailaEnabled())
+                && getClass().getClassLoader()
+                    .getResource("me/exz/omniocular/waila/TileEntityHandler.class") != null;
+        if (mixinClassName.startsWith("com.silvia.apeiron.mixin.compat.waila."))
+            return ApeironConfig.isLightweightWailaEnabled() && getClass().getClassLoader()
+                .getResource(targetClassName.replace('.', '/') + ".class") != null;
         if (mixinClassName.startsWith("com.silvia.apeiron.mixin.proghatches.")) {
             return ApeironConfig.areAeMixinsEnabled() && getClass().getClassLoader()
                 .getResource("reobf/proghatches/gt/metatileentity/util/ISpecialOptimize.class") != null;
         }
         if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gregtech.energy.")) {
+            if (mixinClassName.endsWith(".NativeMachineWailaMixin"))
+                return ApeironConfig.isLightweightWailaEnabled() || ApeironConfig.areAeMixinsEnabled();
             if (mixinClassName.contains("Godforge") || mixinClassName.contains("TecTech"))
                 return ApeironConfig.areAeMixinsEnabled() && getClass().getClassLoader()
                     .getResource("tectech/thing/metaTileEntity/multi/godforge/MTEBaseModule.class") != null;

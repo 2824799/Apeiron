@@ -7,7 +7,7 @@ Apeiron 是 GT New Horizons（Minecraft 1.7.10）的 AE2／GregTech 扩展模组
 - **大数计数**：扩展 AE2 物品、流体、合成请求、CPU 统计，以及适配机器的并行、能耗和产物数量，支持超出 64 位整数的数值。
 - **无限供应**：创造 ME 物品／流体存储元件提供无限数量，终端显示 `∞`；编程器电路也可无限供应。
 - **样板管理**：支持大数倍增、样板优化、隔离缓冲、编程电路、配方锁定和样板终端管理。
-- **机器显示**：机器界面显示产物及数量，Waila／OmniOcular 提供大数能耗和产物摘要，减少大量产物的悬浮提示同步开销。
+- **机器显示**：机器界面显示产物及数量；Waila／OmniOcular 为 GregTech 方块发送轻量运行快照，并限制所有方块的提示包大小，减少看向大量样板或库存时的卡顿。
 
 ## 方块
 
@@ -40,6 +40,8 @@ Apeiron 是 GT New Horizons（Minecraft 1.7.10）的 AE2／GregTech 扩展模组
 支持 TST、GT Not Leisure、TecTech、AE2 Infinity Cell、Programmable Hatches 等可选集成；使用对应功能时需安装相应模组。
 
 配置文件为 `config/apeiron/apeiron.cfg`，可按模组开关适配。GregTech 机器 ID 默认从 `31300` 开始，需避免与其他模组冲突。
+
+悬浮提示只展示库存和配方预览，完整内容在方块 UI 中查看。依赖完整存档数据的自定义 OmniOcular 脚本，可关闭 `mixins.waila.enableLightweightSnapshots` 并重启。
 
 ## 许可证
 

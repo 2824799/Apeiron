@@ -55,14 +55,34 @@ public final class BigPatternBuffer implements IDualInputInventoryWithPattern {
     }
 
     public List<ItemStack> getSelectors() {
+        return getSelectors(Integer.MAX_VALUE);
+    }
+
+    public int getSelectorCount() {
+        return selectors.size();
+    }
+
+    public List<ItemStack> getSelectors(int limit) {
         List<ItemStack> result = new ArrayList<>();
-        for (ItemStack stack : selectors) result.add(stack.copy());
+        for (int i = 0; i < Math.min(limit, selectors.size()); i++) result.add(
+            selectors.get(i)
+                .copy());
         return result;
     }
 
     public List<IAEStack<?>> getRecipeInputs() {
+        return getRecipeInputs(Integer.MAX_VALUE);
+    }
+
+    public int getRecipeInputCount() {
+        return recipeInputs.size();
+    }
+
+    public List<IAEStack<?>> getRecipeInputs(int limit) {
         List<IAEStack<?>> result = new ArrayList<>();
-        for (IAEStack<?> stack : recipeInputs) result.add(stack.copy());
+        for (int i = 0; i < Math.min(limit, recipeInputs.size()); i++) result.add(
+            recipeInputs.get(i)
+                .copy());
         return result;
     }
 
@@ -222,7 +242,8 @@ public final class BigPatternBuffer implements IDualInputInventoryWithPattern {
     }
 
     public BigInteger getAmountBig(IAEStack<?> type) {
-        for (IAEStack<?> stored : getStacksBig()) {
+        List<? extends IAEStack<?>> channel = type instanceof IAEFluidStack ? fluids : items;
+        for (IAEStack<?> stored : channel) {
             if (sameType(stored, type)) return BigAEStackValues.get(stored);
         }
         return BigInteger.ZERO;

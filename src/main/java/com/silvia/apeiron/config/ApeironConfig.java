@@ -19,6 +19,8 @@ public final class ApeironConfig {
     public static final String CATEGORY_INFINITY_CELL_MIXINS = "mixins.aeinfinitycell";
     public static final String ENABLE_INFINITY_CELL = "enableInfinityCellBigStorage";
     public static final String CATEGORY_MACHINES = "machines";
+    public static final String CATEGORY_WAILA = "mixins.waila";
+    public static final String ENABLE_LIGHTWEIGHT_WAILA = "enableLightweightSnapshots";
     public static final int MACHINE_ID_COUNT = 100;
     public static final int DEFAULT_MACHINE_ID_START = 31300;
     public static final int MIN_MACHINE_ID_START = 2049;
@@ -29,6 +31,7 @@ public final class ApeironConfig {
     private static volatile boolean tstOutputEnabled = true;
     private static volatile boolean tstPatternGuardEnabled = true;
     private static volatile boolean infinityCellEnabled = true;
+    private static volatile boolean lightweightWailaEnabled = true;
     private static volatile int machineIdStart = DEFAULT_MACHINE_ID_START;
 
     private ApeironConfig() {}
@@ -106,6 +109,13 @@ public final class ApeironConfig {
                 true,
                 "Enable exact AE2 Infinity Cell transfers and inventory lists, including essentia and optional AppEU stacks. "
                     + "Requires AE Mixins and a restart. Preserves Infinity Cell's existing UUID and external save format.");
+            lightweightWailaEnabled = configuration.getBoolean(
+                ENABLE_LIGHTWEIGHT_WAILA,
+                CATEGORY_WAILA,
+                true,
+                "Use operating snapshots instead of full GregTech disk saves for OmniOcular, and bound Waila packet "
+                    + "size for all tile entities. Inventories and recipes are previews; full contents remain in their GUIs. "
+                    + "Disable for custom OmniOcular scripts that require complete save data. Requires a restart.");
             final String configuredStart = configuration.get(
                 CATEGORY_MACHINES,
                 "machineIdStart",
@@ -126,6 +136,10 @@ public final class ApeironConfig {
 
     public static boolean areAeMixinsEnabled() {
         return aeMixinsEnabled;
+    }
+
+    public static boolean isLightweightWailaEnabled() {
+        return lightweightWailaEnabled;
     }
 
     public static boolean isEyeOfHarmonyBigOutputEnabled() {

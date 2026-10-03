@@ -56,6 +56,7 @@ apeiron.machine.pattern_input.terminal_visible=Show and manage this assembly in 
 apeiron.machine.pattern_input.lock_buffer=Keep the current recipe when empty and reserve the buffer for it
 apeiron.machine.pattern_input.state.locked=Locked
 apeiron.machine.pattern_input.possible_batches=  Available batches: %s
+apeiron.machine.pattern_input.more_recipe=  %s more recipe inputs/circuits; open the UI for details
 apeiron.machine.me_output.unlimited_cache=Cache: ∞
 apeiron.machine.stored.items=Stored items: %s
 apeiron.machine.stored.fluids=Stored fluids: %s L
