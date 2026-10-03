@@ -157,6 +157,11 @@
     "ae.crafting.gui.UnlimitedCraftingSelectionGuiMixin",
     "gregtech.energy.WirelessRecipeGuiMixin",
     "gregtech.energy.LegacyWirelessRecipeGuiMixin",
-    "compat.omniocular.WirelessTooltipMixin"
+    "compat.omniocular.WirelessTooltipMixin",
+    "gregtech.energy.GodforgeWirelessEnergyMixin",
+    "gregtech.energy.GodforgeWirelessGuiMixin",
+    "gregtech.energy.TecTechWirelessRunningMixin",
+    "tst.energy.OreFactoryWirelessEnergyMixin",
+    "gregtech.energy.GodforgeRecipePredictionMixin"
   ]
 }

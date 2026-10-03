@@ -11,6 +11,22 @@ public final class ScientificInteger {
 
     private ScientificInteger() {}
 
+    public static BigInteger nonNegative(String text) {
+        String value = text.trim();
+        if (value.length() > 4096 || !NUMBER.matcher(value)
+            .matches()) throw new NumberFormatException("Invalid integer");
+        BigDecimal decimal = new BigDecimal(value);
+        if (decimal.signum() == 0) return BigInteger.ZERO;
+        return positive(value);
+    }
+
+    public static String format(BigInteger value) {
+        String decimal = value.toString();
+        return decimal.length() <= 24 ? decimal
+            : new BigDecimal(value).stripTrailingZeros()
+                .toString();
+    }
+
     public static BigInteger positive(String text) {
         String value = text.trim();
         if (value.length() > 4096 || !NUMBER.matcher(value)

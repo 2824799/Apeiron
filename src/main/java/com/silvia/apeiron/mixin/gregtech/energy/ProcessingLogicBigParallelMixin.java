@@ -43,6 +43,35 @@ public abstract class ProcessingLogicBigParallelMixin {
     protected int duration;
     @Shadow
     protected int calculatedParallels;
+    @Shadow
+    protected long calculatedEut;
+    @Shadow
+    protected GTRecipe lastRecipe;
+
+    @Inject(method = "process", at = @At("HEAD"), require = 1)
+    private void apeiron$power(CallbackInfoReturnable<CheckRecipeResult> cir) {
+        if (machine instanceof MTEMultiBlockBase && InfiniteEnergyHatches.find((MTEMultiBlockBase) machine) != null) {
+            ProcessingLogic logic = (ProcessingLogic) (Object) this;
+            logic.setAvailableVoltage(InfiniteEnergyHatches.processingVoltage((MTEMultiBlockBase) machine));
+            logic.setAvailableAmperage(1);
+            logic.setAmperageOC(false);
+        }
+    }
+
+    @Redirect(
+        method = "validateAndCalculateRecipe",
+        at = @At(
+            value = "INVOKE",
+            target = "Lgregtech/api/logic/ProcessingLogic;createOverclockCalculator(Lgregtech/api/util/GTRecipe;)Lgregtech/api/util/OverclockCalculator;"),
+        require = 1)
+    private OverclockCalculator apeiron$calculator(ProcessingLogic logic, GTRecipe recipe) {
+        if (machine instanceof MTEMultiBlockBase && InfiniteEnergyHatches.isUltimate((MTEMultiBlockBase) machine))
+            return OverclockCalculator.ofNoOverclock(recipe);
+        OverclockCalculator calculator = ((ProcessingLogicAccessor) logic).apeiron$nativeCalculator(recipe);
+        if (machine instanceof MTEMultiBlockBase && InfiniteEnergyHatches.find((MTEMultiBlockBase) machine) != null)
+            calculator.setEUt(InfiniteEnergyHatches.processingVoltage((MTEMultiBlockBase) machine));
+        return calculator;
+    }
 
     @Inject(method = "clear", at = @At("HEAD"), require = 1)
     private void apeiron$clearPrepared(CallbackInfoReturnable<ProcessingLogic> cir) {
@@ -75,16 +104,39 @@ public abstract class ProcessingLogicBigParallelMixin {
                 .setConsumption(true);
     }
 
-    @Inject(method = "applyRecipe", at = @At("RETURN"), require = 1)
+    @Inject(method = "applyRecipe", at = @At("HEAD"), cancellable = true, require = 1)
     private void apeiron$prepare(GTRecipe recipe, ParallelHelper helper, OverclockCalculator calculator,
         CheckRecipeResult previous, CallbackInfoReturnable<CheckRecipeResult> cir) {
-        if (helper instanceof BigRecipeParallelHelper && cir.getReturnValue()
-            .wasSuccessful()) {
+        if (helper instanceof BigRecipeParallelHelper) {
+            BigRecipeParallelHelper big = (BigRecipeParallelHelper) helper;
+            double nativeDuration = ((ProcessingLogicAccessor) this).apeiron$duration(recipe, helper, calculator);
+            if (!InfiniteEnergyHatches.isUltimate((MTEMultiBlockBase) machine) && nativeDuration >= Integer.MAX_VALUE) {
+                cir.setReturnValue(gregtech.api.recipe.check.CheckRecipeResultRegistry.DURATION_OVERFLOW);
+                return;
+            }
+            duration = big.recipeDuration((int) nativeDuration);
+            if (!big.plan(duration)) {
+                cir.setReturnValue(big.getResult());
+                return;
+            }
+            calculatedEut = 0;
+            lastRecipe = recipe.mCanBeBuffered ? recipe : null;
+            calculatedParallels = big.getParallelsBig()
+                .min(java.math.BigInteger.valueOf(Integer.MAX_VALUE))
+                .intValue();
+            CheckRecipeResult started = ((ProcessingLogicAccessor) this).apeiron$onStart(recipe);
+            if (!started.wasSuccessful()) {
+                cir.setReturnValue(started);
+                return;
+            }
+            ((ProcessingLogic) (Object) this).overwriteOutputItems(new ItemStack[0])
+                .overwriteOutputFluids(new FluidStack[0]);
             WirelessRecipeState state = ((BigWirelessController) machine).getWirelessRecipeState();
-            state.prepare((BigRecipeParallelHelper) helper, duration);
+            state.prepare(big, duration);
             calculatedParallels = ((BigRecipeParallelHelper) helper).getParallelsBig()
                 .min(java.math.BigInteger.valueOf(Integer.MAX_VALUE))
                 .intValue();
+            cir.setReturnValue(previous);
         }
     }
 }

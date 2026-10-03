@@ -32,6 +32,8 @@ public final class ApeironMachines {
     public static final int MIXED_OUTPUT_ASSEMBLY_OFFSET = 2;
     public static final int INFINITE_ENERGY_HATCH_OFFSET = 3;
     public static MTEInfiniteEnergyHatch infiniteEnergyHatch;
+    public static final int ULTIMATE_ENERGY_HATCH_OFFSET = 10;
+    public static com.silvia.apeiron.common.machine.energy.MTEUltimateInfiniteEnergyHatch ultimateEnergyHatch;
     public static final int PATTERN_INPUT_ASSEMBLY_OFFSET = 4;
     public static final int PATTERN_INPUT_MIRROR_OFFSET = 5;
     public static final int CIRCUIT_PROVIDER_OFFSET = 6;
@@ -89,6 +91,10 @@ public final class ApeironMachines {
             ApeironConfig.getMachineId(INFINITE_ENERGY_HATCH_OFFSET),
             "apeiron.infinite_energy_hatch",
             "Infinite Energy Hatch");
+        ultimateEnergyHatch = new com.silvia.apeiron.common.machine.energy.MTEUltimateInfiniteEnergyHatch(
+            ApeironConfig.getMachineId(ULTIMATE_ENERGY_HATCH_OFFSET),
+            "apeiron.ultimate_infinite_energy_hatch",
+            "Ultimate Infinite Energy Hatch");
         patternInputAssembly = new MTEInfinitePatternInputAssembly(
             ApeironConfig.getMachineId(PATTERN_INPUT_ASSEMBLY_OFFSET),
             "apeiron.infinite_pattern_input",
@@ -140,6 +146,7 @@ public final class ApeironMachines {
             if (registered && (existing == itemOutputBus || existing == fluidOutputHatch
                 || existing == mixedOutputAssembly
                 || existing == infiniteEnergyHatch
+                || existing == ultimateEnergyHatch
                 || existing == patternInputAssembly
                 || existing == patternInputMirror
                 || existing == circuitProvider

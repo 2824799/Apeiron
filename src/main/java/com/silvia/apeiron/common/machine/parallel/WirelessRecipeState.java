@@ -12,7 +12,13 @@ import com.silvia.apeiron.math.BigValueCodec;
 /** A finite recipe remains intact when wireless EU is unavailable. No energy is prefetched or reserved. */
 public final class WirelessRecipeState {
 
-    private BigInteger parallelSetting = BigInteger.ZERO;
+    private BigInteger parallelSetting = BigInteger.valueOf(Integer.MAX_VALUE);
+    private long voltageSetting = Integer.MAX_VALUE;
+    private int targetDuration = 128;
+    private boolean lossless;
+    private boolean exactDebit;
+    private BigInteger totalEnergy = BigInteger.ZERO;
+    private int paidTicks;
     private BigInteger parallels = BigInteger.ZERO;
     private BigInteger euPerTick = BigInteger.ZERO;
     private int duration;
@@ -45,7 +51,47 @@ public final class WirelessRecipeState {
     }
 
     public BigInteger getTotalEUBig() {
-        return euPerTick.multiply(BigInteger.valueOf(duration));
+        return exactDebit ? totalEnergy : euPerTick.multiply(BigInteger.valueOf(duration));
+    }
+
+    public long getVoltageSetting() {
+        return voltageSetting;
+    }
+
+    public void setVoltageSetting(long voltage) {
+        if (voltage < 1) throw new IllegalArgumentException("Voltage must be positive");
+        voltageSetting = voltage;
+    }
+
+    public int getTargetDuration() {
+        return targetDuration;
+    }
+
+    public void setTargetDuration(int ticks) {
+        if (ticks < 1) throw new IllegalArgumentException("Duration must be positive");
+        targetDuration = ticks;
+    }
+
+    public boolean isLossless() {
+        return lossless;
+    }
+
+    public BigInteger nextDebit(int efficiency) {
+        return exactDebit ? com.silvia.apeiron.math.RecipeEnergyBudget.tickCost(totalEnergy, duration, paidTicks)
+            : com.silvia.apeiron.math.RecipeDisplayNumbers.effectiveEUt(euPerTick, efficiency);
+    }
+
+    public void paidTick() {
+        if (paidTicks < duration) paidTicks++;
+    }
+
+    public BigInteger displayEUt(int efficiency) {
+        return exactDebit ? euPerTick
+            : com.silvia.apeiron.math.RecipeDisplayNumbers.effectiveEUt(euPerTick, efficiency);
+    }
+
+    public BigInteger displayTotalEU(int efficiency) {
+        return exactDebit ? totalEnergy : displayEUt(efficiency).multiply(BigInteger.valueOf(duration));
     }
 
     public boolean isRunning() {
@@ -110,7 +156,32 @@ public final class WirelessRecipeState {
         this.duration = duration;
         this.recipeOutputs = outputs;
         this.hudOutputs = null;
+        this.lossless = false;
+        this.exactDebit = false;
+        this.paidTicks = 0;
+        this.totalEnergy = eut.multiply(BigInteger.valueOf(duration));
         running = true;
+    }
+
+    public void startLossless(BigInteger parallels, BigInteger total, int duration, BigMachineOutputQueue outputs) {
+        startExact(parallels, total, duration, outputs, true);
+    }
+
+    public void startExact(BigInteger parallels, BigInteger total, int duration, BigMachineOutputQueue outputs,
+        boolean lossless) {
+        if (running || parallels.signum() <= 0 || total.signum() < 0 || duration < 1)
+            throw new IllegalArgumentException("Invalid exact energy schedule");
+        this.parallels = parallels;
+        this.euPerTick = total.add(BigInteger.valueOf(duration - 1L))
+            .divide(BigInteger.valueOf(duration));
+        this.duration = duration;
+        this.recipeOutputs = outputs;
+        this.hudOutputs = null;
+        this.lossless = lossless;
+        this.exactDebit = true;
+        this.paidTicks = 0;
+        this.totalEnergy = total;
+        this.running = true;
     }
 
     public void complete() {
@@ -126,6 +197,10 @@ public final class WirelessRecipeState {
         parallels = BigInteger.ZERO;
         euPerTick = BigInteger.ZERO;
         duration = 0;
+        paidTicks = 0;
+        lossless = false;
+        exactDebit = false;
+        totalEnergy = BigInteger.ZERO;
     }
 
     public NBTTagCompound save() {
@@ -135,6 +210,13 @@ public final class WirelessRecipeState {
         BigValueCodec.writeNBT(tag, "eut", "eutBig", new AdaptiveInteger(euPerTick));
         tag.setInteger("duration", duration);
         tag.setBoolean("running", running);
+        tag.setLong("voltageSetting", voltageSetting);
+        tag.setInteger("settingsVersion", 1);
+        tag.setInteger("targetDuration", targetDuration);
+        tag.setBoolean("lossless", lossless);
+        tag.setBoolean("exactDebit", exactDebit);
+        tag.setInteger("paidTicks", paidTicks);
+        BigValueCodec.writeNBT(tag, "totalEnergy", "totalEnergyBig", new AdaptiveInteger(totalEnergy));
         NBTTagCompound recipe = new NBTTagCompound();
         recipeOutputs.save(recipe);
         tag.setTag("recipe", recipe);
@@ -155,9 +237,16 @@ public final class WirelessRecipeState {
     public void load(NBTTagCompound tag) {
         hudOutputs = null;
         discardPreparedRecipe();
-        parallelSetting = BigValueCodec.readNBT(tag, "parallelSetting", "parallelSettingBig")
-            .toBigInteger()
-            .max(BigInteger.ZERO);
+        parallelSetting = tag.hasKey("parallelSetting") || tag.hasKey("parallelSettingBig")
+            ? BigValueCodec.readNBT(tag, "parallelSetting", "parallelSettingBig")
+                .toBigInteger()
+                .max(BigInteger.ZERO)
+            : BigInteger.valueOf(Integer.MAX_VALUE);
+        // Old saves initialized every controller to zero before the player made a choice. Require explicit opt-in.
+        if (tag.getInteger("settingsVersion") == 0 && parallelSetting.signum() == 0)
+            parallelSetting = BigInteger.valueOf(Integer.MAX_VALUE);
+        voltageSetting = tag.hasKey("voltageSetting") ? Math.max(1L, tag.getLong("voltageSetting")) : Integer.MAX_VALUE;
+        targetDuration = tag.hasKey("targetDuration") ? Math.max(1, tag.getInteger("targetDuration")) : 128;
         parallels = BigValueCodec.readNBT(tag, "parallels", "parallelsBig")
             .toBigInteger()
             .max(BigInteger.ZERO);
@@ -166,6 +255,12 @@ public final class WirelessRecipeState {
             .max(BigInteger.ZERO);
         duration = tag.getInteger("duration");
         running = tag.getBoolean("running") && duration > 0 && parallels.signum() > 0;
+        lossless = tag.getBoolean("lossless");
+        exactDebit = tag.getBoolean("exactDebit") || lossless;
+        totalEnergy = BigValueCodec.readNBT(tag, "totalEnergy", "totalEnergyBig")
+            .toBigInteger()
+            .max(BigInteger.ZERO);
+        paidTicks = Math.max(0, Math.min(duration, tag.getInteger("paidTicks")));
         recipeOutputs.load(tag.getCompoundTag("recipe"));
         pendingOutputs.load(tag.getCompoundTag("pending"));
     }

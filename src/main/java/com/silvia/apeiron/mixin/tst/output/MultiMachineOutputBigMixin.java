@@ -21,6 +21,7 @@ import com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.GTCM_Mul
 import com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.GTCM_MultiMachineBase.ItemStackLong;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.api.machine.tst.BigTstOutputController;
+import com.silvia.apeiron.common.machine.energy.WirelessControllerEnergy;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
@@ -138,6 +139,8 @@ public abstract class MultiMachineOutputBigMixin implements BigTstOutputControll
     @Inject(method = "outputAfterRecipe", at = @At("RETURN"), require = 1)
     private void apeiron$flushCompleted(CallbackInfo ci) {
         flushOutputsBig();
+        if (this instanceof com.silvia.apeiron.api.machine.parallel.BigWirelessController)
+            WirelessControllerEnergy.complete(apeiron$machine());
     }
 
     @Inject(method = "outputAfterRecipe", at = @At("HEAD"), require = 1)

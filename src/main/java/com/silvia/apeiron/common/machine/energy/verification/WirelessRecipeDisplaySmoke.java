@@ -9,7 +9,6 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.PacketBuffer;
-import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 
@@ -110,7 +109,7 @@ public final class WirelessRecipeDisplaySmoke {
             check(
                 nativeTip.stream()
                     .anyMatch(
-                        line -> EnumChatFormatting.getTextWithoutFormattingCodes(line)
+                        line -> WirelessWailaDisplay.plainText(line)
                             .contains(BigNumberFormatter.formatCompact(huge))),
                 "native Waila outputs missing");
             state.complete();

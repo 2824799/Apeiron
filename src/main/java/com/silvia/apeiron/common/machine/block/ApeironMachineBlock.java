@@ -42,6 +42,8 @@ public final class ApeironMachineBlock extends BlockMachines {
             stacks.add(ApeironMachines.mixedOutputAssembly.getStackForm(1L));
         if (ApeironMachines.infiniteEnergyHatch != null)
             stacks.add(ApeironMachines.infiniteEnergyHatch.getStackForm(1L));
+        if (ApeironMachines.ultimateEnergyHatch != null)
+            stacks.add(ApeironMachines.ultimateEnergyHatch.getStackForm(1L));
         if (ApeironMachines.patternInputAssembly != null)
             stacks.add(ApeironMachines.patternInputAssembly.getStackForm(1L));
         if (ApeironMachines.patternInputMirror != null) stacks.add(ApeironMachines.patternInputMirror.getStackForm(1L));

@@ -9,6 +9,10 @@ public final class RecipeDisplayNumbers {
     private RecipeDisplayNumbers() {}
 
     public static String rate(BigInteger amount, int duration, long ticksPerUnit) {
+        return rate(amount, (long) duration, ticksPerUnit);
+    }
+
+    public static String rate(BigInteger amount, long duration, long ticksPerUnit) {
         if (duration <= 0) return "0";
         final BigDecimal value = new BigDecimal(amount.multiply(BigInteger.valueOf(ticksPerUnit)))
             .divide(BigDecimal.valueOf(duration), 2, RoundingMode.HALF_UP);

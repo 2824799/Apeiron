@@ -8,8 +8,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.api.machine.me.output.BigFluidOutputTransaction;
-import com.silvia.apeiron.api.machine.me.output.BigItemOutputTransaction;
 import com.silvia.apeiron.api.machine.parallel.ParallelLimit;
 import com.silvia.apeiron.common.machine.energy.MTEInfiniteEnergyHatch;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
@@ -19,11 +17,6 @@ import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.util.item.AEFluidStack;
 import appeng.util.item.AEItemStack;
-import gregtech.api.interfaces.IOutputBus;
-import gregtech.api.interfaces.IOutputBusTransaction;
-import gregtech.api.interfaces.IOutputHatch;
-import gregtech.api.interfaces.IOutputHatchTransaction;
-import gregtech.api.interfaces.IOutputTransaction;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTRecipe;
@@ -38,7 +31,9 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
     private BigRecipeInputs inputs;
     private BigInteger parallels;
     private BigInteger euPerParallel;
-    private final BigMachineOutputQueue exactOutputs = new BigMachineOutputQueue();
+    private BigInteger totalPerParallel;
+    private BigInteger totalEnergy;
+    private BigMachineOutputQueue exactOutputs = new BigMachineOutputQueue();
 
     public BigRecipeParallelHelper(MTEMultiBlockBase controller, MTEInfiniteEnergyHatch hatch,
         WirelessRecipeState state) {
@@ -60,6 +55,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
 
     @Override
     protected void determineParallel() {
+        calculator.setEUt(com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches.processingVoltage(controller));
         if (recipe.mEUt < 0 || recipe.mEUt > calculator.getMaxAllowedRecipeEUt()) {
             result = CheckRecipeResultRegistry.insufficientVoltage(recipe.mEUt);
             return;
@@ -67,7 +63,6 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
         calculator.setParallel(1)
             .setCurrentParallel(1)
             .setAmperage(1)
-            .setEUt(hatch.maxEUInput())
             .setAmperageOC(false)
             .calculate();
         if (calculator.getConsumption() == Long.MAX_VALUE || calculator.getDuration() == Integer.MAX_VALUE) {
@@ -76,17 +71,26 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
         }
         euPerParallel = BigInteger.valueOf(calculator.getConsumption());
         inputs = new BigRecipeInputs(controller, recipe, itemInputs, fluidInputs);
+        plan(hatch.isUltimate() ? state.getTargetDuration() : Math.max(1, calculator.getDuration()));
+    }
+
+    public boolean plan(int duration) {
+        int efficiency = 10000 - (controller.getIdealStatus() - controller.getRepairStatus()) * 1000;
+        totalPerParallel = hatch.isUltimate() ? BigInteger.valueOf(recipe.mEUt)
+            .multiply(BigInteger.valueOf(recipe.mDuration)) : euPerParallel.multiply(BigInteger.valueOf(duration));
         ParallelLimit cap = state.getLimit();
-        if (euPerParallel.signum() > 0) {
-            BigInteger affordable = hatch.getAvailableEUBig()
-                .divide(euPerParallel);
+        if (totalPerParallel.signum() > 0) {
+            BigInteger affordable = hatch.isUltimate()
+                ? com.silvia.apeiron.math.RecipeEnergyBudget.affordable(hatch.getAvailableEUBig(), totalPerParallel)
+                : com.silvia.apeiron.math.RecipeEnergyBudget
+                    .affordableNormal(hatch.getAvailableEUBig(), euPerParallel, duration, efficiency);
             cap = ParallelLimit.bounded(cap.applyTo(affordable));
         }
         parallels = inputs.allocation()
             .maximum(cap);
         if (parallels.signum() <= 0) {
             result = CheckRecipeResultRegistry.NO_RECIPE;
-            return;
+            return false;
         }
         if (!outputsFit(parallels)) {
             BigInteger upper = parallels, lower = BigInteger.ZERO;
@@ -100,9 +104,13 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
             parallels = lower;
             if (parallels.signum() == 0) {
                 result = CheckRecipeResultRegistry.ITEM_OUTPUT_FULL;
-                return;
+                return false;
             }
         }
+        exactOutputs = new BigMachineOutputQueue();
+        totalEnergy = hatch.isUltimate() ? totalPerParallel.multiply(parallels)
+            : com.silvia.apeiron.math.RecipeDisplayNumbers.effectiveEUt(euPerParallel.multiply(parallels), efficiency)
+                .multiply(BigInteger.valueOf(duration));
         for (IAEStack<?> output : outputs(parallels)) {
             if (output instanceof IAEItemStack)
                 exactOutputs.addItem(((IAEItemStack) output).getItemStack(), BigAEStackValues.get(output));
@@ -113,6 +121,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
         itemOutputs = new ItemStack[0];
         fluidOutputs = new FluidStack[0];
         result = CheckRecipeResultRegistry.SUCCESSFUL;
+        return true;
     }
 
     private List<IAEStack<?>> outputs(BigInteger count) {
@@ -131,50 +140,24 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
     }
 
     private boolean outputsFit(BigInteger count) {
-        List<BigItemOutputTransaction> items = new ArrayList<>();
-        List<BigFluidOutputTransaction> fluids = new ArrayList<>();
-        for (IOutputBus bus : controller.getOutputBusses()) {
-            IOutputBusTransaction tx = bus.createTransaction();
-            if (tx instanceof BigItemOutputTransaction) {
-                recipeCheck(tx);
-                items.add((BigItemOutputTransaction) tx);
-            }
-        }
-        for (IOutputHatch output : controller.getOutputHatches()) {
-            IOutputHatchTransaction tx = output.createTransaction();
-            if (tx instanceof BigFluidOutputTransaction) {
-                recipeCheck(tx);
-                fluids.add((BigFluidOutputTransaction) tx);
-            }
-        }
-        for (IAEStack<?> output : outputs(count)) {
-            if (output instanceof IAEItemStack && protectExcessItem) {
-                for (BigItemOutputTransaction tx : items)
-                    tx.storePartialBig((IAEItemStack) output, BigInteger.ONE, BigInteger.ONE);
-                if (BigAEStackValues.get(output)
-                    .signum() > 0) return false;
-            } else if (output instanceof IAEFluidStack && protectExcessFluid) {
-                for (BigFluidOutputTransaction tx : fluids)
-                    tx.storePartialBig((IAEFluidStack) output, BigInteger.ONE, BigInteger.ONE);
-                if (BigAEStackValues.get(output)
-                    .signum() > 0) return false;
-            }
-        }
-        return true;
-    }
-
-    private static void recipeCheck(IOutputTransaction<?, ?> tx) {
-        if (tx instanceof IOutputTransaction.IRecipeCheckAware)
-            ((IOutputTransaction.IRecipeCheckAware) tx).setRecipeCheck(true);
+        return com.silvia.apeiron.common.machine.output.BigRecipeOutputCapacity.fits(controller, outputs(count));
     }
 
     public void commit(int duration) {
         if (state.isRunning() || duration < 1) throw new IllegalStateException("Wireless controller already running");
         inputs.consume(parallels);
-        state.start(parallels, euPerParallel.multiply(parallels), duration, exactOutputs);
+        state.startExact(parallels, totalEnergy, duration, exactOutputs, hatch.isUltimate());
     }
 
     public BigInteger getParallelsBig() {
         return parallels;
+    }
+
+    public int recipeDuration(int nativeDuration) {
+        return hatch.isUltimate() ? state.getTargetDuration() : Math.max(1, nativeDuration);
+    }
+
+    public BigInteger getTotalEnergyBig() {
+        return totalEnergy;
     }
 }

@@ -8,9 +8,25 @@ public final class InfiniteEnergyHatches {
     private InfiniteEnergyHatches() {}
 
     public static MTEInfiniteEnergyHatch find(MTEMultiBlockBase machine) {
+        MTEInfiniteEnergyHatch ordinary = null;
         for (MTEHatchEnergy hatch : machine.mEnergyHatches)
-            if (hatch instanceof MTEInfiniteEnergyHatch && hatch.isValid()) return (MTEInfiniteEnergyHatch) hatch;
-        return null;
+            if (hatch instanceof MTEInfiniteEnergyHatch && hatch.isValid()) {
+                MTEInfiniteEnergyHatch source = (MTEInfiniteEnergyHatch) hatch;
+                if (source.isUltimate()) return source;
+                ordinary = source;
+            }
+        return ordinary;
+    }
+
+    public static boolean isUltimate(MTEMultiBlockBase machine) {
+        MTEInfiniteEnergyHatch hatch = find(machine);
+        return hatch != null && hatch.isUltimate();
+    }
+
+    public static long processingVoltage(MTEMultiBlockBase machine) {
+        return isUltimate(machine) ? Long.MAX_VALUE
+            : ((com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine).getWirelessRecipeState()
+                .getVoltageSetting();
     }
 
     public static boolean isNativeWirelessController(MTEMultiBlockBase machine) {

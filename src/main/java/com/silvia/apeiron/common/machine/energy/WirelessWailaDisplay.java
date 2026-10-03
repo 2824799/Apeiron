@@ -20,23 +20,34 @@ import gregtech.api.util.GTUtility;
 
 public final class WirelessWailaDisplay {
 
+    private static final java.util.regex.Pattern FORMATTING = java.util.regex.Pattern
+        .compile("\u00a7[0-9A-FK-OR]", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    public static String plainText(String text) {
+        return FORMATTING.matcher(text)
+            .replaceAll("");
+    }
+
     private WirelessWailaDisplay() {}
 
     public static void write(NBTTagCompound tag, WirelessRecipeState state, int efficiency) {
         if (!state.isRunning()) return;
-        final BigInteger actual = RecipeDisplayNumbers.effectiveEUt(state.getEUtBig(), efficiency);
+        final BigInteger actual = state.displayEUt(efficiency);
         tag.setString("ApeironActualWirelessEUt", actual.toString());
         tag.setString("ApeironActualWirelessEUtDisplay", BigNumberFormatter.formatCompact(actual));
-        tag.setInteger("ApeironWirelessInputVoltage", Integer.MAX_VALUE);
+        tag.setLong("ApeironWirelessInputVoltage", state.getVoltageSetting());
         final int duration = state.getDuration();
         tag.setString(
             "ApeironActualWirelessTotalEU",
-            actual.multiply(BigInteger.valueOf(duration))
+            state.displayTotalEU(efficiency)
                 .toString());
         tag.setString(
             "ApeironActualWirelessTotalEUDisplay",
-            BigNumberFormatter.formatCompact(actual.multiply(BigInteger.valueOf(duration))));
-        tag.setString("ApeironActualWirelessAmperageDisplay", RecipeDisplayNumbers.rate(actual, Integer.MAX_VALUE, 1));
+            BigNumberFormatter.formatCompact(state.displayTotalEU(efficiency)));
+        tag.setString(
+            "ApeironActualWirelessAmperageDisplay",
+            RecipeDisplayNumbers.rate(actual, state.getVoltageSetting(), 1));
+        tag.setBoolean("ApeironLosslessEnergy", state.isLossless());
         NBTTagList rows = new NBTTagList();
         for (IAEStack<?> output : state.getHudOutputs()) {
             NBTTagCompound row = new NBTTagCompound();
@@ -94,7 +105,7 @@ public final class WirelessWailaDisplay {
         if (tag == null || !tag.hasKey("ApeironActualWirelessEUt")) return original;
         final List<String> lines = new ArrayList<>(original);
         for (int index = 0; index < lines.size(); index++) {
-            final String plain = EnumChatFormatting.getTextWithoutFormattingCodes(lines.get(index));
+            final String plain = plainText(lines.get(index));
             if (plain.contains("功耗总额")) lines.set(
                 index,
                 EnumChatFormatting.LIGHT_PURPLE + "功耗总额： "
@@ -113,11 +124,11 @@ public final class WirelessWailaDisplay {
                     + EnumChatFormatting.YELLOW
                     + tag.getString("ApeironActualWirelessAmperageDisplay")
                     + " A "
-                    + GTUtility.getColoredTierNameFromVoltage(tag.getInteger("ApeironWirelessInputVoltage")));
+                    + GTUtility.getColoredTierNameFromVoltage(tag.getLong("ApeironWirelessInputVoltage")));
             else if (plain.contains("运行电压")) lines.set(
                 index,
                 EnumChatFormatting.LIGHT_PURPLE + "运行电压： "
-                    + GTUtility.getColoredTierNameFromVoltage(tag.getInteger("ApeironWirelessInputVoltage")));
+                    + GTUtility.getColoredTierNameFromVoltage(tag.getLong("ApeironWirelessInputVoltage")));
         }
         return lines;
     }

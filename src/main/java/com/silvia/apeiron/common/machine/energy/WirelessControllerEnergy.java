@@ -12,12 +12,26 @@ public final class WirelessControllerEnergy {
 
     private WirelessControllerEnergy() {}
 
+    public static void complete(MTEMultiBlockBase machine) {
+        WirelessRecipeState state = ((BigWirelessController) machine).getWirelessRecipeState();
+        state.complete();
+        if (!state.pending()
+            .isEmpty() && state.pending()
+                .flush(
+                    machine.getOutputBusses(),
+                    machine.getOutputHatches(),
+                    machine.protectsExcessItem(),
+                    machine.protectsExcessFluid()))
+            machine.markDirty();
+    }
+
     public static boolean debitTick(MTEMultiBlockBase machine) {
         WirelessRecipeState state = ((BigWirelessController) machine).getWirelessRecipeState();
         MTEInfiniteEnergyHatch hatch = InfiniteEnergyHatches.find(machine);
-        BigInteger debit = com.silvia.apeiron.math.RecipeDisplayNumbers
-            .effectiveEUt(state.getEUtBig(), machine.mEfficiency);
-        return hatch != null && hatch.consumeEUBig(debit);
+        BigInteger debit = state.nextDebit(machine.mEfficiency);
+        if (hatch == null || !hatch.consumeEUBig(debit)) return false;
+        state.paidTick();
+        return true;
     }
 
     public static Boolean debitLegacy(MTEMultiBlockBase machine, long amount) {

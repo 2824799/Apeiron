@@ -20,7 +20,7 @@ import gregtech.api.util.GTSplit;
 /** A normal energy-hatch structure entry backed exclusively by its owner's GT wireless account. */
 @IMetaTileEntity.SkipGenerateDescription
 @IMetaTileEntity.SkipGenerateName
-public final class MTEInfiniteEnergyHatch extends MTEHatchEnergy implements BigWirelessEnergySource {
+public class MTEInfiniteEnergyHatch extends MTEHatchEnergy implements BigWirelessEnergySource {
 
     private DirectWirelessEnergySource source;
 
@@ -28,7 +28,7 @@ public final class MTEInfiniteEnergyHatch extends MTEHatchEnergy implements BigW
         super(id, name, regionalName, 14);
     }
 
-    private MTEInfiniteEnergyHatch(String name, int tier, String[] description, ITexture[][][] textures) {
+    protected MTEInfiniteEnergyHatch(String name, int tier, String[] description, ITexture[][][] textures) {
         super(name, tier, description, textures);
     }
 
@@ -69,6 +69,10 @@ public final class MTEInfiniteEnergyHatch extends MTEHatchEnergy implements BigW
     @Override
     public long maxEUInput() {
         return Integer.MAX_VALUE;
+    }
+
+    public boolean isUltimate() {
+        return false;
     }
 
     @Override

@@ -40,8 +40,13 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
             return ApeironConfig.areAeMixinsEnabled() && getClass().getClassLoader()
                 .getResource("reobf/proghatches/gt/metatileentity/util/ISpecialOptimize.class") != null;
         }
-        if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gregtech.energy."))
-            return ApeironConfig.areAeMixinsEnabled();
+        if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gregtech.energy.")) {
+            if (mixinClassName.contains("Godforge") || mixinClassName.contains("TecTech"))
+                return ApeironConfig.areAeMixinsEnabled() && getClass().getClassLoader()
+                    .getResource("tectech/thing/metaTileEntity/multi/godforge/MTEBaseModule.class") != null;
+            return ApeironConfig.areAeMixinsEnabled() && getClass().getClassLoader()
+                .getResource(targetClassName.replace('.', '/') + ".class") != null;
+        }
         if (mixinClassName.equals("com.silvia.apeiron.mixin.tst.compat.TstPatternEncodeGuardMixin")) {
             return ApeironConfig.isTstPatternEncodeGuardEnabled() && getClass().getClassLoader()
                 .getResource("com/Nxer/TwistSpaceTechnology/mixin/MixinContainerPatternTermEncode.class") != null;
@@ -58,7 +63,9 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
                 && getClass().getClassLoader()
                     .getResource(
                         "com/Nxer/TwistSpaceTechnology/common/machine/multiMachineClasses/GTCM_MultiMachineBase.class")
-                    != null;
+                    != null
+                && getClass().getClassLoader()
+                    .getResource(targetClassName.replace('.', '/') + ".class") != null;
         }
         if (EYE_OUTPUT_MIXIN.equals(mixinClassName)) {
             return ApeironConfig.isEyeOfHarmonyBigOutputEnabled() && ApeironConfig.areAeMixinsEnabled();

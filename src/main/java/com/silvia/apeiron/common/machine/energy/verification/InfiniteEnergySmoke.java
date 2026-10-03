@@ -139,9 +139,13 @@ public final class InfiniteEnergySmoke {
             WirelessRecipeState state = ((BigWirelessController) (Object) controller).getWirelessRecipeState();
             check(
                 state.getParallelSettingBig()
-                    .signum() == 0 && state.getLimit()
-                        .isUnlimited(),
-                "zero does not mean unlimited");
+                    .equals(BigInteger.valueOf(Integer.MAX_VALUE)),
+                "unsafe default parallel setting");
+            state.setParallelSettingBig(BigInteger.ZERO);
+            check(
+                state.getLimit()
+                    .isUnlimited(),
+                "manual zero does not mean unlimited");
             WirelessNetworkManager.setUserEU(owner, HUGE.multiply(BigInteger.valueOf(8 * 20L)));
             MTEBoundlessMEOutputBus receiving = (MTEBoundlessMEOutputBus) controller.mOutputBusses.get(0);
             controller.mOutputBusses.clear();
@@ -244,6 +248,7 @@ public final class InfiniteEnergySmoke {
                     .applyTo(HUGE)
                     .equals(BigInteger.TEN.pow(25)),
                 "manual parallel cap ignored");
+            verifyControls(owner, controller.recipes);
         } finally {
             GlobalVariableStorage.GlobalEnergy = oldEnergy;
             SpaceProjectManager.spaceTeams = oldTeams;
@@ -251,6 +256,136 @@ public final class InfiniteEnergySmoke {
         }
         Apeiron.LOG.info(
             "Infinite energy hatch: shared 10^60 recipe, exact input debit, extended wireless tick, low-balance pause, persistence and output conservation verification passed");
+    }
+
+    private static Controller fixture(UUID owner, RecipeMap<?> recipes, boolean ultimate) {
+        Controller machine = new Controller();
+        machine.recipes = recipes;
+        ApeironMachineTile energy = tile(ultimate ? ApeironMachines.ULTIMATE_ENERGY_HATCH_OFFSET : 3);
+        energy.setOwnerUuid(owner);
+        machine.mEnergyHatches.add((MTEInfiniteEnergyHatch) energy.getMetaTileEntity());
+        machine.mOutputBusses.add((MTEBoundlessMEOutputBus) tile(0).getMetaTileEntity());
+        machine.mWrench = machine.mScrewdriver = machine.mSoftMallet = machine.mHardHammer = machine.mSolderingTool = machine.mCrowbar = true;
+        return machine;
+    }
+
+    private static MTEInfinitePatternInputAssembly input(Controller machine, BigInteger count) {
+        MTEInfinitePatternInputAssembly input = (MTEInfinitePatternInputAssembly) tile(4).getMetaTileEntity();
+        check(
+            input.addToBufferBig(
+                0,
+                Arrays.asList(
+                    BigAEStackValues.copyWithSize(
+                        AEItemStack.create(new ItemStack(Items.diamond)),
+                        count.multiply(BigInteger.valueOf(2))))),
+            "control input setup");
+        machine.mDualInputHatches.add(input);
+        return input;
+    }
+
+    private static void runRecipe(Controller machine, MTEInfinitePatternInputAssembly input) {
+        input.beginRecipeProcessing();
+        try {
+            gregtech.api.recipe.check.CheckRecipeResult result = machine.checkProcessing();
+            check(result.wasSuccessful(), "control recipe failed: " + result.getID());
+        } finally {
+            input.endRecipeProcessing();
+        }
+    }
+
+    private static void verifyControls(UUID owner, RecipeMap<?> recipes) {
+        Controller bounded = fixture(owner, recipes, false);
+        WirelessRecipeState boundedState = ((BigWirelessController) (Object) bounded).getWirelessRecipeState();
+        boundedState.setParallelSettingBig(BigInteger.ZERO);
+        MTEInfinitePatternInputAssembly boundedInput = input(bounded, HUGE);
+        WirelessNetworkManager.setUserEU(owner, BigInteger.valueOf(800));
+        runRecipe(bounded, boundedInput);
+        check(
+            boundedState.getParallelsBig()
+                .equals(BigInteger.valueOf(5)),
+            "whole-batch energy budget ignored");
+        check(
+            boundedInput.getBuffers()
+                .get(0)
+                .getItemAmountBig()
+                .equals(
+                    HUGE.subtract(BigInteger.valueOf(5))
+                        .multiply(BigInteger.valueOf(2))),
+            "budget consumed excess inputs");
+
+        Controller physical = fixture(owner, recipes, false);
+        physical.mOutputBusses.clear();
+        gregtech.api.metatileentity.implementations.MTEHatchOutputBus nativeBus = new gregtech.api.metatileentity.implementations.MTEHatchOutputBus(
+            "apeiron.verify.physical_output",
+            1,
+            1,
+            new String[0],
+            null);
+        nativeBus.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        physical.mOutputBusses.add(nativeBus);
+        WirelessRecipeState physicalState = ((BigWirelessController) (Object) physical).getWirelessRecipeState();
+        physicalState.setParallelSettingBig(BigInteger.ZERO);
+        MTEInfinitePatternInputAssembly physicalInput = input(physical, HUGE);
+        WirelessNetworkManager.setUserEU(owner, HUGE.multiply(BigInteger.valueOf(160)));
+        runRecipe(physical, physicalInput);
+        check(
+            physicalState.getParallelsBig()
+                .equals(BigInteger.valueOf(21)),
+            "one native slot did not constrain outputs to 64 items");
+        check(nativeBus.getStackInSlot(0) == null, "output preflight committed an inventory mutation");
+
+        Controller ultimate = fixture(owner, recipes, true);
+        WirelessRecipeState ultimateState = ((BigWirelessController) (Object) ultimate).getWirelessRecipeState();
+        check(ultimateState.getTargetDuration() == 128, "ultimate default is not 128 ticks");
+        ultimateState.setParallelSettingBig(BigInteger.ZERO);
+        ultimateState.setTargetDuration(7);
+        MTEInfinitePatternInputAssembly ultimateInput = input(ultimate, BigInteger.valueOf(11));
+        WirelessNetworkManager.setUserEU(owner, BigInteger.valueOf(1760));
+        runRecipe(ultimate, ultimateInput);
+        check(ultimate.mMaxProgresstime == 7 && ultimateState.isLossless(), "ultimate completion time ignored");
+        check(
+            ultimateState.getTotalEUBig()
+                .equals(BigInteger.valueOf(1760)),
+            "ultimate charged overclock rather than base recipe cost");
+        check(ultimate.onRunningTick(null), "ultimate first tick");
+        WirelessNetworkManager.setUserEU(owner, BigInteger.ZERO);
+        BigInteger retryCost = ultimateState.nextDebit(10000);
+        check(
+            !ultimate.onRunningTick(null) && ultimateState.nextDebit(10000)
+                .equals(retryCost),
+            "pause advanced lossless schedule");
+        NBTTagCompound saved = ultimateState.save();
+        WirelessRecipeState reloaded = new WirelessRecipeState();
+        reloaded.load(saved);
+        check(
+            reloaded.nextDebit(10000)
+                .equals(retryCost),
+            "lossless remainder failed to reload");
+        BigInteger remaining = BigInteger.valueOf(1760)
+            .subtract(BigInteger.valueOf(252));
+        WirelessNetworkManager.setUserEU(owner, remaining);
+        for (int tick = 1; tick < 7; tick++) check(ultimate.onRunningTick(null), "ultimate resumed tick");
+        check(
+            WirelessNetworkManager.getUserEU(owner)
+                .signum() == 0,
+            "lossless rounding added or lost EU");
+
+        WirelessRecipeState legacyDefault = new WirelessRecipeState();
+        NBTTagCompound old = new NBTTagCompound();
+        old.setLong("parallelSetting", 0L);
+        legacyDefault.load(old);
+        check(
+            legacyDefault.getParallelSettingBig()
+                .equals(BigInteger.valueOf(Integer.MAX_VALUE)),
+            "old automatic zero was not migrated");
+        legacyDefault.setParallelSettingBig(BigInteger.ZERO);
+        reloaded.load(legacyDefault.save());
+        check(
+            reloaded.getParallelSettingBig()
+                .signum() == 0,
+            "explicit zero failed to survive save");
+        Apeiron.LOG.info(
+            "Energy controls: full-batch budget, physical output capacity, lossless time, exact debit, pause/reload and safe defaults passed");
     }
 
     private static void check(boolean value, String message) {

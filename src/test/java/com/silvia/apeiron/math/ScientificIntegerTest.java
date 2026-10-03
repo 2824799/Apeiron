@@ -10,6 +10,16 @@ import org.junit.Test;
 public class ScientificIntegerTest {
 
     @Test
+    public void parallelZeroAndScientificRoundTrip() {
+        assertEquals(BigInteger.ZERO, ScientificInteger.nonNegative("0"));
+        assertEquals(BigInteger.ZERO, ScientificInteger.nonNegative("0e20"));
+        assertEquals(BigInteger.TEN.pow(20), ScientificInteger.nonNegative("1e20"));
+        BigInteger huge = BigInteger.TEN.pow(10000)
+            .multiply(BigInteger.valueOf(123));
+        assertEquals(huge, ScientificInteger.nonNegative(ScientificInteger.format(huge)));
+    }
+
+    @Test
     public void exponentFormsPreserveEveryDigit() {
         assertEquals(BigInteger.TEN.pow(18), ScientificInteger.positive("1E18"));
         assertEquals(BigInteger.TEN.pow(18), ScientificInteger.positive("1e18"));
