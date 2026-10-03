@@ -48,6 +48,11 @@ public final class Apeiron {
             if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()
                 .exitJava(0, false);
         }
+        if ("1".equals(System.getenv("APEIRON_VERIFY_PARALLEL"))) {
+            com.silvia.apeiron.common.machine.energy.verification.NativeParallelPanelSmoke.verify();
+            if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()
+                .exitJava(0, false);
+        }
         if ("1".equals(System.getenv("APEIRON_VERIFY_ENERGY"))) {
             com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
             com.silvia.apeiron.common.machine.energy.verification.WirelessMachineIntegrationSmoke.verify();

@@ -81,6 +81,7 @@ public final class InfiniteEnergySmoke {
     }
 
     public static void verify() {
+        NativeParallelPanelSmoke.verify();
         HashMap<UUID, BigInteger> oldEnergy = GlobalVariableStorage.GlobalEnergy;
         Map<UUID, UUID> oldTeams = SpaceProjectManager.spaceTeams;
         GlobalEnergyWorldSavedData oldSave = GlobalEnergyWorldSavedData.INSTANCE;

@@ -32,6 +32,16 @@ public abstract class WirelessParallelGuiMixin {
             cir.setReturnValue(true);
     }
 
+    @Inject(method = "openPowerControlPanel", at = @At("HEAD"), require = 1)
+    private void apeiron$initializeNativeParallel(PanelSyncManager sync, ModularPanel parent,
+        CallbackInfoReturnable<ModularPanel> cir) {
+        // MUI2 copies this value into its first sync; unlike MUI1, it never initializes the locked maximum.
+        if (InfiniteEnergyHatches.find(multiblock) == null && multiblock.isAlwaysMaxParallel()) {
+            int maximum = multiblock.getMaxParallelRecipes();
+            if (maximum > 0) multiblock.setPowerPanelMaxParallel(maximum);
+        }
+    }
+
     @Inject(method = "openPowerControlPanel", at = @At("RETURN"), require = 1)
     private void apeiron$panel(PanelSyncManager sync, ModularPanel parent, CallbackInfoReturnable<ModularPanel> cir) {
         if (multiblock instanceof BigWirelessController && InfiniteEnergyHatches.find(multiblock) != null)
