@@ -50,6 +50,8 @@ afterEvaluate {
                 mainClass.set(launcher.mainClass)
                 javaLauncher.set(launcher.javaLauncher)
                 workingDir = layout.buildDirectory.dir("compatibility/${profile.pack}" + (side == "client" ? "/client" : "")).get().asFile
+                def desktopDataDirectory = new File(workingDir, "xdg-data")
+                if (side == "client") environment "XDG_DATA_HOME", desktopDataDirectory.absolutePath
                 environment "APEIRON_VERIFY_COMPATIBILITY", "1"
                 environment "APEIRON_VERIFY_EXIT", "1"
                 environment "APEIRON_COMPATIBILITY_PROFILE", profile.pack
@@ -88,6 +90,7 @@ afterEvaluate {
                 def artifact = tasks.named("jar").get().archiveFile.get().asFile
                 doFirst {
                     workingDir.mkdirs()
+                    if (side == "client") java.nio.file.Files.createDirectories(desktopDataDirectory.toPath())
                     new File(workingDir, "eula.txt").text = "eula=true\n"
                     if (side == "server") new File(workingDir, "server.properties").text =
                         "server-port=0\nonline-mode=false\nlevel-name=apeiron-compatibility\n"
