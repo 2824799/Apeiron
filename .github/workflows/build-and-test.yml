@@ -32,7 +32,9 @@ jobs:
           java-version: "25"
       - uses: gradle/actions/setup-gradle@v4
       - name: 安装虚拟显示环境
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0
+        run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libegl-mesa0 libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - name: 检查软件 OpenGL 环境
+        run: xvfb-run -a glxinfo -B
       - name: 验证同一构建产物的四版客户端
         run: xvfb-run -a ./gradlew --no-daemon compatibilityClientCheck
       - name: 保存兼容检查证据
