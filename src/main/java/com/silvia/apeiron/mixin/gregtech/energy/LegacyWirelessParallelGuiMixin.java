@@ -41,7 +41,8 @@ public abstract class LegacyWirelessParallelGuiMixin {
     private void apeiron$legacyParallelField(EntityPlayer player, CallbackInfoReturnable<ModularWindow> cir,
         @Local ModularWindow.Builder builder, @Local NumericWidget textField) {
         MTEMultiBlockBase machine = (MTEMultiBlockBase) (Object) this;
-        if (InfiniteEnergyHatches.find(machine) == null) return;
+        apeiron$energyInstalledForGui = InfiniteEnergyHatches.find(machine) != null;
+        apeiron$ultimateForGui = InfiniteEnergyHatches.isUltimate(machine);
         BigWirelessController controller = (BigWirelessController) (Object) this;
         builder.widget(
             new FakeSyncWidget.BooleanSyncer(
@@ -99,8 +100,7 @@ public abstract class LegacyWirelessParallelGuiMixin {
                 .setEnabled(w -> apeiron$energyInstalledForGui));
         builder.widget(new TextFieldWidget().setGetter(() -> {
             com.silvia.apeiron.common.machine.parallel.WirelessRecipeState state = controller.getWirelessRecipeState();
-            return Long.toString(
-                InfiniteEnergyHatches.isUltimate(machine) ? state.getTargetDuration() : state.getVoltageSetting());
+            return Long.toString(apeiron$ultimateForGui ? state.getTargetDuration() : state.getVoltageSetting());
         })
             .setSetter(text -> {
                 if (InfiniteEnergyHatches.find(machine) == null) return;

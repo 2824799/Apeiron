@@ -44,14 +44,20 @@ public abstract class WirelessParallelGuiMixin {
 
     @Inject(method = "openPowerControlPanel", at = @At("RETURN"), require = 1)
     private void apeiron$panel(PanelSyncManager sync, ModularPanel parent, CallbackInfoReturnable<ModularPanel> cir) {
-        if (multiblock instanceof BigWirelessController && InfiniteEnergyHatches.find(multiblock) != null)
-            cir.getReturnValue()
-                .size(120, 170);
+        if (!(multiblock instanceof BigWirelessController)) return;
+        BooleanSyncValue installed = WirelessPowerWidgets.installed(sync, multiblock);
+        cir.getReturnValue()
+            .onUpdateListener(panel -> {
+                int height = installed.getBoolValue() ? 170 : 130;
+                if (panel.getArea().height != height) panel.height(height);
+            });
     }
 
     @Inject(method = "makeParallelConfigurator", at = @At("RETURN"), cancellable = true, require = 1)
     private void apeiron$exactRow(PanelSyncManager sync, CallbackInfoReturnable<IWidget> cir) {
-        if (!(multiblock instanceof BigWirelessController) || InfiniteEnergyHatches.find(multiblock) == null) return;
+        if (!(multiblock instanceof BigWirelessController)) return;
+        // The client has no controller hatch list. Both sides must build all sync handlers and
+        // widgets; only their visibility depends on the server's synchronized installation state.
         BooleanSyncValue installed = WirelessPowerWidgets.installed(sync, multiblock);
         IWidget nativeRow = cir.getReturnValue();
         cir.setReturnValue(

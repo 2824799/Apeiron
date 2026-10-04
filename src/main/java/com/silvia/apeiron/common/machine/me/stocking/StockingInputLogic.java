@@ -32,6 +32,7 @@ import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.me.GridAccessException;
 import appeng.util.IterationCounter;
+import appeng.util.item.AEFluidStack;
 import appeng.util.item.FluidList;
 import appeng.util.item.ItemList;
 import gregtech.api.metatileentity.MetaTileEntity;
@@ -279,7 +280,7 @@ public class StockingInputLogic {
     }
 
     public ItemStack itemView(int slot) {
-        if (slot < 0 || slot >= SLOT_COUNT) return null;
+        if (slot < 0 || slot >= SLOT_COUNT || !active()) return null;
         if (processing) return views[slot] instanceof ItemStack ? (ItemStack) views[slot] : null;
         IAEStack<?> stock = displayed[slot];
         if (!(stock instanceof IAEItemStack)) return null;
@@ -301,6 +302,7 @@ public class StockingInputLogic {
     }
 
     public FluidStack[] fluidViews() {
+        if (!active()) return new FluidStack[0];
         List<FluidStack> result = new ArrayList<>();
         for (int i = 0; i < SLOT_COUNT; i++) {
             FluidStack view = processing && views[i] instanceof FluidStack ? (FluidStack) views[i]
@@ -315,6 +317,67 @@ public class StockingInputLogic {
             }
         }
         return result.toArray(new FluidStack[0]);
+    }
+
+    /** Controller extraction uses the same views and accounting as recipes, including legacy generators. */
+    public ItemStack extractItem(int slot, int amount, boolean simulate) {
+        IAEStack<?> selected = selected(slot);
+        if (!(selected instanceof IAEItemStack)) return null;
+        IAEStack<?> extracted = extractSlot(slot, amount, simulate);
+        return extracted instanceof IAEItemStack ? ((IAEItemStack) extracted).getItemStack() : null;
+    }
+
+    public FluidStack drainFluid(FluidStack fluid, int amount, boolean doDrain) {
+        if (fluid == null || amount < 0 || !active()) return null;
+        IAEStack<?> type = AEFluidStack.create(fluid);
+        for (int slot = 0; slot < SLOT_COUNT; slot++) if (same(selected(slot), type)) {
+            if (amount == 0) return new FluidStack(fluid, 0);
+            IAEStack<?> extracted = extractSlot(slot, amount, !doDrain);
+            return extracted instanceof IAEFluidStack ? ((IAEFluidStack) extracted).getFluidStack() : null;
+        }
+        return null;
+    }
+
+    private IAEStack<?> selected(int slot) {
+        if (slot < 0 || slot >= SLOT_COUNT) return null;
+        return processing ? stocks[slot] : autoPull ? displayed[slot] : marks[slot];
+    }
+
+    private IAEStack<?> extractSlot(int slot, int amount, boolean simulate) {
+        IAEStack<?> selected = selected(slot);
+        if (selected == null || amount <= 0 || !active()) return null;
+        if (processing) {
+            Object view = views[slot];
+            int available = view instanceof ItemStack ? ((ItemStack) view).stackSize
+                : view instanceof FluidStack ? ((FluidStack) view).amount : 0;
+            int taken = Math.min(amount, available);
+            if (taken <= 0) return null;
+            if (!simulate) {
+                if (view instanceof ItemStack) ((ItemStack) view).stackSize -= taken;
+                else((FluidStack) view).amount -= taken;
+            }
+            return finiteCopy(selected, BigInteger.valueOf(taken));
+        }
+        IAEStack<?> request = finiteCopy(selected, BigInteger.valueOf(amount));
+        try {
+            IAEStack<?> extracted = BigMEInventories.extractItemsBig(
+                network(request),
+                request,
+                simulate ? Actionable.SIMULATE : Actionable.MODULATE,
+                source());
+            if (extracted == null || BigAEStackValues.get(extracted)
+                .signum() <= 0) return null;
+            // Update this projection without enumerating the whole ME network on every turbine tick.
+            if (!simulate && displayed[slot] != null && !BigAEStackValues.isInfinite(displayed[slot]))
+                BigAEStackValues.set(
+                    displayed[slot],
+                    BigAEStackValues.get(displayed[slot])
+                        .subtract(BigAEStackValues.get(extracted))
+                        .max(BigInteger.ZERO));
+            return finiteCopy(extracted, BigAEStackValues.get(extracted));
+        } catch (GridAccessException ignored) {
+            return null;
+        }
     }
 
     public void recordCommitted(int slot, BigInteger debit) {

@@ -186,14 +186,40 @@ public final class WirelessMachineIntegrationSmoke {
                         .equals(HUGE.multiply(BigInteger.valueOf(3840))),
                     "ore-factory energy mismatch");
                 BigInteger before = WirelessNetworkManager.getUserEU(owner);
+                BigInteger debit = state.nextDebit(machine.mEfficiency);
                 check(machine.onRunningTick(null), "ore factory wireless tick failed");
                 check(
                     WirelessNetworkManager.getUserEU(owner)
-                        .equals(
-                            before.subtract(
-                                BigInteger.valueOf(30L)
-                                    .multiply(HUGE))),
+                        .equals(before.subtract(debit))
+                        && state.save()
+                            .getInteger("paidTicks") == 1,
                     "ore factory wireless tick did not debit the exact state");
+                WirelessNetworkManager.setUserEU(owner, BigInteger.ZERO);
+                BigInteger retryDebit = state.nextDebit(machine.mEfficiency);
+                check(
+                    !machine.onRunningTick(null) && state.nextDebit(machine.mEfficiency)
+                        .equals(retryDebit)
+                        && state.save()
+                            .getInteger("paidTicks") == 1,
+                    "ore factory pause advanced or charged the debit schedule");
+                WirelessNetworkManager.setUserEU(owner, before.subtract(debit));
+                for (int tick = 1; tick < state.getDuration(); tick++)
+                    check(machine.onRunningTick(null), "ore factory resume debit failed");
+                check(
+                    WirelessNetworkManager.getUserEU(owner)
+                        .signum() == 0,
+                    "ore factory whole-recipe debit was repeated or omitted");
+                com.silvia.apeiron.common.machine.energy.WirelessControllerEnergy.complete(machine);
+                check(!state.isRunning(), "ore factory output lifecycle did not finish");
+                BigInteger outputs = ((com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus) machine.mOutputBusses
+                    .get(0)).getProvider()
+                        .getCachedAmountBig()
+                        .add(
+                            state.pending()
+                                .getItemAmountBig());
+                check(
+                    outputs.equals(HUGE.multiply(BigInteger.valueOf(3))),
+                    "ore factory completion lost exact outputs");
                 check(
                     input.getBuffers()
                         .get(0)

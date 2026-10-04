@@ -27,9 +27,11 @@ public final class WirelessPowerWidgets {
     private WirelessPowerWidgets() {}
 
     public static BooleanSyncValue installed(PanelSyncManager sync, MTEMultiBlockBase machine) {
-        BooleanSyncValue value = new BooleanSyncValue(() -> InfiniteEnergyHatches.find(machine) != null);
-        sync.syncValue("apeiron_energyInstalled", value);
-        return value;
+        return sync.getOrCreateSyncHandler(
+            "apeiron_energyInstalled",
+            0,
+            BooleanSyncValue.class,
+            () -> new BooleanSyncValue(() -> InfiniteEnergyHatches.find(machine) != null));
     }
 
     public static Flow parallel(PanelSyncManager sync, MTEMultiBlockBase machine, BooleanSyncValue installed) {
@@ -94,6 +96,7 @@ public final class WirelessPowerWidgets {
         }).allowC2S();
         sync.syncValue(key, value);
         TextFieldWidget field = new TextFieldWidget().size(96, 18)
+            .name(key)
             .value(value)
             .setMaxLength(4096)
             .setPattern(INPUT)

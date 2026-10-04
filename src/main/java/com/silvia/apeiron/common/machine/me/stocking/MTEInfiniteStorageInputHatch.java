@@ -4,7 +4,9 @@ package com.silvia.apeiron.common.machine.me.stocking;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidTankInfo;
 
 import com.cleanroommc.modularui.factory.PosGuiData;
 import com.cleanroommc.modularui.screen.ModularPanel;
@@ -67,7 +69,26 @@ public class MTEInfiniteStorageInputHatch extends MTEHatchInputME implements Sto
 
     @Override
     public FluidStack[] getStoredFluids() {
-        return stocking.fluidViews();
+        return getStockingInput().fluidViews();
+    }
+
+    @Override
+    public FluidStack drain(ForgeDirection side, FluidStack fluid, boolean doDrain) {
+        return drain(side, fluid, fluid == null ? 0 : fluid.amount, doDrain);
+    }
+
+    @Override
+    public FluidStack drain(ForgeDirection side, FluidStack fluid, int amount, boolean doDrain) {
+        return side == ForgeDirection.UNKNOWN ? getStockingInput().drainFluid(fluid, amount, doDrain) : null;
+    }
+
+    @Override
+    public FluidTankInfo[] getTankInfo(ForgeDirection side) {
+        if (side != ForgeDirection.UNKNOWN) return new FluidTankInfo[0];
+        FluidStack[] fluids = getStoredFluids();
+        FluidTankInfo[] tanks = new FluidTankInfo[fluids.length];
+        for (int i = 0; i < fluids.length; i++) tanks[i] = new FluidTankInfo(fluids[i], Integer.MAX_VALUE);
+        return tanks;
     }
 
     @Override
@@ -95,29 +116,29 @@ public class MTEInfiniteStorageInputHatch extends MTEHatchInputME implements Sto
     @Override
     public void onPostTick(IGregTechTileEntity tile, long tick) {
         if (tile.isServerSide()) {
-            stocking.tick(tick);
+            getStockingInput().tick(tick);
             tile.setActive(getProxy().isActive() && tile.isAllowedToWork());
         }
     }
 
     @Override
     public void startRecipeProcessing() {
-        stocking.begin();
+        getStockingInput().begin();
     }
 
     @Override
     public CheckRecipeResult endRecipeProcessing(MTEMultiBlockBase controller) {
-        return stocking.end();
+        return getStockingInput().end();
     }
 
     @Override
     public void addWatcher(IHatchWatcher watcher) {
-        if (stocking != null) stocking.addWatcher(watcher);
+        if (getStockingInput() != null) getStockingInput().addWatcher(watcher);
     }
 
     @Override
     public void removeWatcher(IHatchWatcher watcher) {
-        if (stocking != null) stocking.removeWatcher(watcher);
+        if (getStockingInput() != null) getStockingInput().removeWatcher(watcher);
     }
 
     @Override
@@ -128,13 +149,13 @@ public class MTEInfiniteStorageInputHatch extends MTEHatchInputME implements Sto
     @Override
     public void saveNBTData(NBTTagCompound tag) {
         super.saveNBTData(tag);
-        stocking.save(tag);
+        getStockingInput().save(tag);
     }
 
     @Override
     public void loadNBTData(NBTTagCompound tag) {
         super.loadNBTData(tag);
-        stocking.load(tag);
+        getStockingInput().load(tag);
     }
 
     @Override
@@ -144,17 +165,17 @@ public class MTEInfiniteStorageInputHatch extends MTEHatchInputME implements Sto
 
     @Override
     public String getCopiedDataIdentifier(net.minecraft.entity.player.EntityPlayer player) {
-        return "apeiron.stocking." + stocking.getKind()
+        return "apeiron.stocking." + getStockingInput().getKind()
             .name();
     }
 
     @Override
     public NBTTagCompound getCopiedData(net.minecraft.entity.player.EntityPlayer player) {
-        return stocking.copyConfiguration();
+        return getStockingInput().copyConfiguration();
     }
 
     @Override
     public boolean pasteCopiedData(net.minecraft.entity.player.EntityPlayer player, NBTTagCompound tag) {
-        return stocking.pasteConfiguration(tag);
+        return getStockingInput().pasteConfiguration(tag);
     }
 }

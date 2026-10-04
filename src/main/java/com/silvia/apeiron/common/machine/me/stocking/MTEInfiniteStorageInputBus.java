@@ -86,7 +86,7 @@ public class MTEInfiniteStorageInputBus extends MTEHatchInputBusME implements St
 
     @Override
     public ItemStack getStackInSlot(int slot) {
-        return stocking == null ? null : stocking.itemView(slot);
+        return getStockingInput() == null ? null : getStockingInput().itemView(slot);
     }
 
     @Override
@@ -118,7 +118,7 @@ public class MTEInfiniteStorageInputBus extends MTEHatchInputBusME implements St
 
     @Override
     public ItemStack decrStackSize(int slot, int amount) {
-        return null;
+        return getStockingInput().extractItem(slot, amount, false);
     }
 
     @Override
@@ -141,29 +141,29 @@ public class MTEInfiniteStorageInputBus extends MTEHatchInputBusME implements St
     @Override
     public void onPostTick(IGregTechTileEntity tile, long tick) {
         if (tile.isServerSide()) {
-            stocking.tick(tick);
+            getStockingInput().tick(tick);
             tile.setActive(getProxy().isActive() && tile.isAllowedToWork());
         }
     }
 
     @Override
     public void startRecipeProcessing() {
-        stocking.begin();
+        getStockingInput().begin();
     }
 
     @Override
     public CheckRecipeResult endRecipeProcessing(MTEMultiBlockBase controller) {
-        return stocking.end();
+        return getStockingInput().end();
     }
 
     @Override
     public void addWatcher(IHatchWatcher watcher) {
-        if (stocking != null) stocking.addWatcher(watcher);
+        if (getStockingInput() != null) getStockingInput().addWatcher(watcher);
     }
 
     @Override
     public void removeWatcher(IHatchWatcher watcher) {
-        if (stocking != null) stocking.removeWatcher(watcher);
+        if (getStockingInput() != null) getStockingInput().removeWatcher(watcher);
     }
 
     @Override
@@ -175,13 +175,13 @@ public class MTEInfiniteStorageInputBus extends MTEHatchInputBusME implements St
     public void saveNBTData(NBTTagCompound tag) {
         super.saveNBTData(tag);
         tag.removeTag("circuit");
-        stocking.save(tag);
+        getStockingInput().save(tag);
     }
 
     @Override
     public void loadNBTData(NBTTagCompound tag) {
         super.loadNBTData(tag);
-        stocking.load(tag);
+        getStockingInput().load(tag);
     }
 
     @Override
@@ -191,17 +191,17 @@ public class MTEInfiniteStorageInputBus extends MTEHatchInputBusME implements St
 
     @Override
     public String getCopiedDataIdentifier(net.minecraft.entity.player.EntityPlayer player) {
-        return "apeiron.stocking." + stocking.getKind()
+        return "apeiron.stocking." + getStockingInput().getKind()
             .name();
     }
 
     @Override
     public NBTTagCompound getCopiedData(net.minecraft.entity.player.EntityPlayer player) {
-        return stocking.copyConfiguration();
+        return getStockingInput().copyConfiguration();
     }
 
     @Override
     public boolean pasteCopiedData(net.minecraft.entity.player.EntityPlayer player, NBTTagCompound tag) {
-        return stocking.pasteConfiguration(tag);
+        return getStockingInput().pasteConfiguration(tag);
     }
 }

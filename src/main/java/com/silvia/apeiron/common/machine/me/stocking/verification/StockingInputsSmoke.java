@@ -9,6 +9,7 @@ import java.util.List;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 
@@ -18,6 +19,9 @@ import com.silvia.apeiron.ae.stack.InfiniteAEStack;
 import com.silvia.apeiron.ae.storage.BigMEInventory;
 import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
 import com.silvia.apeiron.common.machine.me.circuit.MTEInfiniteProgrammingCircuitProvider;
+import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputAssembly;
+import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputBus;
+import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputHatch;
 import com.silvia.apeiron.common.machine.me.stocking.StockingInputLogic;
 import com.silvia.apeiron.common.machine.registration.ApeironMachines;
 import com.silvia.apeiron.config.ApeironConfig;
@@ -35,7 +39,16 @@ import appeng.util.item.AEItemStack;
 import appeng.util.item.ItemList;
 import cpw.mods.fml.common.Loader;
 import gregtech.api.GregTechAPI;
+import gregtech.api.enums.HatchElement;
+import gregtech.api.enums.Materials;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
+import gregtech.api.metatileentity.BaseMetaTileEntity;
+import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
+import gregtech.api.util.TurbineStatCalculator;
+import gregtech.common.items.IDMetaTool01;
+import gregtech.common.items.MetaGeneratedTool01;
+import gregtech.common.tileentities.machines.multi.MTEElectricBlastFurnace;
+import gregtech.common.tileentities.machines.multi.turbines.MTELargeTurbineSteam;
 
 /** Detached, transformed AE inventories and recipe projections; does not open a GUI or touch player inventories. */
 public final class StockingInputsSmoke {
@@ -83,6 +96,9 @@ public final class StockingInputsSmoke {
                 new ItemStack(Items.diamond)),
             "virtual network view leaked into hopper extraction");
         verifyLegacyAndBigDebits();
+        verifyNativeExtraction();
+        verifyTurbineConsumption();
+        verifyBoilerConsumption();
         verifyRecipeIntegration();
         verifyAtomicRollback();
         verifySelectionsAndPersistence();
@@ -157,12 +173,262 @@ public final class StockingInputsSmoke {
         private Assembly(Input input) {
             super("apeiron.verification.stocking_assembly", 6, new String[0], null);
             this.input = input;
+            setBaseMetaTileEntity(new BaseMetaTileEntity());
         }
 
         @Override
         public StockingInputLogic getStockingInput() {
             return input;
         }
+    }
+
+    private static final class Bus extends MTEInfiniteStorageInputBus {
+
+        private final Input input;
+
+        private Bus(Input input) {
+            super("apeiron.verification.stocking_bus", 6, new String[0], null, StockingInputLogic.Kind.ITEMS);
+            this.input = input;
+            setBaseMetaTileEntity(new BaseMetaTileEntity());
+        }
+
+        @Override
+        public StockingInputLogic getStockingInput() {
+            return input;
+        }
+    }
+
+    private static final class Hatch extends MTEInfiniteStorageInputHatch {
+
+        private final Input input;
+
+        private Hatch(Input input) {
+            super("apeiron.verification.stocking_hatch", 6, new String[0], null);
+            this.input = input;
+            setBaseMetaTileEntity(new BaseMetaTileEntity());
+        }
+
+        @Override
+        public StockingInputLogic getStockingInput() {
+            return input;
+        }
+    }
+
+    private static void verifyNativeExtraction() {
+        BigInteger total = BigInteger.TEN.pow(50);
+        for (boolean mixed : new boolean[] { false, true }) {
+            Network network = new Network();
+            network.store(item(), total);
+            network.store(fluid(), total);
+            Input items = new Input(network, mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.ITEMS);
+            Input fluids = mixed ? items : new Input(network, StockingInputLogic.Kind.FLUIDS);
+            items.setMark(0, item());
+            fluids.setMark(359, fluid());
+            MTEInfiniteStorageInputBus bus = mixed ? new Assembly(items) : new Bus(items);
+            MTEInfiniteStorageInputHatch hatch = mixed ? ((Assembly) bus).getFluidInput() : new Hatch(fluids);
+            MTEMultiBlockBase controller = new MTEElectricBlastFurnace("apeiron.verification.native_stocking");
+            controller.setBaseMetaTileEntity(new BaseMetaTileEntity());
+            for (int scan = 0; scan < 2; scan++) {
+                controller.clearHatches();
+                if (mixed) {
+                    for (int repeat = 0; repeat < 3; repeat++) {
+                        check(
+                            controller.addToMachineList(bus.getBaseMetaTileEntity(), 0),
+                            "generic assembly registration");
+                        check(
+                            controller.addInputBusToMachineList(bus.getBaseMetaTileEntity(), 0),
+                            "assembly bus registration");
+                        check(
+                            controller.addInputHatchToMachineList(bus.getBaseMetaTileEntity(), 0),
+                            "assembly fluid registration");
+                    }
+                } else {
+                    check(
+                        controller.addInputBusToMachineList(bus.getBaseMetaTileEntity(), 0),
+                        "standalone bus registration");
+                    check(
+                        controller.addInputHatchToMachineList(hatch.getBaseMetaTileEntity(), 0),
+                        "standalone fluid registration");
+                }
+                check(
+                    HatchElement.InputBus.count(controller) == 1 && HatchElement.InputHatch.count(controller) == 1,
+                    "mixed source counted twice or omitted");
+                check(controller.mDualInputHatches.isEmpty(), "storage input was isolated as a pattern inventory");
+            }
+            check(
+                controller.getStoredInputs()
+                    .size() == 1
+                    && controller.getStoredFluids()
+                        .size() == 1,
+                "native getter omitted marked material");
+            if (mixed) {
+                check(
+                    hatch.getStockingInput() == items && hatch.getProxy() == bus.getProxy(),
+                    "fluid view has a separate session or node");
+                check(
+                    bus.getBaseMetaTileEntity()
+                        .getMetaTileEntity() == bus,
+                    "fluid view replaced placed assembly");
+            }
+            FluidStack water = new FluidStack(FluidRegistry.WATER, 13);
+            check(hatch.drain(ForgeDirection.UNKNOWN, water, false).amount == 13, "direct fluid simulation");
+            check(
+                network.count(fluid())
+                    .equals(total),
+                "simulation consumed fluid");
+            check(hatch.drain(ForgeDirection.NORTH, water, true) == null, "physical pipe extracted a virtual fluid");
+            check(hatch.drain(ForgeDirection.UNKNOWN, water, 17, true).amount == 17, "explicit-amount direct drain");
+            check(bus.decrStackSize(0, 3).stackSize == 3, "direct item extraction");
+            check(
+                network.count(fluid())
+                    .equals(total.subtract(BigInteger.valueOf(17)))
+                    && network.count(item())
+                        .equals(total.subtract(BigInteger.valueOf(3))),
+                "direct extraction did not charge ME");
+            check(
+                hatch.getTankInfo(ForgeDirection.UNKNOWN).length == 1
+                    && hatch.getTankInfo(ForgeDirection.NORTH).length == 0,
+                "controller tank projection");
+            controller.startRecipeProcessing();
+            check(controller.depleteInput(water, true), "transactional fluid simulation");
+            check(controller.depleteInput(water), "transactional fluid drain");
+            check(controller.depleteInput(new ItemStack(Items.diamond, 7)), "transactional item decrement");
+            check(
+                network.count(fluid())
+                    .equals(total.subtract(BigInteger.valueOf(17))),
+                "transaction drained before commit");
+            controller.endRecipeProcessing();
+            controller.endRecipeProcessing();
+            check(
+                network.count(fluid())
+                    .equals(total.subtract(BigInteger.valueOf(30)))
+                    && network.count(item())
+                        .equals(total.subtract(BigInteger.TEN)),
+                "group completion omitted or repeated native debits");
+            fluids.connected = false;
+            check(hatch.drain(ForgeDirection.UNKNOWN, water, true) == null, "disconnected fluid still available");
+            check(hatch.getStoredFluids().length == 0, "disconnected hatch advertised cached fluid");
+            items.connected = false;
+            check(bus.getStackInSlot(0) == null, "disconnected bus advertised cached fuel");
+            check(bus.decrStackSize(-1, 1) == null && bus.decrStackSize(0, 0) == null, "invalid item extraction");
+        }
+        Apeiron.LOG.info(
+            "Stocking native controller API verification passed: separate/mixed inputs, structure counts, simulation, direct extraction and grouped debits");
+    }
+
+    private static void verifyTurbineConsumption() {
+        ItemStack rotor = MetaGeneratedTool01.INSTANCE
+            .getToolWithStats(IDMetaTool01.TURBINE.ID, 1, Materials.Steel, Materials.Steel, null);
+        TurbineStatCalculator stats = new TurbineStatCalculator(MetaGeneratedTool01.INSTANCE, rotor);
+        int flow = (int) (stats.getOptimalSteamFlow() * (0.5f * stats.getOverflowEfficiency() + 1));
+        check(flow > 0, "turbine fixture has no flow");
+        IAEStack<?> steam = AEFluidStack.create(Materials.Steam.getGas(1));
+        BigInteger total = BigInteger.TEN.pow(40);
+        for (boolean mixed : new boolean[] { false, true }) {
+            Network network = new Network();
+            network.store(steam, total);
+            Input input = new Input(network, mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.FLUIDS);
+            input.setMark(359, steam);
+            MTEInfiniteStorageInputHatch hatch;
+            MTEInfiniteStorageInputAssembly assembly = mixed ? new Assembly(input) : null;
+            hatch = mixed ? assembly.getFluidInput() : new Hatch(input);
+            MTELargeTurbineSteam turbine = new MTELargeTurbineSteam("apeiron.verification.stocking_turbine") {
+
+                @Override
+                public long getMaximumOutput() {
+                    return Integer.MAX_VALUE;
+                }
+            };
+            turbine.setBaseMetaTileEntity(new BaseMetaTileEntity());
+            try {
+                java.lang.reflect.Field achievement = MTELargeTurbineSteam.class.getDeclaredField("achievement");
+                achievement.setAccessible(true);
+                achievement.setBoolean(turbine, true);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Turbine fixture setup failed", error);
+            }
+            check(
+                turbine.addInputHatchToMachineList(
+                    mixed ? assembly.getBaseMetaTileEntity() : hatch.getBaseMetaTileEntity(),
+                    0),
+                "turbine input registration");
+            for (int tick = 1; tick <= 4; tick++) {
+                turbine.startRecipeProcessing();
+                check(turbine.fluidIntoPower(turbine.getStoredFluids(), stats) > 0, "real turbine rejected steam");
+                turbine.endRecipeProcessing();
+                check(
+                    network.count(steam)
+                        .equals(total.subtract(BigInteger.valueOf((long) flow * tick))),
+                    "real turbine generated power without consuming exact steam");
+            }
+            check(turbine.fluidIntoPower(turbine.getStoredFluids(), stats) > 0, "direct turbine flow failed");
+            check(
+                network.count(steam)
+                    .equals(total.subtract(BigInteger.valueOf((long) flow * 5))),
+                "unwrapped turbine tick did not debit steam");
+            network.store(steam, BigInteger.ZERO);
+            input.refresh();
+            check(turbine.fluidIntoPower(turbine.getStoredFluids(), stats) == 0, "empty steam network generated power");
+        }
+        Apeiron.LOG.info(
+            "Steam turbine stocking verification passed: real flow calculation, repeated exact steam consumption and empty network");
+    }
+
+    private static void verifyBoilerConsumption() {
+        Class<?> boilerClass;
+        try {
+            boilerClass = Class.forName(
+                "com.science.gtnl.common.machine.multiblock.structuralReconstructionPlan.LargeBoiler$LargeBoilerTungstenSteel");
+        } catch (ClassNotFoundException absent) {
+            Apeiron.LOG.info("GTNL not installed; optional tungstensteel boiler stocking verification skipped");
+            return;
+        }
+        IAEStack<?> coal = AEItemStack.create(new ItemStack(Items.coal));
+        BigInteger total = BigInteger.TEN.pow(40);
+        for (boolean mixed : new boolean[] { false, true }) {
+            try {
+                Network network = new Network();
+                network.store(coal, BigInteger.valueOf(64));
+                network.store(fluid(), total);
+                Input items = new Input(network, mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.ITEMS);
+                Input fluids = mixed ? items : new Input(network, StockingInputLogic.Kind.FLUIDS);
+                items.setMark(0, coal);
+                fluids.setMark(359, fluid());
+                MTEInfiniteStorageInputBus bus = mixed ? new Assembly(items) : new Bus(items);
+                MTEInfiniteStorageInputHatch hatch = mixed ? ((Assembly) bus).getFluidInput() : new Hatch(fluids);
+                MTEMultiBlockBase boiler = (MTEMultiBlockBase) boilerClass.getConstructor(String.class)
+                    .newInstance("apeiron.verification.stocking_boiler");
+                boiler.setBaseMetaTileEntity(new BaseMetaTileEntity());
+                check(boiler.addInputBusToMachineList(bus.getBaseMetaTileEntity(), 0), "boiler fuel registration");
+                check(
+                    boiler.addInputHatchToMachineList(
+                        mixed ? bus.getBaseMetaTileEntity() : hatch.getBaseMetaTileEntity(),
+                        0),
+                    "boiler water registration");
+                boiler.startRecipeProcessing();
+                check(
+                    boiler.checkProcessing()
+                        .wasSuccessful(),
+                    "real GTNL boiler rejected coal");
+                boiler.endRecipeProcessing();
+                check(
+                    network.count(coal)
+                        .equals(BigInteger.valueOf(63)),
+                    "boiler fuel not charged exactly once");
+                for (int tick = 0; tick < 4; tick++) check(boiler.onRunningTick(null), "boiler water tick failed");
+                long generated = (long) boiler.mEUt * 2 * 4;
+                long expected = (generated + gregtech.api.enums.GTValues.STEAM_PER_WATER - 1)
+                    / gregtech.api.enums.GTValues.STEAM_PER_WATER;
+                check(
+                    network.count(fluid())
+                        .equals(total.subtract(BigInteger.valueOf(expected))),
+                    "boiler running water not consumed exactly");
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("GTNL boiler stocking verification failed", error);
+            }
+        }
+        Apeiron.LOG.info(
+            "GTNL tungstensteel boiler stocking verification passed: separate/mixed water and coal, fuel check and repeated running ticks");
     }
 
     private static void verifyRecipeIntegration() {
