@@ -20,7 +20,9 @@ public abstract class PendingBigOutputDropMixin {
         if (this instanceof com.silvia.apeiron.api.machine.parallel.BigWirelessController) {
             final com.silvia.apeiron.common.machine.parallel.WirelessRecipeState state = ((com.silvia.apeiron.api.machine.parallel.BigWirelessController) this)
                 .getWirelessRecipeState();
-            tag.setTag("ApeironWirelessRecipe", state.saveProduced());
+            tag.removeTag("ApeironWirelessRecipe");
+            NBTTagCompound produced = state.saveProduced();
+            if (!produced.hasNoTags()) tag.setTag("ApeironWirelessRecipe", produced);
         }
     }
 }

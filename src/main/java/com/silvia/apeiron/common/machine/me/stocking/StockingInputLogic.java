@@ -62,7 +62,7 @@ public class StockingInputLogic {
     private final int[] baselines = new int[SLOT_COUNT];
     private final List<IAEStack<?>> refunds = new ArrayList<>();
     private final Set<IHatchWatcher> watchers = Collections.newSetFromMap(new IdentityHashMap<>());
-    private boolean autoPull, processing;
+    private boolean autoPull, processing, projectionReady;
 
     public StockingInputLogic(StockingInputHost host, Kind kind) {
         this.host = host;
@@ -215,32 +215,25 @@ public class StockingInputLogic {
                     if (found != null) displayed[i] = found.copy();
                 }
             }
+            projectionReady = true;
         } catch (GridAccessException ignored) {}
     }
 
     public void begin() {
         if (processing) return;
-        refresh();
+        if (!projectionReady) refresh();
         processing = true;
         Arrays.fill(stocks, null);
         Arrays.fill(views, null);
         Arrays.fill(baselines, 0);
         if (!active()) return;
+
+        // The displayed list is already a network snapshot. Copy it into the
+        // recipe session instead of querying the network for every slot on
+        // every machine tick. The commit phase still validates exact amounts.
         for (int i = 0; i < SLOT_COUNT; i++) if (displayed[i] != null) {
-            IAEStack<?> available = displayed[i];
-            BigInteger amount = BigAEStackValues.isInfinite(available) ? BigInteger.valueOf(Integer.MAX_VALUE)
-                : BigAEStackValues.get(available);
-            IAEStack<?> request = finiteCopy(available, amount);
-            try {
-                IAEStack<?> simulated = BigMEInventories
-                    .extractItemsBig(network(request), request, Actionable.SIMULATE, source());
-                if (simulated == null || BigAEStackValues.get(simulated)
-                    .signum() <= 0) continue;
-                stocks[i] = simulated;
-                if (BigAEStackValues.isInfinite(available) && simulated instanceof InfiniteAEStack)
-                    ((InfiniteAEStack) simulated).setInfinite(true);
-                updateView(i);
-            } catch (GridAccessException ignored) {}
+            stocks[i] = displayed[i].copy();
+            updateView(i);
         }
     }
 
@@ -381,15 +374,22 @@ public class StockingInputLogic {
     }
 
     public void recordCommitted(int slot, BigInteger debit) {
+        IAEStack<?> stock = stocks[slot];
         if (!BigAEStackValues.isInfinite(stocks[slot])) BigAEStackValues.set(
             stocks[slot],
             BigAEStackValues.get(stocks[slot])
                 .subtract(debit));
+        if (displayed[slot] != null && !BigAEStackValues.isInfinite(displayed[slot]) && same(displayed[slot], stock))
+            BigAEStackValues.set(
+                displayed[slot],
+                BigAEStackValues.get(displayed[slot])
+                    .subtract(debit)
+                    .max(BigInteger.ZERO));
         // Keep the identity exported to the controller, so later recipe candidates cannot see a stale object.
         int remaining = BigAEStackValues.isInfinite(stocks[slot]) ? Integer.MAX_VALUE
             : BigAEStackValues.get(stocks[slot])
                 .min(BigInteger.valueOf(Integer.MAX_VALUE))
-                .intValueExact();
+                .intValue();
         if (views[slot] instanceof ItemStack) ((ItemStack) views[slot]).stackSize = remaining;
         if (views[slot] instanceof FluidStack) ((FluidStack) views[slot]).amount = remaining;
         baselines[slot] = remaining;
@@ -421,10 +421,26 @@ public class StockingInputLogic {
         }
         boolean success = valid && commit(debits);
         for (StockingInputLogic logic : group) if (logic.processing) {
+            if (success) logic.applyCommittedProjection(debits.get(logic));
             logic.processing = false;
-            logic.refresh();
         }
         return success ? CheckRecipeResultRegistry.SUCCESSFUL : failed();
+    }
+
+    private void applyCommittedProjection(List<IAEStack<?>> debits) {
+        if (debits == null) return;
+        for (IAEStack<?> debit : debits) {
+            for (int slot = 0; slot < SLOT_COUNT; slot++) {
+                IAEStack<?> visible = displayed[slot];
+                if (visible == null || !same(visible, debit) || BigAEStackValues.isInfinite(visible)) continue;
+                BigAEStackValues.set(
+                    visible,
+                    BigAEStackValues.get(visible)
+                        .subtract(BigAEStackValues.get(debit))
+                        .max(BigInteger.ZERO));
+                break;
+            }
+        }
     }
 
     private static CheckRecipeResult failed() {
@@ -596,5 +612,6 @@ public class StockingInputLogic {
             if (stack != null) refunds.add(stack);
         }
         processing = false;
+        projectionReady = false;
     }
 }

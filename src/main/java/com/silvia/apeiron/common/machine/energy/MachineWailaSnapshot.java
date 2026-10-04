@@ -101,7 +101,8 @@ public final class MachineWailaSnapshot {
             energy = new BigInteger(tag.getString("ApeironActualWirelessEUt")).min(BigInteger.valueOf(Long.MAX_VALUE))
                 .longValue();
         }
-        tag.setLong("mEUt", energy != 0 ? -energy : machine.mEUt);
+        boolean idleWireless = tag.hasKey("ApeironParallelSetting") && !tag.getBoolean("ApeironWirelessRunning");
+        tag.setLong("mEUt", idleWireless ? 0 : energy != 0 ? -energy : machine.mEUt);
         tag.setInteger("mEfficiency", machine.mEfficiency);
         tag.setInteger("mProgresstime", machine.mProgresstime);
         tag.setInteger("mMaxProgresstime", machine.mMaxProgresstime);

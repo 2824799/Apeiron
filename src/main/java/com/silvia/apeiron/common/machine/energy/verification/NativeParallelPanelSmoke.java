@@ -69,6 +69,14 @@ public final class NativeParallelPanelSmoke {
     public static void verify() {
         try {
             Controller machine = new Controller();
+            check(
+                !machine.getBaseMetaTileEntity()
+                    .isActive() && machine.getBaseMetaTileEntity()
+                        .isAllowedToWork(),
+                "native placement work/active defaults were changed");
+            check(
+                machine.mMaxProgresstime == 0 && machine.getmStartUpCheck() > 0,
+                "fresh controller has a running recipe instead of native structure startup");
             machine.loadNBTData(new NBTTagCompound());
             check(machine.isAlwaysMaxParallel(), "missing NBT did not default to maximum lock");
             check(InfiniteEnergyHatches.find(machine) == null, "native fixture has an infinite hatch");

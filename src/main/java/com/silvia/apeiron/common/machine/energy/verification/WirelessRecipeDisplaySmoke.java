@@ -41,6 +41,17 @@ public final class WirelessRecipeDisplaySmoke {
             ledger.addItem(new ItemStack(Items.emerald), huge);
             ledger.addFluid(new FluidStack(FluidRegistry.WATER, 1), huge.multiply(BigInteger.valueOf(2)));
             final WirelessRecipeState state = new WirelessRecipeState();
+            final NBTTagCompound idle = new NBTTagCompound();
+            WirelessWailaDisplay.write(idle, state, 10000);
+            check(
+                idle.getString("ApeironParallelSetting")
+                    .equals(Integer.toString(Integer.MAX_VALUE))
+                    && idle.getString("ApeironRunningParallels")
+                        .equals("0")
+                    && idle.getString("ApeironWirelessEUt")
+                        .equals("0"),
+                "idle default HUD is not INT MAX / zero");
+            state.setParallelSettingBig(BigInteger.valueOf(2000));
             state.start(huge, huge.multiply(BigInteger.valueOf(8)), 40, ledger);
             final NBTTagCompound snapshot = state.writeDisplayNBT();
             final PacketBuffer packet = new PacketBuffer(Unpooled.buffer());
@@ -94,6 +105,13 @@ public final class WirelessRecipeDisplaySmoke {
                 tip.get(3)
                     .contains(RecipeDisplayNumbers.rate(actual, Integer.MAX_VALUE, 1)),
                 "OmniOcular current used one native parallel");
+            List<String> nativeLimit = java.util.Collections.singletonList("§b并行限制 §e12");
+            check(
+                WirelessWailaDisplay.plainText(
+                    WirelessWailaDisplay.updateOmni(nativeLimit, waila)
+                        .get(0))
+                    .contains(BigNumberFormatter.formatCompact(BigInteger.valueOf(2000))),
+                "OmniOcular kept the native parallel limit on a wireless machine");
             final List<String> nativeTip = new ArrayList<>();
             waila.setLong("energyUsage", 8);
             nativeTip.add(
@@ -113,6 +131,27 @@ public final class WirelessRecipeDisplaySmoke {
                             .contains(BigNumberFormatter.formatCompact(huge))),
                 "native Waila outputs missing");
             state.complete();
+            WirelessWailaDisplay.write(waila, state, 9000);
+            check(
+                waila.getString("ApeironRunningParallels")
+                    .equals("0")
+                    && waila.getString("ApeironWirelessEUt")
+                        .equals("0")
+                    && !waila.hasKey("ApeironActualWirelessEUt")
+                    && !waila.hasKey("ApeironWirelessOutputRows"),
+                "completed recipe retained active HUD numbers or products");
+            check(
+                WirelessWailaDisplay.plainText(
+                    WirelessWailaDisplay.updateOmni(nativeLimit, waila)
+                        .get(0))
+                    .contains(BigNumberFormatter.formatCompact(BigInteger.valueOf(2000))),
+                "idle wireless HUD reverted to the native limit");
+            state.setParallelSettingBig(BigInteger.ZERO);
+            WirelessWailaDisplay.write(waila, state, 9000);
+            check(
+                waila.getString("ApeironParallelSetting")
+                    .equals("∞"),
+                "HUD overwrote explicit unlimited setting");
             check(
                 state.getOutputDisplay()
                     .isEmpty()
@@ -132,6 +171,56 @@ public final class WirelessRecipeDisplaySmoke {
         }
         Apeiron.LOG.info(
             "Wireless recipe display: exact item/fluid output snapshots, GUI codecs, rates and Waila energy verification passed");
+    }
+
+    public static void verifyController(gregtech.api.metatileentity.implementations.MTEMultiBlockBase machine) {
+        com.silvia.apeiron.api.machine.parallel.BigWirelessController controller = (com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine;
+        WirelessRecipeState state = controller.getWirelessRecipeState();
+        NBTTagCompound tag = new NBTTagCompound();
+        machine.getWailaNBTData(detachedViewer(), null, tag, null, 0, 0, 0);
+        check(
+            tag.getString("ApeironRunningParallels")
+                .equals(
+                    BigNumberFormatter.formatCompact(state.isRunning() ? state.getParallelsBig() : BigInteger.ZERO)),
+            "transformed HUD retained stale parallels");
+        check(
+            controller.getCurrentParallelsBig()
+                .equals(state.isRunning() ? state.getParallelsBig() : BigInteger.ZERO),
+            "controller reports completed parallels as current");
+        if (!state.isRunning()) check(
+            controller.getRecipeEUtBig()
+                .signum() == 0
+                && controller.getRecipeTotalEUBig()
+                    .signum() == 0,
+            "idle controller reports completed energy as current");
+        List<String> lines = new ArrayList<>();
+        String oldLimit = net.minecraft.util.StatCollector
+            .translateToLocalFormatted("GT5U.multiblock.parallelism_override", 12, 60);
+        tag.setInteger("powerPanelMaxParallel", 12);
+        tag.setInteger("maxParallelRecipes", 60);
+        lines.add(oldLimit);
+        WirelessWailaDisplay.updateNative(lines, tag);
+        check(
+            !lines.contains(oldLimit) && lines.stream()
+                .anyMatch(line -> line.contains(tag.getString("ApeironParallelSetting"))),
+            "native HUD retained contradictory parallel limit");
+    }
+
+    private static net.minecraft.entity.player.EntityPlayerMP detachedViewer() {
+        try {
+            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+            java.lang.reflect.Field singleton = unsafeClass.getDeclaredField("theUnsafe");
+            singleton.setAccessible(true);
+            net.minecraft.entity.player.EntityPlayerMP viewer = (net.minecraft.entity.player.EntityPlayerMP) unsafeClass
+                .getMethod("allocateInstance", Class.class)
+                .invoke(singleton.get(null), net.minecraft.entity.player.EntityPlayerMP.class);
+            java.lang.reflect.Field id = net.minecraft.entity.Entity.class.getDeclaredField("entityUniqueID");
+            id.setAccessible(true);
+            id.set(viewer, java.util.UUID.fromString("01000000-0000-0000-0000-000000000000"));
+            return viewer;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot create detached Waila viewer", error);
+        }
     }
 
     private static void check(boolean condition, String message) {

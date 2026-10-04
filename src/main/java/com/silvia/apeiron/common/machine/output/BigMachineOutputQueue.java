@@ -312,7 +312,8 @@ public final class BigMachineOutputQueue {
             BigValueCodec.writeNBT(entry, "Count", "ExactCount", new AdaptiveInteger(amount));
             itemList.appendTag(entry);
         });
-        tag.setTag(ITEM_KEY, itemList);
+        if (itemList.tagCount() > 0) tag.setTag(ITEM_KEY, itemList);
+        else tag.removeTag(ITEM_KEY);
         final NBTTagList fluidList = new NBTTagList();
         fluids.iterateAllBig((type, amount) -> {
             final NBTTagCompound entry = new NBTTagCompound();
@@ -324,7 +325,8 @@ public final class BigMachineOutputQueue {
             BigValueCodec.writeNBT(entry, "Count", "ExactCount", new AdaptiveInteger(amount));
             fluidList.appendTag(entry);
         });
-        tag.setTag(FLUID_KEY, fluidList);
+        if (fluidList.tagCount() > 0) tag.setTag(FLUID_KEY, fluidList);
+        else tag.removeTag(FLUID_KEY);
     }
 
     public void load(final NBTTagCompound tag) {

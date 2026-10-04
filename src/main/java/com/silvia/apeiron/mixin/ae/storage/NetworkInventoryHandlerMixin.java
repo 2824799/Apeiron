@@ -247,7 +247,11 @@ public abstract class NetworkInventoryHandlerMixin implements BigIMEInventory, B
     @Inject(method = "getAvailableItem", at = @At("HEAD"), cancellable = true)
     private void apeiron$legacyAvailable(IAEStack<?> request, int iteration, CallbackInfoReturnable<IAEStack<?>> cir) {
         IAEStack exact = BigMEInventories.getAvailableItemBig(apeiron$self(), request, iteration);
-        if (BigAEStackValues.isBig(exact)) cir.setReturnValue(exact);
+        // The filtered lookup consumes this iteration ID even for small or missing stocks.
+        // Falling through would repeat the query with that ID and be rejected as a network cycle.
+        cir.setReturnValue(
+            BigAEStackValues.get(exact)
+                .signum() > 0 ? exact : null);
     }
 
     @Inject(method = "injectItems", at = @At("HEAD"), cancellable = true)

@@ -303,8 +303,16 @@ public final class BoundlessMEOutputSmoke {
         final List<ItemStack> entries = new java.util.ArrayList<>();
         ApeironMachines.block
             .getSubBlocks(Item.getItemFromBlock(ApeironMachines.block), ApeironMachines.CREATIVE_TAB, entries);
-        check(entries.size() == 6, "creative and NEI enumeration must include all six machines");
-        for (int offset : new int[] { 0, 1, 2, 3, 4, 5 }) {
+        final int[] expectedOffsets = { ApeironMachines.ITEM_OUTPUT_BUS_OFFSET,
+            ApeironMachines.FLUID_OUTPUT_HATCH_OFFSET, ApeironMachines.MIXED_OUTPUT_ASSEMBLY_OFFSET,
+            ApeironMachines.INFINITE_ENERGY_HATCH_OFFSET, ApeironMachines.PATTERN_INPUT_ASSEMBLY_OFFSET,
+            ApeironMachines.PATTERN_INPUT_MIRROR_OFFSET, ApeironMachines.CIRCUIT_PROVIDER_OFFSET,
+            ApeironMachines.STORAGE_INPUT_BUS_OFFSET, ApeironMachines.STORAGE_INPUT_HATCH_OFFSET,
+            ApeironMachines.STORAGE_INPUT_ASSEMBLY_OFFSET, ApeironMachines.ULTIMATE_ENERGY_HATCH_OFFSET };
+        check(
+            entries.size() == expectedOffsets.length,
+            "creative and NEI enumeration has missing or duplicate machines");
+        for (int offset : expectedOffsets) {
             final int id = ApeironConfig.getMachineId(offset);
             check(
                 entries.stream()

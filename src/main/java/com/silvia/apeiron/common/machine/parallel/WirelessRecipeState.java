@@ -226,11 +226,23 @@ public final class WirelessRecipeState {
         return tag;
     }
 
+    /** Ordinary controllers have this interface too; their untouched defaults do not need a save record. */
+    public boolean hasPersistentData() {
+        return running || !pendingOutputs.isEmpty()
+            || parallels.signum() != 0
+            || !parallelSetting.equals(BigInteger.valueOf(Integer.MAX_VALUE))
+            || voltageSetting != Integer.MAX_VALUE
+            || targetDuration != 128;
+    }
+
     /** Only already-produced outputs survive harvesting, matching GT's cancellation of the active recipe. */
     public NBTTagCompound saveProduced() {
-        NBTTagCompound tag = save();
-        tag.setBoolean("running", false);
-        tag.setTag("recipe", new NBTTagCompound());
+        NBTTagCompound tag = new NBTTagCompound();
+        if (!pendingOutputs.isEmpty()) {
+            NBTTagCompound pending = new NBTTagCompound();
+            pendingOutputs.save(pending);
+            tag.setTag("pending", pending);
+        }
         return tag;
     }
 

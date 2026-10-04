@@ -220,6 +220,9 @@ public final class TstOutputSmoke {
                     .getCachedAmountBig()
                     .equals(HUGE.multiply(BigInteger.valueOf(3))),
             "committed exact quantities");
+        final NBTTagCompound emptyDrop = new NBTTagCompound();
+        restored.setItemNBT(emptyDrop);
+        check(emptyDrop.hasNoTags(), "empty TST controller drop has Apeiron output NBT");
         final Machine noOutput = new Machine();
         final BigTstOutputController noOutputBig = (BigTstOutputController) noOutput;
         noOutputBig.mergeItemIntoMEOutputQueueBig(diamond, HUGE);

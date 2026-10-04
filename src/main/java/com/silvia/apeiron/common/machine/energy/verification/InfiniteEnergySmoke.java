@@ -17,6 +17,7 @@ import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
 import com.silvia.apeiron.common.machine.energy.MTEInfiniteEnergyHatch;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus;
+import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
 import com.silvia.apeiron.common.machine.parallel.NativeParallelPolicy;
 import com.silvia.apeiron.common.machine.parallel.WirelessRecipeState;
 import com.silvia.apeiron.common.machine.registration.ApeironMachines;
@@ -82,6 +83,7 @@ public final class InfiniteEnergySmoke {
 
     public static void verify() {
         NativeParallelPanelSmoke.verify();
+        verifyControllerDrops();
         HashMap<UUID, BigInteger> oldEnergy = GlobalVariableStorage.GlobalEnergy;
         Map<UUID, UUID> oldTeams = SpaceProjectManager.spaceTeams;
         GlobalEnergyWorldSavedData oldSave = GlobalEnergyWorldSavedData.INSTANCE;
@@ -188,6 +190,7 @@ public final class InfiniteEnergySmoke {
                 "exact recipe inputs were not consumed");
             check(controller.mMaxProgresstime == 20, "native recipe duration changed");
             WirelessRecipeDisplaySmoke.verify(state);
+            WirelessRecipeDisplaySmoke.verifyController(controller);
             BigInteger balance = hatch.getAvailableEUBig();
             check(controller.onRunningTick(null), "extended controller did not draw wireless EU");
             check(
@@ -217,6 +220,7 @@ public final class InfiniteEnergySmoke {
             controller.mOutputBusses.clear();
             controller.mOutputHatches.clear();
             controller.complete();
+            WirelessRecipeDisplaySmoke.verifyController(controller);
             check(
                 !state.isRunning() && state.pending()
                     .getItemAmountBig()
@@ -257,6 +261,92 @@ public final class InfiniteEnergySmoke {
         }
         Apeiron.LOG.info(
             "Infinite energy hatch: shared 10^60 recipe, exact input debit, extended wireless tick, low-balance pause, persistence and output conservation verification passed");
+    }
+
+    private static void verifyControllerDrops() {
+        Controller ordinary = new Controller();
+        NBTTagCompound disk = new NBTTagCompound();
+        ordinary.saveNBTData(disk);
+        check(!disk.hasKey("ApeironWirelessRecipe"), "untouched native controller saved unused wireless state");
+        NBTTagCompound item = new NBTTagCompound();
+        ordinary.setItemNBT(item);
+        check(item.hasNoTags(), "untouched native controller drop has Apeiron NBT");
+        check(
+            !ordinary.getBaseMetaTileEntity()
+                .getDrops()
+                .get(0)
+                .hasTagCompound(),
+            "real native controller drop is no longer stackable");
+
+        Controller used = new Controller();
+        used.mEnergyHatches
+            .add((MTEInfiniteEnergyHatch) tile(ApeironMachines.INFINITE_ENERGY_HATCH_OFFSET).getMetaTileEntity());
+        WirelessRecipeState state = ((BigWirelessController) (Object) used).getWirelessRecipeState();
+        state.setParallelSettingBig(BigInteger.valueOf(2000));
+        state.setVoltageSetting(32);
+        state.setTargetDuration(7);
+        BigMachineOutputQueue recipe = new BigMachineOutputQueue();
+        recipe.addItem(new ItemStack(Items.diamond), HUGE);
+        state.start(HUGE, HUGE, 25, recipe);
+        state.paidTick();
+        item.setTag("ApeironWirelessRecipe", state.save());
+        used.setItemNBT(item);
+        check(item.hasNoTags(), "running or previously configured controller drop retained settings/recipe NBT");
+        check(
+            state.isRunning() && state.getParallelsBig()
+                .equals(HUGE),
+            "drop preview changed the live recipe");
+
+        state.complete();
+        state.pending()
+            .addFluid(new net.minecraftforge.fluids.FluidStack(net.minecraftforge.fluids.FluidRegistry.WATER, 1), HUGE);
+        used.setItemNBT(item);
+        NBTTagCompound produced = item.getCompoundTag("ApeironWirelessRecipe");
+        check(
+            produced.func_150296_c()
+                .size() == 1 && produced.hasKey("pending"),
+            "produced-output drop retained energy configuration or recipe history");
+        WirelessRecipeState replaced = new WirelessRecipeState();
+        replaced.load(produced);
+        check(
+            !replaced.isRunning() && replaced.getParallelsBig()
+                .signum() == 0
+                && replaced.getEUtBig()
+                    .signum() == 0
+                && replaced.getParallelSettingBig()
+                    .equals(BigInteger.valueOf(Integer.MAX_VALUE))
+                && replaced.getVoltageSetting() == Integer.MAX_VALUE
+                && replaced.getTargetDuration() == 128,
+            "replaced controller inherited harvested energy settings or recipe history");
+        check(
+            replaced.pending()
+                .getItemAmountBig()
+                .equals(HUGE)
+                && replaced.pending()
+                    .getFluidAmountBig()
+                    .equals(HUGE),
+            "minimal drop lost exact produced outputs");
+
+        state.pending()
+            .moveTo(new BigMachineOutputQueue());
+        used.setItemNBT(item);
+        check(item.hasNoTags(), "completed empty controller drop retained an empty output ledger");
+        item.setString("nativeData", "keep");
+        used.setItemNBT(item);
+        check(
+            item.getString("nativeData")
+                .equals("keep")
+                && item.func_150296_c()
+                    .size() == 1,
+            "drop cleanup removed unrelated item metadata");
+        check(
+            !used.getBaseMetaTileEntity()
+                .getDrops()
+                .get(0)
+                .hasTagCompound(),
+            "real previously wireless controller drop is no longer stackable");
+        Apeiron.LOG.info(
+            "Controller drop verification passed: native/used/running/empty drops have no Apeiron NBT; only exact produced outputs survive harvesting");
     }
 
     private static Controller fixture(UUID owner, RecipeMap<?> recipes, boolean ultimate) {

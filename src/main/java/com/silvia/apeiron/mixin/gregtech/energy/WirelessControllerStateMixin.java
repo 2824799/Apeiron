@@ -18,7 +18,6 @@ import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
 import com.silvia.apeiron.api.machine.parallel.ParallelLimit;
 import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
 import com.silvia.apeiron.common.machine.parallel.WirelessRecipeState;
-import com.silvia.apeiron.math.BigNumberFormatter;
 
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
@@ -46,17 +45,17 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Override
     public BigInteger getCurrentParallelsBig() {
-        return apeiron$wireless.getParallelsBig();
+        return apeiron$wireless.isRunning() ? apeiron$wireless.getParallelsBig() : BigInteger.ZERO;
     }
 
     @Override
     public BigInteger getRecipeEUtBig() {
-        return apeiron$wireless.getEUtBig();
+        return apeiron$wireless.isRunning() ? apeiron$wireless.getEUtBig() : BigInteger.ZERO;
     }
 
     @Override
     public BigInteger getRecipeTotalEUBig() {
-        return apeiron$wireless.getTotalEUBig();
+        return apeiron$wireless.isRunning() ? apeiron$wireless.getTotalEUBig() : BigInteger.ZERO;
     }
 
     @Unique
@@ -66,7 +65,11 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Inject(method = "saveNBTData", at = @At("RETURN"), require = 1)
     private void apeiron$save(NBTTagCompound tag, CallbackInfo ci) {
-        tag.setTag("ApeironWirelessRecipe", apeiron$wireless.save());
+        boolean installed = InfiniteEnergyHatches.find(apeiron$machine()) != null;
+        tag.removeTag("ApeironWirelessRecipe");
+        if (installed || apeiron$wireless.hasPersistentData())
+            tag.setTag("ApeironWirelessRecipe", apeiron$wireless.save());
+        if (!installed && !apeiron$wireless.isRunning()) return;
         com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay
             .write(tag, apeiron$wireless, apeiron$machine().mEfficiency);
     }
@@ -109,12 +112,6 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
     private void apeiron$waila(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x, int y,
         int z, CallbackInfo ci) {
         if (InfiniteEnergyHatches.find(apeiron$machine()) == null && !apeiron$wireless.isRunning()) return;
-        tag.setString(
-            "ApeironParallelSetting",
-            apeiron$wireless.getParallelSettingBig()
-                .signum() == 0 ? "∞" : BigNumberFormatter.formatCompact(apeiron$wireless.getParallelSettingBig()));
-        tag.setString("ApeironRunningParallels", BigNumberFormatter.formatCompact(getCurrentParallelsBig()));
-        tag.setString("ApeironWirelessEUt", BigNumberFormatter.formatCompact(getRecipeEUtBig()));
         com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay
             .write(tag, apeiron$wireless, apeiron$machine().mEfficiency);
     }
@@ -124,12 +121,5 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
         IWailaConfigHandler config, CallbackInfo ci) {
         NBTTagCompound tag = accessor.getNBTData();
         com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay.updateNative(tip, tag);
-        if (!tag.hasKey("ApeironParallelSetting")) return;
-        tip.add(
-            net.minecraft.util.StatCollector.translateToLocalFormatted(
-                "apeiron.machine.energy.parallel_status",
-                tag.getString("ApeironParallelSetting"),
-                tag.getString("ApeironRunningParallels")));
-        tip.add("EU/t: " + tag.getString("ApeironWirelessEUt"));
     }
 }
