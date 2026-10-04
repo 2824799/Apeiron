@@ -148,10 +148,19 @@ public final class InfiniteMEOutputAssemblySmoke {
             "Mixed output generic registration verification passed: GT/TST, both hatch counts, repeat scan and rebuild");
     }
 
+    private static boolean matches(HatchElement element, MTEInfiniteMEOutputAssembly assembly) {
+        return element.mteClasses()
+            .stream()
+            .anyMatch(type -> type.isInstance(assembly))
+            && element.mteBlacklist()
+                .stream()
+                .noneMatch(type -> type.isInstance(assembly));
+    }
+
     private static void assertRegistration(MTEMultiBlockBase controller) {
         final MTEInfiniteMEOutputAssembly assembly = assembly();
         check(
-            HatchElement.OutputHatch.matchesHatch(assembly) && HatchElement.OutputBus.matchesHatch(assembly),
+            matches(HatchElement.OutputHatch, assembly) && matches(HatchElement.OutputBus, assembly),
             "hybrid does not match both structure element types");
         check(!controller.addToMachineList(null, 0), "null hatch was accepted");
         for (int scan = 0; scan < 2; scan++) {

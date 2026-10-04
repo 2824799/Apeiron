@@ -61,8 +61,10 @@ public final class BigCraftingTree extends CraftingJobV2 {
         ByteBufUtils.writeUTF8String(writer.getBuffer(), error);
         request.serializeTree(writer);
         BigValueCodec.writePacket(writer.getBuffer(), bytes);
-        final CraftingTreeSerializer reader = new CraftingTreeSerializer(world, writer.finalizeSerializer());
-        reader.initializeSerializer();
+        final CraftingTreeSerializer reader = new CraftingTreeSerializer(
+            world,
+            com.silvia.apeiron.compat.CraftingTreeCodecs.finish(writer));
+        com.silvia.apeiron.compat.CraftingTreeCodecs.initialize(reader);
         return reader;
     }
 

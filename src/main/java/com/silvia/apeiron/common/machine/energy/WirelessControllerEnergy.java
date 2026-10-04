@@ -19,7 +19,7 @@ public final class WirelessControllerEnergy {
             .isEmpty() && state.pending()
                 .flush(
                     machine.getOutputBusses(),
-                    machine.getOutputHatches(),
+                    com.silvia.apeiron.compat.OutputTransactions.hatches(machine),
                     machine.protectsExcessItem(),
                     machine.protectsExcessFluid()))
             machine.markDirty();

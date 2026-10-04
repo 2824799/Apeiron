@@ -5,6 +5,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import com.silvia.apeiron.ae.storage.BigIMEInventory;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
 import com.silvia.apeiron.ae.storage.BigMEInventory;
+import com.silvia.apeiron.compat.ReshuffleAccess;
 
 import appeng.api.config.AccessRestriction;
 import appeng.api.config.Actionable;
@@ -24,7 +25,7 @@ public abstract class MEInventoryHandlerMixin implements BigIMEInventory, BigMEI
             return injectItemsBig((IAEItemStack) input, mode, source);
         }
         MEInventoryHandler handler = (MEInventoryHandler) (Object) this;
-        if (!handler.canAccept(input) || source instanceof ReshuffleActionSource && !handler.getReshuffleAccess()
+        if (!handler.canAccept(input) || source instanceof ReshuffleActionSource && !ReshuffleAccess.policy(handler)
             .hasPermission(AccessRestriction.WRITE)) {
             return input;
         }
@@ -40,7 +41,7 @@ public abstract class MEInventoryHandlerMixin implements BigIMEInventory, BigMEI
         MEInventoryHandler handler = (MEInventoryHandler) (Object) this;
         if (!handler.getAccess()
             .hasPermission(AccessRestriction.READ)
-            || source instanceof ReshuffleActionSource && !handler.getReshuffleAccess()
+            || source instanceof ReshuffleActionSource && !ReshuffleAccess.policy(handler)
                 .hasPermission(AccessRestriction.READ)) {
             return null;
         }
@@ -58,7 +59,7 @@ public abstract class MEInventoryHandlerMixin implements BigIMEInventory, BigMEI
     @Override
     public IAEItemStack injectItemsBig(IAEItemStack input, Actionable mode, BaseActionSource source) {
         MEInventoryHandler<IAEItemStack> handler = (MEInventoryHandler<IAEItemStack>) (Object) this;
-        if (!handler.canAccept(input) || source instanceof ReshuffleActionSource && !handler.getReshuffleAccess()
+        if (!handler.canAccept(input) || source instanceof ReshuffleActionSource && !ReshuffleAccess.policy(handler)
             .hasPermission(AccessRestriction.WRITE)) {
             return input;
         }
@@ -71,7 +72,7 @@ public abstract class MEInventoryHandlerMixin implements BigIMEInventory, BigMEI
         MEInventoryHandler<IAEItemStack> handler = (MEInventoryHandler<IAEItemStack>) (Object) this;
         if (!handler.getAccess()
             .hasPermission(AccessRestriction.READ)
-            || source instanceof ReshuffleActionSource && !handler.getReshuffleAccess()
+            || source instanceof ReshuffleActionSource && !ReshuffleAccess.policy(handler)
                 .hasPermission(AccessRestriction.READ)) {
             return null;
         }

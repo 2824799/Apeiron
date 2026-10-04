@@ -37,7 +37,7 @@ public abstract class BigInputRegistrationMixin {
             controller.mDualInputHatches.remove(assembly);
             if (!controller.mInputBusses.contains(assembly)) {
                 controller.mInputBusses.add(assembly);
-                controller.addIfSmartInput(assembly);
+                com.silvia.apeiron.compat.HatchNotifications.registerSmartInput(controller, assembly);
             }
             if (!controller.mInputHatches.contains(fluids)) controller.mInputHatches.add(fluids);
             cir.setReturnValue(true);

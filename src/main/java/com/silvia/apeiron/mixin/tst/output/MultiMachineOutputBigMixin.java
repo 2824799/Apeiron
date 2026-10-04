@@ -68,7 +68,7 @@ public abstract class MultiMachineOutputBigMixin implements BigTstOutputControll
             if (!(bus instanceof MTEHatchOutputBusME) && !(bus instanceof MTEBoundlessMEOutputBus)) return;
             any = true;
         }
-        for (Object hatch : machine.getOutputHatches()) {
+        for (Object hatch : com.silvia.apeiron.compat.OutputTransactions.hatches(machine)) {
             if (!(hatch instanceof MTEHatchOutputME) && !(hatch instanceof MTEBoundlessMEOutputHatch)) return;
             any = true;
         }
@@ -116,7 +116,8 @@ public abstract class MultiMachineOutputBigMixin implements BigTstOutputControll
         final MTEMultiBlockBase machine = apeiron$machine();
         if (machine.protectsExcessItem() && !TstOutputCapacity.itemsFit(items, machine.getOutputBusses()))
             cir.setReturnValue(CheckRecipeResultRegistry.ITEM_OUTPUT_FULL);
-        else if (machine.protectsExcessFluid() && !TstOutputCapacity.fluidsFit(fluids, machine.getOutputHatches()))
+        else if (machine.protectsExcessFluid()
+            && !TstOutputCapacity.fluidsFit(fluids, com.silvia.apeiron.compat.OutputTransactions.hatches(machine)))
             cir.setReturnValue(CheckRecipeResultRegistry.FLUID_OUTPUT_FULL);
         else cir.setReturnValue(CheckRecipeResultRegistry.SUCCESSFUL);
     }
@@ -254,7 +255,7 @@ public abstract class MultiMachineOutputBigMixin implements BigTstOutputControll
         final MTEMultiBlockBase machine = apeiron$machine();
         if (!queue.isEmpty() && queue.flush(
             machine.getOutputBusses(),
-            machine.getOutputHatches(),
+            com.silvia.apeiron.compat.OutputTransactions.hatches(machine),
             machine.protectsExcessItem(),
             machine.protectsExcessFluid())) apeiron$dirty();
     }

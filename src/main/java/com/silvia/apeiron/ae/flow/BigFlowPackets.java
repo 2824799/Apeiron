@@ -18,23 +18,23 @@ public final class BigFlowPackets {
 
     private BigFlowPackets() {}
 
-    public static boolean hasBigValues(final Map<IAEStack<?>, FlowRate> rates) {
-        for (final FlowRate rate : rates.values()) {
+    public static boolean hasBigValues(final Map<IAEStack<?>, ?> rates) {
+        for (final Object rate : rates.values()) {
             if (rate instanceof BigFlowRate && ((BigFlowRate) rate).isBigFlow()) return true;
         }
         return false;
     }
 
-    public static void write(final ByteBuf out, final Map<IAEStack<?>, FlowRate> rates) {
+    public static void write(final ByteBuf out, final Map<IAEStack<?>, ?> rates) {
         int count = 0;
-        for (final FlowRate rate : rates.values()) {
+        for (final Object rate : rates.values()) {
             if (rate instanceof BigFlowRate && ((BigFlowRate) rate).isBigFlow()) count++;
         }
         if (count == 0) return;
 
         out.writeInt(PACKET_MAGIC);
         out.writeInt(count);
-        for (final Map.Entry<IAEStack<?>, FlowRate> entry : rates.entrySet()) {
+        for (final Map.Entry<IAEStack<?>, ?> entry : rates.entrySet()) {
             if (!(entry.getValue() instanceof BigFlowRate) || !((BigFlowRate) entry.getValue()).isBigFlow()) continue;
             final BigFlowRate exact = (BigFlowRate) entry.getValue();
             Platform.writeStackByte(entry.getKey(), out);

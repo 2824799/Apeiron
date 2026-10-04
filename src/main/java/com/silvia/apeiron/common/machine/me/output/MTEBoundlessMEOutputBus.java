@@ -59,9 +59,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.enums.OutputBusType;
 import gregtech.api.interfaces.IMEConnectable;
-import gregtech.api.interfaces.IOutputBus;
 import gregtech.api.interfaces.IOutputBusTransaction;
-import gregtech.api.interfaces.IOutputTransaction;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -177,7 +175,8 @@ public class MTEBoundlessMEOutputBus extends MTEHatchOutputBus implements IPower
 
     @Override
     public IOutputBusTransaction createTransaction() {
-        return new MEOutputBusTransaction();
+        return (IOutputBusTransaction) com.silvia.apeiron.compat.NativeMEOutputTransactions
+            .wrap(this, createTransactionBig(), false);
     }
 
     public BigItemOutputTransaction createTransactionBig() {
@@ -223,48 +222,10 @@ public class MTEBoundlessMEOutputBus extends MTEHatchOutputBus implements IPower
             .getItemInventory();
     }
 
-    class MEOutputBusTransaction implements BigItemOutputTransaction, IOutputTransaction.IRecipeCheckAware,
-        IOutputTransaction.IProtectOutputAware {
+    class MEOutputBusTransaction implements BigItemOutputTransaction {
 
         private final BigCacheCounter<IAEItemStack> cache = new BigCacheCounter<>();
         private boolean active = true;
-
-        @Override
-        public void setRecipeCheck(boolean isRecipeCheck) {
-            // Preflight stages exact amounts in this transaction, without modifying the cell or live buffer.
-        }
-
-        @Override
-        public void setProtectOutput(boolean isProtectOutput) {
-            // The local buffer can accept any positive amount that passes its partition filter.
-        }
-
-        @Override
-        public boolean needsTotalParallelData() {
-            return false;
-        }
-
-        @Override
-        public IOutputBus getBus() {
-            return MTEBoundlessMEOutputBus.this;
-        }
-
-        @Override
-        public boolean hasAvailableSpace() {
-            return true;
-        }
-
-        @Override
-        public boolean storePartial(GTUtility.ItemId id, @NotNull ItemStack stack, long totalPerParallel,
-            long perParallel) {
-            final IAEItemStack input = AEItemStack.create(stack);
-            final BigInteger before = BigAEStackValues.get(input);
-            storePartialBig(input, BigInteger.valueOf(totalPerParallel), BigInteger.valueOf(perParallel));
-            final int inserted = before.subtract(BigAEStackValues.get(input))
-                .intValueExact();
-            stack.stackSize -= inserted;
-            return inserted > 0;
-        }
 
         @Override
         public boolean storePartialBig(final IAEItemStack input, final BigInteger totalPerParallel,
@@ -277,11 +238,6 @@ public class MTEBoundlessMEOutputBus extends MTEHatchOutputBus implements IPower
             cache.insertBig(BigAEStackValues.copyWithSize(input, BigInteger.ZERO), requested);
             BigAEStackValues.set(input, BigInteger.ZERO);
             return true;
-        }
-
-        @Override
-        public void complete(GTUtility.ItemId id) {
-            // Do nothing
         }
 
         @Override
@@ -393,7 +349,7 @@ public class MTEBoundlessMEOutputBus extends MTEHatchOutputBus implements IPower
     @Override
     public void notifyOutputSpaceChanged() {
         // The provider detected its free space grew or its cell was swapped/repartitioned; re-check a blocked recipe.
-        notifyWatchers();
+        com.silvia.apeiron.compat.HatchNotifications.notifyNative(this);
     }
 
     @Override
@@ -477,7 +433,10 @@ public class MTEBoundlessMEOutputBus extends MTEHatchOutputBus implements IPower
 
     @Override
     public void writeToStream(ByteBuf buffer) {
-        super.writeToStream(buffer);
+        if (com.silvia.apeiron.compat.DependencyCapabilities.hasMethod(
+            "gregtech.api.metatileentity.implementations.MTEHatch",
+            "writeToStream",
+            "(Lio/netty/buffer/ByteBuf;)V")) super.writeToStream(buffer);
 
         // Synchronize the unlimited-buffer marker for client previews.
 
@@ -486,7 +445,10 @@ public class MTEBoundlessMEOutputBus extends MTEHatchOutputBus implements IPower
 
     @Override
     public void readFromStream(ByteBuf buffer) {
-        super.readFromStream(buffer);
+        if (com.silvia.apeiron.compat.DependencyCapabilities.hasMethod(
+            "gregtech.api.metatileentity.implementations.MTEHatch",
+            "readFromStream",
+            "(Lio/netty/buffer/ByteBuf;)V")) super.readFromStream(buffer);
         provider.readFromClientPacket(buffer);
     }
 

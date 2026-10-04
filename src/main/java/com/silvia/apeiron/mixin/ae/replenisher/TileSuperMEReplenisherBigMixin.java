@@ -54,8 +54,10 @@ public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplen
     @Shadow
     private void updatePowerDraw() {}
 
-    @Shadow
-    private void postStorageChange(IAEStack<?> stack, long amount, BaseActionSource source) {}
+    @Unique
+    private void apeiron$postStorageChange(IAEStack<?> stack, long amount, BaseActionSource source) {
+        com.silvia.apeiron.compat.CraftingTreeCodecs.notifyReplenisher(this, stack, amount, source);
+    }
 
     @Unique
     private TileSuperMEReplenisher apeiron$self() {
@@ -169,7 +171,7 @@ public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplen
                 .add(needBytes);
             this.usedBytes = BigAEStackValues.saturatedLong(used);
             this.storage.add(input);
-            this.postStorageChange(input, BigAEStackValues.saturatedLong(stackSize), source);
+            this.apeiron$postStorageChange(input, BigAEStackValues.saturatedLong(stackSize), source);
             return null;
         }
 
@@ -181,7 +183,7 @@ public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplen
         this.storage.add(allowed);
         this.unusedCount.put(type, 0);
         this.usedBytes = BigAEStackValues.saturatedLong(usedBefore.add(free));
-        this.postStorageChange(allowed, BigAEStackValues.saturatedLong(capacity), source);
+        this.apeiron$postStorageChange(allowed, BigAEStackValues.saturatedLong(capacity), source);
         return capacity.signum() == 0 ? input : BigAEStackValues.copyWithSize(input, stackSize.subtract(capacity));
     }
 
@@ -211,7 +213,7 @@ public abstract class TileSuperMEReplenisherBigMixin implements BigSuperMEReplen
                 .intValue();
             this.unusedCount.put(request.getStackType(), next == 0 ? 0 : weight - next);
             this.usedBytes = BigAEStackValues.saturatedLong(used.subtract(freed));
-            this.postStorageChange(result, BigAEStackValues.saturatedLong(amount.negate()), source);
+            this.apeiron$postStorageChange(result, BigAEStackValues.saturatedLong(amount.negate()), source);
         }
         return result;
     }

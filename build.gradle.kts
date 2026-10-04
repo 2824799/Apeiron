@@ -8,6 +8,7 @@ minecraft {
 }
 
 apply(from = "gradle/wireless-benchmark.gradle")
+apply(from = "gradle/compatibility.gradle")
 
 // Include the project license, notices and license texts for ported or adapted code.
 tasks.withType<Jar>().configureEach {

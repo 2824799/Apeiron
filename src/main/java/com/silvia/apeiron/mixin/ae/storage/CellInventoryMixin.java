@@ -62,6 +62,10 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
     @Shadow
     private int maxTypes;
     @Shadow
+    private boolean cardDistribution;
+    @Shadow
+    private boolean cardVoidOverflow;
+    @Shadow
     protected short storedTypes;
     @Shadow
     protected long storedCount;
@@ -80,6 +84,16 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
 
     @Unique
     private AdaptiveInteger apeiron$storedCountBig;
+
+    @Override
+    public boolean hasDistributionCard() {
+        return cardDistribution;
+    }
+
+    @Override
+    public boolean hasOverflowCard() {
+        return cardVoidOverflow;
+    }
 
     @Unique
     private CellInventory<IAEItemStack> apeiron$cell() {
@@ -244,16 +258,16 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
             .signum() <= 0) stored = null;
         if (stored == null && !apeiron$canHoldNewItem()) return input;
 
-        BigInteger room = apeiron$cell().isDistribution() ? apeiron$remainingItemsCountDistGeneric(stored)
+        BigInteger room = cardDistribution ? apeiron$remainingItemsCountDistGeneric(stored)
             : getRemainingItemCountBig();
-        if (stored == null && !apeiron$cell().isDistribution() && apeiron$restriction().signum() <= 0) {
+        if (stored == null && !cardDistribution && apeiron$restriction().signum() <= 0) {
             BigInteger byteRoom = getFreeBytesBig().subtract(BigInteger.valueOf(apeiron$cell().getBytesPerType()))
                 .multiply(BigInteger.valueOf(typeWeight))
                 .add(BigInteger.valueOf(apeiron$unusedCount()));
             room = room.min(byteRoom)
                 .max(BigInteger.ZERO);
         }
-        if (room.signum() == 0) return stored != null && apeiron$cell().isOverflow() ? null : input;
+        if (room.signum() == 0) return stored != null && cardVoidOverflow ? null : input;
 
         BigInteger requested = BigAEStackValues.get(input);
         BigInteger accepted = requested.min(room);
@@ -270,7 +284,7 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
             }
             saveChanges();
         }
-        return requested.equals(accepted) || apeiron$cell().isOverflow() ? null
+        return requested.equals(accepted) || cardVoidOverflow ? null
             : BigAEStackValues.copyWithSize(input, requested.subtract(accepted));
     }
 
@@ -324,9 +338,8 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
         IAEItemStack stored = cellStacks.findPrecise(input);
         if (stored != null && stored.getStackSize() <= 0) stored = null;
         if (stored == null && !apeiron$canHoldNewItem()) return input;
-        BigInteger room = apeiron$cell().isDistribution() ? getRemainingItemsCountDistBig(stored)
-            : getRemainingItemCountBig();
-        if (stored == null && !apeiron$cell().isDistribution() && apeiron$restriction().signum() <= 0) {
+        BigInteger room = cardDistribution ? getRemainingItemsCountDistBig(stored) : getRemainingItemCountBig();
+        if (stored == null && !cardDistribution && apeiron$restriction().signum() <= 0) {
             // Reserve the new type's metadata bytes before accepting its contents.
             BigInteger byteRoom = getFreeBytesBig().subtract(BigInteger.valueOf(apeiron$cell().getBytesPerType()))
                 .multiply(BigInteger.valueOf(typeWeight))
@@ -334,7 +347,7 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
             room = room.min(byteRoom)
                 .max(BigInteger.ZERO);
         }
-        if (room.signum() == 0) return stored != null && apeiron$cell().isOverflow() ? null : input;
+        if (room.signum() == 0) return stored != null && cardVoidOverflow ? null : input;
         BigInteger requested = BigAEItemStacks.stackSize(input);
         BigInteger accepted = requested.min(room);
         if (mode == Actionable.MODULATE) {
@@ -347,7 +360,7 @@ public abstract class CellInventoryMixin implements BigCellInventory, BigMEInven
             }
             saveChanges();
         }
-        return requested.equals(accepted) || apeiron$cell().isOverflow() ? null
+        return requested.equals(accepted) || cardVoidOverflow ? null
             : BigAEItemStacks.copyWithSize(input, requested.subtract(accepted));
     }
 

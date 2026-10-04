@@ -1,0 +1,30 @@
+package com.silvia.apeiron.mixin.gregtech.input;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
+import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputMirror;
+
+import gregtech.api.enums.HatchElement;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
+
+/** Older GregTech releases keep InputHatch's class list on the enum base method. */
+@Mixin(value = HatchElement.class, remap = false)
+public abstract class LegacyBigInputHatchElementMixin {
+
+    @Inject(method = "mteClasses", at = @At("RETURN"), cancellable = true, require = 1)
+    private void apeiron$allowBigInput(CallbackInfoReturnable<List<? extends Class<? extends IMetaTileEntity>>> cir) {
+        if ((Object) this != HatchElement.InputHatch) return;
+        final List<Class<? extends IMetaTileEntity>> types = new ArrayList<>(cir.getReturnValue());
+        types.add(MTEInfinitePatternInputAssembly.class);
+        types.add(MTEInfinitePatternInputMirror.class);
+        types.add(com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputAssembly.class);
+        cir.setReturnValue(types);
+    }
+}

@@ -11,9 +11,9 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.api.machine.me.output.BigFluidOutputTransaction;
-import com.silvia.apeiron.api.machine.me.output.BigItemOutputTransaction;
 import com.silvia.apeiron.common.machine.me.output.storage.BigCacheCounter;
+import com.silvia.apeiron.compat.OutputTransactions;
+import com.silvia.apeiron.compat.OutputTransactions.Handle;
 import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigValueCodec;
 
@@ -23,10 +23,6 @@ import appeng.api.storage.data.IAEStack;
 import appeng.util.item.AEFluidStack;
 import appeng.util.item.AEItemStack;
 import gregtech.api.interfaces.IOutputBus;
-import gregtech.api.interfaces.IOutputBusTransaction;
-import gregtech.api.interfaces.IOutputHatch;
-import gregtech.api.interfaces.IOutputHatchTransaction;
-import gregtech.api.interfaces.IOutputTransaction;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputBusME;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputME;
@@ -125,7 +121,7 @@ public final class BigMachineOutputQueue {
         int remaining = 64;
     }
 
-    public boolean flush(final List<IOutputBus> busses, final List<IOutputHatch> hatches, final boolean protectItems,
+    public boolean flush(final List<IOutputBus> busses, final List<?> hatches, final boolean protectItems,
         final boolean protectFluids) {
         final BigInteger beforeItems = items.getTotalBig();
         final BigInteger beforeFluids = fluids.getTotalBig();
@@ -138,15 +134,6 @@ public final class BigMachineOutputQueue {
                 .equals(beforeFluids);
     }
 
-    private static void configure(final IOutputTransaction<?, ?> transaction, final boolean protection) {
-        if (transaction instanceof IOutputTransaction.IRecipeCheckAware) {
-            ((IOutputTransaction.IRecipeCheckAware) transaction).setRecipeCheck(false);
-        }
-        if (transaction instanceof IOutputTransaction.IProtectOutputAware) {
-            ((IOutputTransaction.IProtectOutputAware) transaction).setProtectOutput(protection);
-        }
-    }
-
     private void flushItems(final List<IOutputBus> busses, final boolean protection, final Budget budget) {
         final List<IOutputBus> ordered = new ArrayList<>(busses);
         ordered.sort(
@@ -156,15 +143,14 @@ public final class BigMachineOutputQueue {
         final List<Target<IAEItemStack>> big = new ArrayList<>();
         final List<Target<IAEItemStack>> legacy = new ArrayList<>();
         for (final IOutputBus bus : ordered) {
-            final IOutputBusTransaction transaction = bus.createTransaction();
-            configure(transaction, protection);
-            if (transaction instanceof BigItemOutputTransaction) {
+            final Handle transaction = OutputTransactions.items(bus);
+            transaction.configure(false, protection);
+            if (transaction.hasExactItems()) {
                 big.add(new Target<IAEItemStack>() {
 
                     @Override
                     public void insert(final IAEItemStack request) {
-                        ((BigItemOutputTransaction) transaction)
-                            .storePartialBig(request, BigInteger.ONE, BigInteger.ONE);
+                        transaction.storePartialBig(request, BigInteger.ONE, BigInteger.ONE);
                     }
 
                     @Override
@@ -209,24 +195,20 @@ public final class BigMachineOutputQueue {
         transfer(items, big);
     }
 
-    private void flushFluids(final List<IOutputHatch> hatches, final boolean protection, final Budget budget) {
-        final List<IOutputHatch> ordered = new ArrayList<>(hatches);
-        ordered.sort(
-            Comparator.comparingInt(
-                hatch -> hatch.getHatchType()
-                    .ordinal()));
+    private void flushFluids(final List<?> hatches, final boolean protection, final Budget budget) {
+        final List<?> ordered = new ArrayList<>(hatches);
+        ordered.sort(Comparator.comparingInt(OutputTransactions::order));
         final List<Target<IAEFluidStack>> big = new ArrayList<>();
         final List<Target<IAEFluidStack>> legacy = new ArrayList<>();
-        for (final IOutputHatch hatch : ordered) {
-            final IOutputHatchTransaction transaction = hatch.createTransaction();
-            configure(transaction, protection);
-            if (transaction instanceof BigFluidOutputTransaction) {
+        for (final Object hatch : ordered) {
+            final Handle transaction = OutputTransactions.fluids(hatch);
+            transaction.configure(false, protection);
+            if (transaction.hasExactFluids()) {
                 big.add(new Target<IAEFluidStack>() {
 
                     @Override
                     public void insert(final IAEFluidStack request) {
-                        ((BigFluidOutputTransaction) transaction)
-                            .storePartialBig(request, BigInteger.ONE, BigInteger.ONE);
+                        transaction.storePartialBig(request, BigInteger.ONE, BigInteger.ONE);
                     }
 
                     @Override

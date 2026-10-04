@@ -67,6 +67,7 @@ public final class AECraftingPlanningSmoke {
             "one output became two when decoding the pattern");
         IGrid grid = grid(pattern, input, BigInteger.TEN.pow(60));
         verifyRequestEntry(grid, output);
+        verifyPlanningEntrypoint(grid, output);
         CraftingJobV2<IAEItemStack> nativeJob = new CraftingJobV2<>(
             null,
             grid,
@@ -117,9 +118,8 @@ public final class AECraftingPlanningSmoke {
             "1".equals(BigGuiNumberCapture.formatWideAny(next)),
             "previous row's craft count leaked into a one-item quantity");
         BigGuiNumberCapture.clear();
-        PacketCraftRequest wire = (PacketCraftRequest) BigCraftPackets.withExactAmount(
-            new PacketCraftRequest(Long.MAX_VALUE, false, false, CraftingMode.STANDARD, false),
-            BigInteger.TEN.pow(19));
+        PacketCraftRequest wire = (PacketCraftRequest) BigCraftPackets
+            .withExactAmount(requestPacket(Long.MAX_VALUE), BigInteger.TEN.pow(19));
         ByteBuf payload = wire.getProxy()
             .payload();
         try {
@@ -138,6 +138,9 @@ public final class AECraftingPlanningSmoke {
     }
 
     private static void verifyRequestEntry(IGrid grid, IAEItemStack output) {
+        if (cpw.mods.fml.common.FMLCommonHandler.instance()
+            .getSide()
+            .isServer()) return;
         try {
             final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
             final java.lang.reflect.Field singleton = unsafeClass.getDeclaredField("theUnsafe");
@@ -173,9 +176,8 @@ public final class AECraftingPlanningSmoke {
                 field.setText(requested.toString());
                 check((Integer) getInt.invoke(gui) > 0, "large request disabled the amount button");
                 check(requested.equals(((BigAmountGui) gui).getAmountBig()), "amount field lost exact input");
-                PacketCraftRequest sent = (PacketCraftRequest) append.invoke(
-                    gui,
-                    new PacketCraftRequest((Long) getLong.invoke(gui), false, false, CraftingMode.STANDARD, false));
+                PacketCraftRequest sent = (PacketCraftRequest) append
+                    .invoke(gui, requestPacket((Long) getLong.invoke(gui)));
                 ByteBuf payload = sent.getProxy()
                     .payload();
                 PacketCraftRequest decoded;
@@ -200,11 +202,9 @@ public final class AECraftingPlanningSmoke {
                     BigAEStackValues.get(request)
                         .equals(requested),
                     "server packet applied a saturated request");
-                appeng.api.networking.crafting.ICraftingJob<?> job = new appeng.me.cache.CraftingGridCache(grid)
-                    .beginCraftingJob(null, grid, new BaseActionSource(), request, CraftingMode.STANDARD, false, null)
-                    .get();
+                appeng.api.networking.crafting.ICraftingJob<?> job = beginJob(grid, request);
                 check(
-                    job instanceof BigCraftingJobFast && job.getErrorMessage()
+                    job instanceof BigCraftingJobFast && ((BigCraftingJobFast<?>) job).getErrorMessage()
                         .isEmpty(),
                     "request entered the long-only planner");
                 check(
@@ -291,6 +291,59 @@ public final class AECraftingPlanningSmoke {
         } catch (Exception error) {
             throw new IllegalStateException("Craft amount entry/packet/planner verification failed", error);
         }
+    }
+
+    private static PacketCraftRequest requestPacket(long amount) {
+        for (java.lang.reflect.Constructor<?> constructor : PacketCraftRequest.class.getConstructors()) {
+            Class<?>[] parameters = constructor.getParameterTypes();
+            if (parameters.length < 4 || parameters[0] != long.class) continue;
+            try {
+                return (PacketCraftRequest) constructor.newInstance(
+                    parameters.length == 5 ? new Object[] { amount, false, false, CraftingMode.STANDARD, false }
+                        : new Object[] { amount, false, false, CraftingMode.STANDARD });
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Cannot construct crafting request", error);
+            }
+        }
+        throw new IllegalStateException("Unknown AE crafting request constructor");
+    }
+
+    private static void verifyPlanningEntrypoint(IGrid grid, IAEItemStack output) {
+        try {
+            for (BigInteger amount : new BigInteger[] { BigInteger.TEN.pow(19), BigInteger.TEN.pow(60),
+                BigInteger.TEN.pow(600) }) {
+                IAEItemStack request = BigAEStackValues.copyWithSize(output, amount);
+                appeng.api.networking.crafting.ICraftingJob<?> result = beginJob(grid, request);
+                check(
+                    result instanceof BigCraftingJobFast && ((BigCraftingJobFast<?>) result).getErrorMessage()
+                        .isEmpty(),
+                    "native request did not select the exact planner");
+                check(
+                    BigAEStackValues.get(result.getOutput())
+                        .equals(amount),
+                    "native request was truncated");
+            }
+        } catch (Exception error) {
+            throw new IllegalStateException("Native crafting entrypoint verification failed", error);
+        }
+    }
+
+    private static appeng.api.networking.crafting.ICraftingJob<?> beginJob(IGrid grid, IAEItemStack request)
+        throws Exception {
+        appeng.me.cache.CraftingGridCache cache = new appeng.me.cache.CraftingGridCache(grid);
+        java.lang.reflect.Method entry = java.util.Arrays.stream(
+            cache.getClass()
+                .getMethods())
+            .filter(
+                method -> method.getName()
+                    .equals("beginCraftingJob") && method.getParameterCount() >= 6)
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Missing native crafting entrypoint"));
+        Object[] arguments = entry.getParameterCount() == 7
+            ? new Object[] { null, grid, new BaseActionSource(), request, CraftingMode.STANDARD, false, null }
+            : new Object[] { null, grid, new BaseActionSource(), request, CraftingMode.STANDARD, null };
+        return (appeng.api.networking.crafting.ICraftingJob<?>) ((java.util.concurrent.Future<?>) entry
+            .invoke(cache, arguments)).get();
     }
 
     private static IGrid grid(ICraftingPatternDetails pattern, IAEItemStack input, BigInteger amount) {

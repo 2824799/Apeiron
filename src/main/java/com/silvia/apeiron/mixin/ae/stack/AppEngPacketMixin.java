@@ -15,7 +15,6 @@ import com.silvia.apeiron.math.BigValueCodec;
 
 import appeng.api.storage.data.IAEStack;
 import appeng.core.sync.AppEngPacket;
-import appeng.me.cache.ItemFlowGridCache.FlowRate;
 import appeng.me.diagnostics.DiagnosticRowView;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -45,7 +44,7 @@ public abstract class AppEngPacketMixin implements BigPacketPayload {
     }
 
     @Override
-    public void appendApeironFlowRates(final Map<IAEStack<?>, FlowRate> rates) {
+    public void appendApeironFlowRates(final Map<IAEStack<?>, ?> rates) {
         if (this.p == null || rates == null || !BigFlowPackets.hasBigValues(rates)) return;
         final ByteBuf old = this.p;
         final ByteBuf replacement = Unpooled.buffer(old.readableBytes() + rates.size() * 64);

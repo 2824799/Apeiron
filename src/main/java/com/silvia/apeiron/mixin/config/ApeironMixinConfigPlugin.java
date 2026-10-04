@@ -10,6 +10,7 @@ import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
+import com.silvia.apeiron.compat.DependencyCapabilities;
 import com.silvia.apeiron.config.ApeironConfig;
 
 /** Selects integrations using configuration grouped by the providing mod. */
@@ -33,6 +34,42 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(final String targetClassName, final String mixinClassName) {
+        if (mixinClassName.endsWith(".LegacyOptimizerTaskMixin")
+            || mixinClassName.endsWith(".ModernOptimizerTaskMixin")) {
+            final boolean modern = DependencyCapabilities.hasMethod(
+                targetClassName,
+                "addCraftingTask",
+                "(Lappeng/api/networking/crafting/ICraftingPatternDetails;J)V");
+            return ApeironConfig.areAeMixinsEnabled() && modern == mixinClassName.endsWith(".ModernOptimizerTaskMixin");
+        }
+        if (mixinClassName.endsWith(".LegacyCraftingEntrypointMixin")
+            || mixinClassName.endsWith(".ModernCraftingEntrypointMixin")) {
+            boolean modern = DependencyCapabilities.hasClass("appeng.crafting.fast.CraftingJobFast");
+            return ApeironConfig.areAeMixinsEnabled()
+                && (modern == mixinClassName.endsWith(".ModernCraftingEntrypointMixin"));
+        }
+        if (mixinClassName.endsWith(".NativeInputWatcherMixin")) return ApeironConfig.areAeMixinsEnabled()
+            && DependencyCapabilities.hasMethod(targetClassName, "addWatcher", null)
+            && DependencyCapabilities.hasMethod(targetClassName, "removeWatcher", null);
+        if (mixinClassName.endsWith(".BigInputHatchElementMixin")) {
+            return ApeironConfig.areAeMixinsEnabled()
+                && DependencyCapabilities.hasMethod(targetClassName, "mteClasses", null);
+        }
+        if (mixinClassName.endsWith(".LegacyBigInputHatchElementMixin")) {
+            return ApeironConfig.areAeMixinsEnabled()
+                && DependencyCapabilities.hasClass("gregtech.api.enums.HatchElement")
+                && !DependencyCapabilities.hasMethod("gregtech.api.enums.HatchElement$3", "mteClasses", null);
+        }
+        if (mixinClassName.endsWith(".ModernMEOutputHatchMixin")) return ApeironConfig.areAeMixinsEnabled()
+            && DependencyCapabilities.hasClass("gregtech.api.interfaces.IOutputHatch");
+        if (mixinClassName.endsWith(".LegacyReshuffleTaskMixin")) return ApeironConfig.areAeMixinsEnabled()
+            && !DependencyCapabilities.hasClass("appeng.helpers.ReshuffleTask$PendingInjection");
+        if (mixinClassName.endsWith(".ReshuffleTaskMixin")) return ApeironConfig.areAeMixinsEnabled()
+            && DependencyCapabilities.hasClass("appeng.helpers.ReshuffleTask$PendingInjection");
+        if (mixinClassName.endsWith(".CraftingTreeSerializerBigMixin")) return ApeironConfig.areAeMixinsEnabled()
+            && DependencyCapabilities.hasMethod(targetClassName, "writeStackWithSize", null);
+        if (mixinClassName.startsWith(AE_MIXIN_PREFIX) && !DependencyCapabilities.hasClass(targetClassName))
+            return false;
         if (mixinClassName.startsWith("com.silvia.apeiron.mixin.compat.omniocular."))
             return (ApeironConfig.areAeMixinsEnabled() || ApeironConfig.isLightweightWailaEnabled())
                 && getClass().getClassLoader()
@@ -49,7 +86,7 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
                 return ApeironConfig.isLightweightWailaEnabled() || ApeironConfig.areAeMixinsEnabled();
             if (mixinClassName.contains("Godforge") || mixinClassName.contains("TecTech"))
                 return ApeironConfig.areAeMixinsEnabled() && getClass().getClassLoader()
-                    .getResource("tectech/thing/metaTileEntity/multi/godforge/MTEBaseModule.class") != null;
+                    .getResource(targetClassName.replace('.', '/') + ".class") != null;
             return ApeironConfig.areAeMixinsEnabled() && getClass().getClassLoader()
                 .getResource(targetClassName.replace('.', '/') + ".class") != null;
         }

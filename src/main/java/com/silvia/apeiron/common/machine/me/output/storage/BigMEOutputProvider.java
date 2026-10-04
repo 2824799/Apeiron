@@ -576,12 +576,13 @@ public abstract class BigMEOutputProvider<T extends IAEStack<T>> {
 
     public boolean isDistribution() {
         if (handler == null) return false;
-        return handler.isDistribution();
+        return com.silvia.apeiron.compat.CellUpgradePolicies.distribution(handler);
     }
 
     public boolean canVoidOverflow() {
         if (handler == null) return false;
-        return handler.isOverflow() || handler.getCellInv() instanceof VoidCellInventory<?>;
+        return com.silvia.apeiron.compat.CellUpgradePolicies.overflow(handler)
+            || handler.getCellInv() instanceof VoidCellInventory<?>;
     }
 
     public boolean canStore(@NotNull T input) {

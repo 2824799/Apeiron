@@ -6,6 +6,8 @@ These portions, including Apeiron's modifications, are provided under LGPL-3.0. 
 
 The native ME output budget in `common/machine/output/NativeMEOutputBudget.java` also derives its cell and cache checks from GregTech output transactions, under the same LGPL-3.0 terms. Changes use an exact shared reservation budget while retaining finite native cache and copied-cell limits.
 
+`crafting/BigSccResolver.java` adapts AE2 GTNH's `SCCResolver` from Applied-Energistics-2-Unofficial `rv3-beta-1077-GTNH`, by the GT New Horizons contributors, under LGPL-3.0-or-later. Changes bundle its pattern-graph resolver in Apeiron so the exact planner also works with older AE2 releases that do not contain the native fast planner. Source and modifications are included in this repository and the source JAR; see `licenses/GT5-Unofficial-LGPL-3.0.txt` and `licenses/GNU-GPL-3.0.txt` for the license terms.
+
 The corresponding modified source is included in this repository and its source JAR. GregTech and Applied Energistics remain external dependencies. GregTech's existing textures are referenced from GregTech's resources.
 
 `mixin/tst/output/ParallelOutputBigMixin.java` adapts the output chance calculation from Twist Space Technology `0.8.0-RC1.3`, commit `a780af281b9c4539098004461fc0701d0bbff5c3`, by Nxer and contributors. That portion and its modifications are distributed under GPL-3.0, with terms in `licenses/GNU-GPL-3.0.txt`. Changes replace saturating output merges with exact quantities while retaining native chance behavior. The original source is `GTCM_ParallelHelper.java`; modified source is included in this repository and source JAR. Twist Space Technology remains an optional external dependency.

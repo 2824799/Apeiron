@@ -32,7 +32,6 @@ import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IItemList;
 import appeng.crafting.CraftBranchFailure;
 import appeng.crafting.MECraftingInventory;
-import appeng.crafting.fast.SccResolver;
 import appeng.crafting.v2.CraftingContext;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
 import it.unimi.dsi.fastutil.longs.LongObjectPair;
@@ -97,7 +96,7 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
     }
 
     private void calculateImpl() {
-        final SccResolver.Result raw = SccResolver.compute(this.output, stack -> {
+        final BigSccResolver.Result raw = BigSccResolver.compute(this.output, stack -> {
             final List<ICraftingPatternDetails> patterns = this.context.getPrecisePatternsFor(stack);
             if (patterns.isEmpty()) return null;
             for (final ICraftingPatternDetails pattern : patterns) {

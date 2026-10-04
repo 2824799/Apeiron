@@ -1,0 +1,126 @@
+import groovy.json.JsonSlurper
+
+// Compile Apeiron once. Only the verification classpath changes between pack releases.
+def compatibilityProfiles = new JsonSlurper().parse(file("compatibility/gtnh-profiles.json")).profiles
+def compatibilityTasks = []
+def compatibilityClientTasks = []
+repositories {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "GTNH dependency mirror"
+                url = uri("https://nexus.gtnewhorizons.com/repository/public/")
+            }
+        }
+        filter { includeGroup("it.unimi.dsi") }
+    }
+}
+
+afterEvaluate {
+    compatibilityProfiles.each { profile ->
+        def suffix = profile.pack.replaceAll("[^A-Za-z0-9]", "_")
+        def runtime = configurations.create("compatibilityRuntime_${suffix}") {
+            canBeConsumed = false
+            canBeResolved = true
+            exclude group: "com.github.GTNewHorizons", module: "CodeChickenLib"
+            exclude group: "net.industrial-craft", module: "industrialcraft-2"
+            exclude group: "curse.maven", module: "ic2-242638"
+            resolutionStrategy.setForcedModules(*profile.modules.collect { name, version ->
+                "com.github.GTNewHorizons:${name}:${version}"
+            })
+            resolutionStrategy.dependencySubstitution {
+                substitute(module("com.github.GTNewHorizons:Baubles"))
+                    .using(module("com.github.GTNewHorizons:Baubles-Expanded:${profile.modules['Baubles-Expanded']}"))
+                    .withClassifier("dev")
+            }
+        }
+        ["GT5-Unofficial", "Applied-Energistics-2-Unofficial", "AE2FluidCraft-Rework",
+            "ThaumicEnergistics", "Avaritia", "CodeChickenCore"].each { module ->
+            dependencies.add(runtime.name, "com.github.GTNewHorizons:${module}:${profile.modules[module]}:dev")
+        }
+        dependencies { add(runtime.name, rfg.deobf("com.github.GTNewHorizons:Chisel:${profile.modules['Chisel']}")) }
+        dependencies.add(runtime.name, "apeiron.development:industrialcraft-2:2.2.828-experimental:dev")
+        dependencies.add(runtime.name, "thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
+        [server: "runServer25", client: "runClient25"].each { side, runTask ->
+            def launcher = tasks.named(runTask).get()
+            def verification = tasks.register(side == "server" ? "compatibility_${suffix}" : "compatibilityClient_${suffix}", JavaExec) {
+                group = "verification"
+                description = "Verify the common Apeiron artifact with GTNH ${profile.pack} dependencies."
+                dependsOn launcher.taskDependencies.getDependencies(launcher)
+                mainClass.set(launcher.mainClass)
+                javaLauncher.set(launcher.javaLauncher)
+                workingDir = layout.buildDirectory.dir("compatibility/${profile.pack}" + (side == "client" ? "/client" : "")).get().asFile
+                environment "APEIRON_VERIFY_COMPATIBILITY", "1"
+                environment "APEIRON_VERIFY_EXIT", "1"
+                environment "APEIRON_COMPATIBILITY_PROFILE", profile.pack
+                jvmArgs "-Xms512m", "-Xmx4G"
+                jvmArgs launcher.extraJvmArgs.get()
+                timeout = java.time.Duration.ofMinutes(8)
+                def replacements = runtime.resolvedConfiguration.resolvedArtifacts.collect {
+                    it.moduleVersion.id.group + ":" + it.name
+                } as Set
+                def removed = configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts.findAll { artifact ->
+                    def id = artifact.moduleVersion.id
+                    id.group == "com.github.GTNewHorizons" || id.group == "apeiron.development" ||
+                        replacements.contains(id.group + ":" + artifact.name) ||
+                        (artifact.file.name.endsWith(".jar") && new java.util.zip.ZipFile(artifact.file).withCloseable { jar ->
+                            jar.getEntry("mcmod.info") != null || jar.getEntry("META-INF/fml_cache_annotation.json") != null
+                        })
+                }.collect { it.file } as Set
+                removed.addAll(configurations.runtimeClasspath.files.findAll { candidate ->
+                    candidate.isFile() && candidate.name.endsWith(".jar") &&
+                        new java.util.zip.ZipFile(candidate).withCloseable { jar ->
+                            jar.getEntry("mcmod.info") != null || jar.getEntry("META-INF/fml_cache_annotation.json") != null
+                        }
+                })
+                classpath = files(launcher.classpath.files.findAll { !removed.contains(it) }) + runtime
+                systemProperties(launcher.systemProperties)
+                args = launcher.args
+                def resolved = runtime.resolvedConfiguration.resolvedArtifacts
+                profile.modules.each { name, version ->
+                    def actual = resolved.find { it.moduleVersion.id.group == "com.github.GTNewHorizons" && it.name == name }
+                    if (actual != null && actual.moduleVersion.id.version != version)
+                        throw new GradleException("${profile.pack}: ${name} resolved ${actual.moduleVersion.id.version}, expected ${version}")
+                }
+                def dependencyReport = resolved.collect {
+                    it.moduleVersion.id.toString() + ":" + (it.classifier ?: "")
+                }.sort().join("\n") + "\n"
+                def artifact = tasks.named("jar").get().archiveFile.get().asFile
+                doFirst {
+                    workingDir.mkdirs()
+                    new File(workingDir, "eula.txt").text = "eula=true\n"
+                    if (side == "server") new File(workingDir, "server.properties").text =
+                        "server-port=0\nonline-mode=false\nlevel-name=apeiron-compatibility\n"
+                    new File(workingDir, "dependencies.txt").text = dependencyReport
+                    new File(workingDir, "logs/latest.log").delete()
+                    new File(workingDir, "logs/fml-${side}-latest.log").delete()
+                    new File(workingDir, "artifact.sha256").text = java.security.MessageDigest.getInstance("SHA-256")
+                        .digest(artifact.bytes).encodeHex().toString() + "  " + artifact.name + "\n"
+                }
+                doLast {
+                    def log = new File(workingDir, "logs/fml-${side}-latest.log")
+                    def marker = "Apeiron compatibility verification passed: ${profile.pack}"
+                    if (!log.isFile() || !log.text.contains(marker))
+                        throw new GradleException("${profile.pack}: compatibility self-check did not complete; see ${workingDir}/logs")
+                }
+            }
+            def precedingChecks = (compatibilityTasks + compatibilityClientTasks).toList()
+            verification.configure { mustRunAfter(precedingChecks) }
+            (side == "server" ? compatibilityTasks : compatibilityClientTasks).add(verification)
+        }
+    }
+}
+
+tasks.register("compatibilityCheck") {
+    group = "verification"
+    description = "Verify one Apeiron artifact against every supported GTNH release profile."
+    dependsOn compatibilityTasks
+}
+
+tasks.register("compatibilityClientCheck") {
+    group = "verification"
+    description = "Verify the common artifact's client GUI and rendering hooks for every GTNH release profile."
+    dependsOn compatibilityClientTasks
+}
+
+tasks.named("check") { dependsOn("compatibilityCheck") }

@@ -9,18 +9,14 @@ import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.api.machine.me.output.BigFluidOutputTransaction;
-import com.silvia.apeiron.api.machine.me.output.BigItemOutputTransaction;
+import com.silvia.apeiron.compat.OutputTransactions;
+import com.silvia.apeiron.compat.OutputTransactions.Handle;
 
 import appeng.api.AEApi;
 import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import gregtech.api.interfaces.IOutputBus;
-import gregtech.api.interfaces.IOutputBusTransaction;
-import gregtech.api.interfaces.IOutputHatch;
-import gregtech.api.interfaces.IOutputHatchTransaction;
-import gregtech.api.interfaces.IOutputTransaction;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputBusME;
@@ -33,21 +29,14 @@ public final class BigRecipeOutputCapacity {
 
     private BigRecipeOutputCapacity() {}
 
-    private static void configure(IOutputTransaction<?, ?> tx) {
-        if (tx instanceof IOutputTransaction.IRecipeCheckAware)
-            ((IOutputTransaction.IRecipeCheckAware) tx).setRecipeCheck(true);
-        if (tx instanceof IOutputTransaction.IProtectOutputAware)
-            ((IOutputTransaction.IProtectOutputAware) tx).setProtectOutput(true);
-    }
-
     public static boolean fits(MTEMultiBlockBase machine, List<IAEStack<?>> outputs) {
         List<Consumer<IAEItemStack>> items = new ArrayList<>();
         List<Consumer<IAEFluidStack>> fluids = new ArrayList<>();
         for (IOutputBus bus : machine.getOutputBusses()) {
-            IOutputBusTransaction tx = bus.createTransaction();
-            configure(tx);
-            if (tx instanceof BigItemOutputTransaction) {
-                items.add(s -> ((BigItemOutputTransaction) tx).storePartialBig(s, BigInteger.ONE, BigInteger.ONE));
+            Handle tx = OutputTransactions.items(bus);
+            tx.configure(true, true);
+            if (tx.hasExactItems()) {
+                items.add(s -> tx.storePartialBig(s, BigInteger.ONE, BigInteger.ONE));
             } else if (bus instanceof MTEHatchOutputBusME) {
                 MTEHatchOutputBusME me = (MTEHatchOutputBusME) bus;
                 NativeMEOutputBudget<IAEItemStack> budget = new NativeMEOutputBudget<>(
@@ -87,11 +76,11 @@ public final class BigRecipeOutputCapacity {
                 BigAEStackValues.set(s, remaining);
             });
         }
-        for (IOutputHatch hatch : machine.getOutputHatches()) {
-            IOutputHatchTransaction tx = hatch.createTransaction();
-            configure(tx);
-            if (tx instanceof BigFluidOutputTransaction) {
-                fluids.add(s -> ((BigFluidOutputTransaction) tx).storePartialBig(s, BigInteger.ONE, BigInteger.ONE));
+        for (Object hatch : OutputTransactions.hatches(machine)) {
+            Handle tx = OutputTransactions.fluids(hatch);
+            tx.configure(true, true);
+            if (tx.hasExactFluids()) {
+                fluids.add(s -> tx.storePartialBig(s, BigInteger.ONE, BigInteger.ONE));
             } else if (hatch instanceof MTEHatchOutputME) {
                 MTEHatchOutputME me = (MTEHatchOutputME) hatch;
                 NativeMEOutputBudget<IAEFluidStack> budget = new NativeMEOutputBudget<>(

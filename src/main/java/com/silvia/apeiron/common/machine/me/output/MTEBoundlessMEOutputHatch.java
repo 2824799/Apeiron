@@ -58,12 +58,8 @@ import appeng.util.item.AEFluidStack;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.enums.GTValues;
-import gregtech.api.enums.OutputHatchType;
 import gregtech.api.interfaces.IDataCopyable;
 import gregtech.api.interfaces.IMEConnectable;
-import gregtech.api.interfaces.IOutputHatch;
-import gregtech.api.interfaces.IOutputHatchTransaction;
-import gregtech.api.interfaces.IOutputTransaction;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -294,7 +290,7 @@ public class MTEBoundlessMEOutputHatch extends MTEHatchOutput implements IPowerC
     @Override
     public void notifyOutputSpaceChanged() {
         // The provider detected its free space grew or its cell was swapped/repartitioned; re-check a blocked recipe.
-        notifyWatchers();
+        com.silvia.apeiron.compat.HatchNotifications.notifyNative(this);
     }
 
     @Override
@@ -434,7 +430,10 @@ public class MTEBoundlessMEOutputHatch extends MTEHatchOutput implements IPowerC
 
     @Override
     public void writeToStream(ByteBuf buffer) {
-        super.writeToStream(buffer);
+        if (com.silvia.apeiron.compat.DependencyCapabilities.hasMethod(
+            "gregtech.api.metatileentity.implementations.MTEHatch",
+            "writeToStream",
+            "(Lio/netty/buffer/ByteBuf;)V")) super.writeToStream(buffer);
 
         // Synchronize the unlimited-buffer marker for client previews.
 
@@ -443,7 +442,10 @@ public class MTEBoundlessMEOutputHatch extends MTEHatchOutput implements IPowerC
 
     @Override
     public void readFromStream(ByteBuf buffer) {
-        super.readFromStream(buffer);
+        if (com.silvia.apeiron.compat.DependencyCapabilities.hasMethod(
+            "gregtech.api.metatileentity.implementations.MTEHatch",
+            "readFromStream",
+            "(Lio/netty/buffer/ByteBuf;)V")) super.readFromStream(buffer);
         provider.readFromClientPacket(buffer);
     }
 
@@ -535,64 +537,14 @@ public class MTEBoundlessMEOutputHatch extends MTEHatchOutput implements IPowerC
         return canStoreFluid(id.getFluidStack());
     }
 
-    @Override
-    public OutputHatchType getHatchType() {
-        if (provider.getCacheMode())
-            return provider.isFiltered() ? OutputHatchType.MECacheFiltered : OutputHatchType.MECacheUnfiltered;
-        else return provider.isFiltered() ? OutputHatchType.MEFiltered : OutputHatchType.MEUnfiltered;
-    }
-
-    @Override
-    public IOutputHatchTransaction createTransaction() {
-        return new MEOutputHatchTransaction();
-    }
-
     public BigFluidOutputTransaction createTransactionBig() {
         return new MEOutputHatchTransaction();
     }
 
-    class MEOutputHatchTransaction implements BigFluidOutputTransaction, IOutputTransaction.IRecipeCheckAware,
-        IOutputTransaction.IProtectOutputAware {
+    class MEOutputHatchTransaction implements BigFluidOutputTransaction {
 
         private final BigCacheCounter<IAEFluidStack> cache = new BigCacheCounter<>();
         private boolean active = true;
-
-        @Override
-        public void setRecipeCheck(boolean isRecipeCheck) {
-            // Preflight stages exact amounts in this transaction, without modifying the cell or live buffer.
-        }
-
-        @Override
-        public void setProtectOutput(boolean isProtectOutput) {
-            // The local buffer can accept any positive amount that passes its partition filter.
-        }
-
-        @Override
-        public boolean needsTotalParallelData() {
-            return false;
-        }
-
-        @Override
-        public IOutputHatch getHatch() {
-            return MTEBoundlessMEOutputHatch.this;
-        }
-
-        @Override
-        public boolean hasAvailableSpace() {
-            return true;
-        }
-
-        @Override
-        public boolean storePartial(GTUtility.FluidId id, @NotNull FluidStack stack, long totalPerParallel,
-            long perParallel) {
-            final IAEFluidStack input = AEFluidStack.create(stack);
-            final BigInteger before = BigAEStackValues.get(input);
-            storePartialBig(input, BigInteger.valueOf(totalPerParallel), BigInteger.valueOf(perParallel));
-            final int inserted = before.subtract(BigAEStackValues.get(input))
-                .intValueExact();
-            stack.amount -= inserted;
-            return inserted > 0;
-        }
 
         @Override
         public boolean storePartialBig(final IAEFluidStack input, final BigInteger totalPerParallel,
@@ -605,11 +557,6 @@ public class MTEBoundlessMEOutputHatch extends MTEHatchOutput implements IPowerC
             cache.insertBig(BigAEStackValues.copyWithSize(input, BigInteger.ZERO), requested);
             BigAEStackValues.set(input, BigInteger.ZERO);
             return true;
-        }
-
-        @Override
-        public void complete(GTUtility.FluidId id) {
-            // Do nothing
         }
 
         @Override

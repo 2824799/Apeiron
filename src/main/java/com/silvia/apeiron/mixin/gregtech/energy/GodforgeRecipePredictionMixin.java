@@ -3,6 +3,7 @@ package com.silvia.apeiron.mixin.gregtech.energy;
 import java.math.BigInteger;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -14,6 +15,7 @@ import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.util.GTRecipe;
 
 /** The exact batch planner checks the account after native heat and upgrade validation. */
+@Pseudo
 @Mixin(targets = "tectech.thing.metaTileEntity.multi.godforge.MTEBaseModule$GorgeModuleProcessingLogic", remap = false)
 public abstract class GodforgeRecipePredictionMixin extends ProcessingLogic {
 

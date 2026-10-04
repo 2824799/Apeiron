@@ -19,6 +19,7 @@ import com.silvia.apeiron.ae.storage.BigMEInventory;
 import com.silvia.apeiron.ae.storage.BigStorageCell;
 import com.silvia.apeiron.api.machine.me.output.BigFluidOutputTransaction;
 import com.silvia.apeiron.api.machine.me.output.BigItemOutputTransaction;
+import com.silvia.apeiron.api.machine.me.output.BigOutputTransaction;
 import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch;
@@ -45,7 +46,6 @@ import appeng.util.item.AEItemStack;
 import appeng.util.item.AEItemStackType;
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.GregTechAPI;
-import gregtech.api.interfaces.IOutputTransaction;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -71,7 +71,9 @@ public final class BoundlessMEOutputSmoke {
         verifyStorageCell(true);
         verifyUnlimitedBuffer(false);
         verifyUnlimitedBuffer(true);
-        verifyCreativeEntries();
+        if (cpw.mods.fml.common.FMLCommonHandler.instance()
+            .getSide()
+            .isClient()) verifyCreativeEntries();
         verifyPoweredTransfer();
         Apeiron.LOG.info("Apeiron ME output blocks, ID reservation and big-count runtime verification passed");
     }
@@ -122,7 +124,6 @@ public final class BoundlessMEOutputSmoke {
                 .equals(HUGE),
             "cache view aliases stored amount");
         final BigItemOutputTransaction transaction = bus.createTransactionBig();
-        ((IOutputTransaction.IRecipeCheckAware) transaction).setRecipeCheck(true);
         final IAEItemStack staged = diamonds(HUGE);
         check(transaction.storePartialBig(staged, BigInteger.ONE, BigInteger.ONE), "big item transaction");
         check(
@@ -198,7 +199,6 @@ public final class BoundlessMEOutputSmoke {
                 .equals(HUGE),
             "fluid insertion");
         final BigFluidOutputTransaction transaction = hatch.createTransactionBig();
-        ((IOutputTransaction.IRecipeCheckAware) transaction).setRecipeCheck(true);
         check(transaction.storePartialBig(water(HUGE), BigInteger.ONE, BigInteger.ONE), "big fluid transaction");
         transaction.commit();
         final BigInteger stored = HUGE.multiply(BigInteger.valueOf(2));
@@ -277,13 +277,11 @@ public final class BoundlessMEOutputSmoke {
         if (fluid) {
             final BigFluidOutputTransaction transaction = ((MTEBoundlessMEOutputHatch) tile.getMetaTileEntity())
                 .createTransactionBig();
-            ((IOutputTransaction.IRecipeCheckAware) transaction).setRecipeCheck(true);
             check(transaction.storePartialBig(water(HUGE), BigInteger.ONE, BigInteger.ONE), "cell fluid transaction");
             transaction.commit();
         } else {
             final BigItemOutputTransaction transaction = ((MTEBoundlessMEOutputBus) tile.getMetaTileEntity())
                 .createTransactionBig();
-            ((IOutputTransaction.IRecipeCheckAware) transaction).setRecipeCheck(true);
             check(transaction.storePartialBig(diamonds(HUGE), BigInteger.ONE, BigInteger.ONE), "cell item transaction");
             transaction.commit();
         }
@@ -360,11 +358,9 @@ public final class BoundlessMEOutputSmoke {
             provider.getCachedAmountBig()
                 .signum() == 0,
             "unlimited simulation mutated buffer");
-        final IOutputTransaction transaction = fluid
+        final BigOutputTransaction transaction = fluid
             ? ((MTEBoundlessMEOutputHatch) tile.getMetaTileEntity()).createTransactionBig()
             : ((MTEBoundlessMEOutputBus) tile.getMetaTileEntity()).createTransactionBig();
-        ((IOutputTransaction.IRecipeCheckAware) transaction).setRecipeCheck(true);
-        ((IOutputTransaction.IProtectOutputAware) transaction).setProtectOutput(true);
         final IAEStack<?> staged = BigAEStackValues.copyWithSize(type, enormous);
         if (fluid) ((BigFluidOutputTransaction) transaction)
             .storePartialBig((IAEFluidStack) staged, BigInteger.ONE, BigInteger.ONE);
@@ -374,7 +370,6 @@ public final class BoundlessMEOutputSmoke {
             BigAEStackValues.get(staged)
                 .signum() == 0,
             "unlimited transaction rejected amount");
-        check(!transaction.needsTotalParallelData(), "unlimited buffer requested capacity splitting");
         check(
             provider.getCachedAmountBig()
                 .signum() == 0,

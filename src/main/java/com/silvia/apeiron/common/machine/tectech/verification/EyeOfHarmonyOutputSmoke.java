@@ -433,7 +433,7 @@ public final class EyeOfHarmonyOutputSmoke {
 
             @Override
             public OutputHatchType getHatchType() {
-                return hatch.getHatchType();
+                return ((IOutputHatch) hatch).getHatchType();
             }
 
             @Override
@@ -452,11 +452,17 @@ public final class EyeOfHarmonyOutputSmoke {
     private static Object countedTransaction(final Object delegate, final Class<?> api, final int[] calls) {
         return Proxy.newProxyInstance(
             EyeOfHarmonyOutputSmoke.class.getClassLoader(),
-            new Class<?>[] { api, IOutputTransaction.IRecipeCheckAware.class,
-                IOutputTransaction.IProtectOutputAware.class },
+            new Class<?>[] { api,
+                api == BigFluidOutputTransaction.class ? IOutputHatchTransaction.class : IOutputBusTransaction.class,
+                IOutputTransaction.IRecipeCheckAware.class, IOutputTransaction.IProtectOutputAware.class },
             (proxy, method, args) -> {
                 if (method.getName()
                     .equals("storePartialBig")) calls[0]++;
+                if (method.getName()
+                    .equals("setRecipeCheck")
+                    || method.getName()
+                        .equals("setProtectOutput"))
+                    return null;
                 try {
                     return method.invoke(delegate, args);
                 } catch (InvocationTargetException error) {

@@ -56,7 +56,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
     @Override
     protected void determineParallel() {
         calculator.setEUt(com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches.processingVoltage(controller));
-        if (recipe.mEUt < 0 || recipe.mEUt > calculator.getMaxAllowedRecipeEUt()) {
+        if (!com.silvia.apeiron.compat.OverclockPolicies.allows(calculator, recipe.mEUt)) {
             result = CheckRecipeResultRegistry.insufficientVoltage(recipe.mEUt);
             return;
         }

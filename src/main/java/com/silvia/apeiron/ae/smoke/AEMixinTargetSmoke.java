@@ -40,10 +40,13 @@ public final class AEMixinTargetSmoke {
                 if (!configuration.has(section)) continue;
                 for (final JsonElement entry : configuration.getAsJsonArray(section)) {
                     final String name = entry.getAsString();
-                    if (!name.startsWith("ae.") && !name.startsWith("gregtech.energy.")
-                        && !name.startsWith("proghatches.")) continue;
+                    if (!name.startsWith("ae.") && !name.startsWith("gregtech.") && !name.startsWith("proghatches."))
+                        continue;
                     final String mixinName = mixinPackage + "." + name;
                     for (final String target : readTargets(loader, mixinName)) {
+                        if (cpw.mods.fml.common.FMLCommonHandler.instance()
+                            .getSide()
+                            .isServer() && target.startsWith("appeng.client.")) continue;
                         if (plugin.shouldApplyMixin(target, mixinName)) targets.add(target);
                     }
                 }
@@ -57,7 +60,9 @@ public final class AEMixinTargetSmoke {
             try {
                 final Class<?> type = Class.forName(target, false, loader);
                 // Resolve signatures too: AEBaseTile performs this reflection when loading a tile from a chunk.
-                type.getDeclaredMethods();
+                if (cpw.mods.fml.common.FMLCommonHandler.instance()
+                    .getSide()
+                    .isClient()) type.getDeclaredMethods();
                 type.getDeclaredConstructors();
             } catch (Throwable error) {
                 if (error instanceof VirtualMachineError) throw (VirtualMachineError) error;

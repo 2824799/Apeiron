@@ -30,7 +30,7 @@ public abstract class CraftingCpuDiagnosticsMixin {
     protected Map<IAEStack<?>, NavigableSet<CraftingCpuDiagnostics.CraftingTimingRecord>> outputTimingRecords;
 
     @Overwrite
-    protected void recordExpectedOutput(final IAEStack<?> output, final long outputObservedAtTick,
+    public void recordExpectedOutput(final IAEStack<?> output, final long outputObservedAtTick,
         final CraftingDiagnosticSessionId diagnosticSessionId) {
         final BigInteger exact = BigAEStackValues.get(output);
         if (output == null || exact.signum() <= 0 || diagnosticSessionId == null) return;
@@ -52,7 +52,7 @@ public abstract class CraftingCpuDiagnosticsMixin {
     }
 
     @Overwrite
-    protected List<CraftingCpuDiagnostics.CompletedDiagnosticRecord> recordReturnedOutputs(
+    public List<CraftingCpuDiagnostics.CompletedDiagnosticRecord> recordReturnedOutputs(
         final IAEStack<?> returnedStack) {
         final BigInteger exactReturned = BigAEStackValues.get(returnedStack);
         if (returnedStack == null || exactReturned.signum() <= 0) return Collections.emptyList();

@@ -37,6 +37,8 @@ Apeiron 是 GT New Horizons（Minecraft 1.7.10）的 AE2／GregTech 扩展模组
 
 ## 兼容与配置
 
+同一 JAR 支持 GTNH **2.9.0-beta-1、beta-2、beta-3、RC-1** 对应的核心依赖，启动时自动选择兼容实现。各版客户端与服务端核心自检已通过；历史第三方模组暂未划定支持范围。
+
 支持 TST、GT Not Leisure、TecTech、AE2 Infinity Cell、Programmable Hatches 等可选集成；使用对应功能时需安装相应模组。
 
 配置文件为 `config/apeiron/apeiron.cfg`，可按模组开关适配。GregTech 机器 ID 默认从 `31300` 开始，需避免与其他模组冲突。

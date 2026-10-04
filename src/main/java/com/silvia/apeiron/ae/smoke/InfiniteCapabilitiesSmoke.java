@@ -109,6 +109,9 @@ public final class InfiniteCapabilitiesSmoke {
             check(
                 com.silvia.apeiron.ae.terminal.BigCpuProgressDisplay.fraction(received) == 0.25,
                 "big CPU progress displayed zero");
+            if (cpw.mods.fml.common.FMLCommonHandler.instance()
+                .getSide()
+                .isServer()) return;
             final String original = net.minecraft.util.EnumChatFormatting.GREEN
                 + appeng.core.localization.GuiText.Progress.getLocal()
                 + net.minecraft.util.EnumChatFormatting.RESET
@@ -222,11 +225,15 @@ public final class InfiniteCapabilitiesSmoke {
             com.silvia.apeiron.common.block.crafting.ApeironCraftingBlocks.storage }) {
             ItemStack item = new ItemStack(block);
             check(item.getItem() instanceof appeng.block.AEBaseItemBlock, "CPU item bypassed AE renderer");
-            check(
-                net.minecraftforge.client.MinecraftForgeClient
-                    .getItemRenderer(item, net.minecraftforge.client.IItemRenderer.ItemRenderType.INVENTORY)
-                    == appeng.client.render.ItemRenderer.INSTANCE,
-                "CPU inventory renderer missing");
+            if (cpw.mods.fml.common.FMLCommonHandler.instance()
+                .getSide()
+                .isClient()) {
+                check(
+                    net.minecraftforge.client.MinecraftForgeClient
+                        .getItemRenderer(item, net.minecraftforge.client.IItemRenderer.ItemRenderType.INVENTORY)
+                        == appeng.client.render.ItemRenderer.INSTANCE,
+                    "CPU inventory renderer missing");
+            }
         }
     }
 

@@ -46,7 +46,6 @@ import cn.dancingsnow.aeinfinitycell.storage.CellCount;
 import cn.dancingsnow.aeinfinitycell.storage.InfinityCellRecord;
 import cn.dancingsnow.aeinfinitycell.storage.InfinityCellStorage;
 import cpw.mods.fml.common.Loader;
-import gregtech.api.interfaces.IOutputTransaction;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import thaumcraft.api.aspects.Aspect;
@@ -303,10 +302,7 @@ public final class InfinityCellSmoke {
         final BigItemOutputTransaction item = assembly.createTransactionBig();
         final BigFluidOutputTransaction fluid = ((com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch) assembly
             .getFluidOutput()).createTransactionBig();
-        ((IOutputTransaction.IRecipeCheckAware) item).setRecipeCheck(true);
-        ((IOutputTransaction.IProtectOutputAware) item).setProtectOutput(true);
-        ((IOutputTransaction.IRecipeCheckAware) fluid).setRecipeCheck(true);
-        ((IOutputTransaction.IProtectOutputAware) fluid).setProtectOutput(true);
+
         check(
             item.storePartialBig(
                 (appeng.api.storage.data.IAEItemStack) BigAEStackValues.copyWithSize(types.get(0), HUGE),

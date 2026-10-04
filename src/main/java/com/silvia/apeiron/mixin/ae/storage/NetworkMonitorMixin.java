@@ -27,7 +27,6 @@ import appeng.api.networking.storage.IStorageInterceptor;
 import appeng.api.storage.IMEInventoryHandler;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
-import appeng.me.cache.ItemFlowGridCache;
 import appeng.me.cache.NetworkMonitor;
 
 /** Forward exact input/output through the live network monitor and publish exact change deltas. */
@@ -88,9 +87,8 @@ public abstract class NetworkMonitorMixin implements BigIMEInventory, BigMEInven
 
         IAEItemStack change = BigAEItemStacks.copyWithSize(offered, delta);
         postChangesToListeners(Collections.singletonList(change), source);
-        ItemFlowGridCache flowCache = ((NetworkMonitor<?>) (Object) this).getGrid()
-            .getCache(ItemFlowGridCache.class);
-        flowCache.recordFlow(change, source);
+        com.silvia.apeiron.compat.OptionalFlowStatistics
+            .record(((NetworkMonitor<?>) (Object) this).getGrid(), change, source);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -109,9 +107,8 @@ public abstract class NetworkMonitorMixin implements BigIMEInventory, BigMEInven
         if (delta.signum() == 0) return;
         IAEStack change = BigAEStackValues.set(offered.copy(), delta);
         postChangesToListeners(Collections.singletonList(change), source);
-        ItemFlowGridCache flow = (ItemFlowGridCache) ((NetworkMonitor<?>) (Object) this).getGrid()
-            .getCache(ItemFlowGridCache.class);
-        flow.recordFlow(change, source);
+        com.silvia.apeiron.compat.OptionalFlowStatistics
+            .record(((NetworkMonitor<?>) (Object) this).getGrid(), change, source);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })

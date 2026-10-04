@@ -39,8 +39,6 @@ import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
-import gregtech.common.tileentities.machines.IHatchWatcher;
-import gregtech.common.tileentities.machines.RecipeCheckReason;
 
 public class StockingInputLogic {
 
@@ -61,7 +59,7 @@ public class StockingInputLogic {
     private final Object[] views = new Object[SLOT_COUNT];
     private final int[] baselines = new int[SLOT_COUNT];
     private final List<IAEStack<?>> refunds = new ArrayList<>();
-    private final Set<IHatchWatcher> watchers = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Set<Object> watchers = Collections.newSetFromMap(new IdentityHashMap<>());
     private boolean autoPull, processing, projectionReady;
 
     public StockingInputLogic(StockingInputHost host, Kind kind) {
@@ -117,14 +115,14 @@ public class StockingInputLogic {
     public void changed() {
         if (host != null) ((MetaTileEntity) host).markDirty();
         if (!processing) refresh();
-        for (IHatchWatcher watcher : watchers) watcher.scheduleRecipeCheck(RecipeCheckReason.IMMEDIATE);
+        for (Object watcher : watchers) com.silvia.apeiron.compat.HatchNotifications.schedule(watcher, true);
     }
 
-    public void addWatcher(IHatchWatcher watcher) {
+    public void addWatcher(Object watcher) {
         watchers.add(watcher);
     }
 
-    public void removeWatcher(IHatchWatcher watcher) {
+    public void removeWatcher(Object watcher) {
         watchers.remove(watcher);
     }
 
@@ -170,7 +168,7 @@ public class StockingInputLogic {
         if (tick % filter.getRefreshTicks() == 0) {
             refundToNetwork();
             refresh();
-            for (IHatchWatcher watcher : watchers) watcher.scheduleRecipeCheck(RecipeCheckReason.THROTTLED);
+            for (Object watcher : watchers) com.silvia.apeiron.compat.HatchNotifications.schedule(watcher, false);
         }
     }
 

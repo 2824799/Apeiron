@@ -217,7 +217,7 @@ public abstract class EyeOfHarmonyBigOutputMixin implements BigEyeOfHarmonyOutpu
         final MTEMultiBlockBase controller = (MTEMultiBlockBase) (Object) this;
         if (apeiron$outputs.flush(
             controller.getOutputBusses(),
-            controller.getOutputHatches(),
+            com.silvia.apeiron.compat.OutputTransactions.hatches(controller),
             controller.protectsExcessItem(),
             controller.protectsExcessFluid())) apeiron$markDirty();
     }

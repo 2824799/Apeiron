@@ -97,7 +97,7 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
             .isEmpty() && apeiron$wireless.pending()
                 .flush(
                     machine.getOutputBusses(),
-                    machine.getOutputHatches(),
+                    com.silvia.apeiron.compat.OutputTransactions.hatches(machine),
                     machine.protectsExcessItem(),
                     machine.protectsExcessFluid()))
             machine.markDirty();

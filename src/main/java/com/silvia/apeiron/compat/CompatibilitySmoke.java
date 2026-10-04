@@ -1,0 +1,35 @@
+package com.silvia.apeiron.compat;
+
+import com.silvia.apeiron.Apeiron;
+
+/** Exercises the transformed core integrations under each historical dependency combination. */
+public final class CompatibilitySmoke {
+
+    private CompatibilitySmoke() {}
+
+    public static void verify() {
+        com.silvia.apeiron.ae.smoke.AEProductionEntrypointSmoke.verify();
+        com.silvia.apeiron.ae.smoke.AEMixinTargetSmoke.verify();
+        com.silvia.apeiron.ae.smoke.AEItemStackSmoke.verify();
+        com.silvia.apeiron.ae.smoke.AEInventorySmoke.verify();
+        com.silvia.apeiron.ae.smoke.InfiniteCapabilitiesSmoke.verify();
+        com.silvia.apeiron.ae.smoke.AESecurityInventorySmoke.verify();
+        com.silvia.apeiron.ae.smoke.AECraftingCPUSmoke.verify();
+        com.silvia.apeiron.ae.smoke.AECraftingPlanningSmoke.verify();
+        com.silvia.apeiron.ae.smoke.AECraftingTreeSmoke.verify();
+        com.silvia.apeiron.ae.smoke.AEBackendSmoke.verify();
+        com.silvia.apeiron.common.machine.me.output.verification.BoundlessMEOutputSmoke.verify();
+        com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke.verify();
+        OutputCompatibilitySmoke.verify();
+        com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
+        com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
+        com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
+        if (cpw.mods.fml.common.FMLCommonHandler.instance()
+            .getSide()
+            .isClient()) com.silvia.apeiron.common.machine.energy.verification.WirelessPowerPanelSmoke.verify();
+        if (DependencyCapabilities.hasClass("tectech.thing.metaTileEntity.multi.godforge.MTESmeltingModule"))
+            com.silvia.apeiron.common.machine.energy.verification.WirelessMachineIntegrationSmoke.verify();
+        Apeiron.LOG
+            .info("Apeiron compatibility verification passed: {}", System.getenv("APEIRON_COMPATIBILITY_PROFILE"));
+    }
+}

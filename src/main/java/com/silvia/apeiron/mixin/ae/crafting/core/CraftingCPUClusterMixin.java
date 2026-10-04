@@ -169,7 +169,7 @@ public abstract class CraftingCPUClusterMixin
     }
 
     @Overwrite
-    protected void addTile(final TileCraftingTile tile) {
+    public void addTile(final TileCraftingTile tile) {
         if (this.machineSrc == null || tile.isCoreBlock()) {
             this.machineSrc = new MachineSource(tile);
         }
@@ -225,7 +225,7 @@ public abstract class CraftingCPUClusterMixin
     }
 
     @Overwrite
-    protected boolean hasRemainingTasks() {
+    public boolean hasRemainingTasks() {
         this.tasks.entrySet()
             .removeIf(entry -> valueOf(entry.getValue()).signum() <= 0);
         return !this.tasks.isEmpty();
@@ -464,7 +464,7 @@ public abstract class CraftingCPUClusterMixin
     }
 
     @Overwrite
-    protected void pushDiagnosticSample(
+    public void pushDiagnosticSample(
         final appeng.me.cluster.implementations.CraftingCpuDiagnostics.CompletedDiagnosticRecord record) {
         if (record.getElapsedTicks() <= 0L || this.getGrid() == null) return;
 

@@ -84,8 +84,9 @@ import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
 @IMetaTileEntity.SkipGenerateDescription
-public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements BigDualInputHatch, ICraftingProvider,
-    IGridProxyable, IActionHost, IPowerChannelState, IInterfaceViewable, ICustomNameObject {
+public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
+    implements BigDualInputHatch, ICraftingProvider, IGridProxyable, IActionHost, IPowerChannelState,
+    IInterfaceViewable, ICustomNameObject, com.silvia.apeiron.compat.HatchWatcherHost {
 
     public static final int PATTERN_COUNT = 360;
     public static final int PATTERN_COLUMNS = 10;
@@ -100,7 +101,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
     private final ICraftingPatternDetails[] details = new ICraftingPatternDetails[PATTERN_COUNT];
     private final Map<ICraftingPatternDetails, Integer> detailSlots = new HashMap<>();
     private final List<BigPatternBuffer> buffers = new ArrayList<>();
-    private final Map<gregtech.common.tileentities.machines.IHatchWatcher, Integer> watcherReferences = new java.util.IdentityHashMap<>();
+    private final Map<Object, Integer> watcherReferences = new java.util.IdentityHashMap<>();
     private final IInventory patternInventory = new PatternInventory();
     private AENetworkProxy proxy;
     private boolean patternDirty = true;
@@ -273,20 +274,25 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
     }
 
     @Override
-    public void addWatcher(gregtech.common.tileentities.machines.IHatchWatcher watcher) {
+    public void addWatcherCompat(Object watcher) {
         int references = watcherReferences.getOrDefault(watcher, 0);
         watcherReferences.put(watcher, references + 1);
-        if (references == 0) super.addWatcher(watcher);
+
     }
 
     @Override
-    public void removeWatcher(gregtech.common.tileentities.machines.IHatchWatcher watcher) {
+    public void removeWatcherCompat(Object watcher) {
         Integer references = watcherReferences.get(watcher);
         if (references == null) return;
         if (references == 1) {
             watcherReferences.remove(watcher);
-            super.removeWatcher(watcher);
+
         } else watcherReferences.put(watcher, references - 1);
+    }
+
+    protected void notifyWatchers() {
+        for (Object watcher : watcherReferences.keySet())
+            com.silvia.apeiron.compat.HatchNotifications.schedule(watcher, true);
     }
 
     @Override
@@ -681,7 +687,8 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
     @Override
     public String getName() {
         if (hasCustomName()) return customName;
-        final String machines = watchers.stream()
+        final String machines = watcherReferences.keySet()
+            .stream()
             .filter(watcher -> watcher instanceof MetaTileEntity)
             .map(watcher -> ((MetaTileEntity) watcher).getLocalName())
             .distinct()

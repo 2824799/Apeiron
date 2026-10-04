@@ -30,11 +30,11 @@ import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IAEStackType;
+import appeng.api.storage.data.IItemList;
 import appeng.helpers.ReshuffleTask;
 import appeng.items.materials.MaterialType;
 import appeng.items.storage.ItemBasicStorageCell;
 import appeng.me.cache.GridStorageCache;
-import appeng.me.cache.ItemFlowGridCache;
 import appeng.me.cache.NetworkMonitor;
 import appeng.me.storage.FluidCellInventory;
 import appeng.me.storage.FluidCellInventoryHandler;
@@ -180,13 +180,16 @@ public final class AEBackendSmoke {
             new appeng.me.cache.SecurityCache(null));
         network.addNewStorage(high);
         network.addNewStorage(low);
-        final ItemFlowGridCache flow = new ItemFlowGridCache(null);
+        final Object flow = com.silvia.apeiron.compat.OptionalFlowStatistics.verificationCache();
         final IGrid grid = (IGrid) Proxy.newProxyInstance(
             IGrid.class.getClassLoader(),
             new Class<?>[] { IGrid.class },
             (proxy, method, arguments) -> {
                 if (method.getName()
-                    .equals("getCache") && arguments[0] == ItemFlowGridCache.class) return flow;
+                    .equals("getCache")
+                    && ((Class<?>) arguments[0]).getName()
+                        .equals("appeng.me.cache.ItemFlowGridCache"))
+                    return flow;
                 if (method.getName()
                     .equals("postEvent")) return arguments[0];
                 throw new UnsupportedOperationException(method.getName());
@@ -243,7 +246,7 @@ public final class AEBackendSmoke {
         final AEStackTypeFilter filter = new AEStackTypeFilter();
         filter.setOnlyEnabled(AEFluidStackType.FLUID_STACK_TYPE);
         final IAEStackList cantInject = new IAEStackList();
-        final ReshuffleTask task = new ReshuffleTask(
+        final ReshuffleTask task = reshuffle(
             filter,
             storageGrid,
             cantInject,
@@ -259,7 +262,7 @@ public final class AEBackendSmoke {
                 .equals(HUGE.subtract(BigInteger.valueOf(7))),
             "reshuffle did not conserve exact fluid count");
 
-        final ReshuffleTask cancel = new ReshuffleTask(
+        final ReshuffleTask cancel = reshuffle(
             filter,
             storageGrid,
             cantInject,
@@ -279,6 +282,25 @@ public final class AEBackendSmoke {
 
     private static void check(final boolean condition, final String message) {
         if (!condition) throw new IllegalStateException(message);
+    }
+
+    private static ReshuffleTask reshuffle(AEStackTypeFilter filter, IStorageGrid storage,
+        IItemList<IAEStack<?>> rejected, ReshuffleActionSource source, boolean subnets, boolean order) {
+        try {
+            Class<?> sourceType = com.silvia.apeiron.compat.DependencyCapabilities.hasClass(
+                "appeng.helpers.ReshuffleTask$PendingInjection") ? ReshuffleActionSource.class : BaseActionSource.class;
+            return ReshuffleTask.class
+                .getConstructor(
+                    AEStackTypeFilter.class,
+                    IStorageGrid.class,
+                    IItemList.class,
+                    sourceType,
+                    boolean.class,
+                    boolean.class)
+                .newInstance(filter, storage, rejected, source, subnets, order);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot construct storage reshuffle", error);
+        }
     }
 
     private static final class FluidVerificationCell extends ItemBasicStorageCell implements BigStorageCell {

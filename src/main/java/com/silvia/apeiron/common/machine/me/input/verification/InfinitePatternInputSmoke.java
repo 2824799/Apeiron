@@ -31,7 +31,6 @@ import appeng.util.item.AEFluidStack;
 import appeng.util.item.AEItemStack;
 import gregtech.api.GregTechAPI;
 import gregtech.api.metatileentity.BaseMetaTileEntity;
-import gregtech.common.tileentities.machines.IHatchWatcher;
 import gregtech.common.tileentities.machines.multi.MTEElectricBlastFurnace;
 
 /** Uses transformed AE and GT classes, detached inventories and one authoritative source for both mirrors. */
@@ -129,13 +128,13 @@ public final class InfinitePatternInputSmoke {
         final gregtech.common.tileentities.machines.multi.MTEElectricBlastFurnace attached = new gregtech.common.tileentities.machines.multi.MTEElectricBlastFurnace(
             "apeiron.verification.attached_blast_furnace");
         final String ownName = source.getName();
-        source.addWatcher(attached);
-        source.addWatcher(attached);
+        source.addWatcherCompat(attached);
+        source.addWatcherCompat(attached);
         check(
             source.getName()
                 .equals(attached.getLocalName()),
             "terminal did not use attached machine name");
-        source.removeWatcher(attached);
+        source.removeWatcherCompat(attached);
         check(
             source.getName()
                 .equals(attached.getLocalName()),
@@ -146,7 +145,7 @@ public final class InfinitePatternInputSmoke {
                 .equals("Apeiron named input"),
             "custom name did not override machine name");
         source.setCustomName("");
-        source.removeWatcher(attached);
+        source.removeWatcherCompat(attached);
         check(
             source.getName()
                 .equals(ownName),
@@ -519,23 +518,36 @@ public final class InfinitePatternInputSmoke {
 
     private static void verifyWatchers(Assembly source, Mirror mirror) {
         int[] calls = { 0 };
-        IHatchWatcher watcher = reason -> calls[0]++;
-        source.addWatcher(watcher);
-        mirror.addWatcher(watcher);
+        Object watcher = new WatcherProbe(calls);
+        source.addWatcherCompat(watcher);
+        mirror.addWatcherCompat(watcher);
         source.setMultiplierBig(0, BigInteger.valueOf(2));
         check(calls[0] == 1, "shared watcher notified more than once");
-        mirror.removeWatcher(watcher);
+        mirror.removeWatcherCompat(watcher);
         source.setMultiplierBig(0, BigInteger.valueOf(3));
         check(calls[0] == 2, "removing mirror removed direct source watcher");
-        mirror.addWatcher(watcher);
+        mirror.addWatcherCompat(watcher);
         mirror.onUnload();
         source.setMultiplierBig(0, BigInteger.valueOf(4));
         check(calls[0] == 3, "unloaded mirror removed direct source watcher");
         mirror.getInputSource();
         source.setMultiplierBig(0, BigInteger.valueOf(5));
         check(calls[0] == 4, "reloaded mirror duplicated watcher subscription");
-        mirror.removeWatcher(watcher);
-        source.removeWatcher(watcher);
+        mirror.removeWatcherCompat(watcher);
+        source.removeWatcherCompat(watcher);
+    }
+
+    public static final class WatcherProbe {
+
+        private final int[] calls;
+
+        public WatcherProbe(int[] calls) {
+            this.calls = calls;
+        }
+
+        public void scheduleRecipeCheckImmediate() {
+            calls[0]++;
+        }
     }
 
     private static void verifyBufferBounds() {

@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Group;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -167,10 +168,23 @@ public abstract class GuiStorageReshuffleBigMixin {
         return BigGuiNumberCapture.captureReport(access.getAfterItemsBig(), report.afterItems);
     }
 
+    @Group(name = "apeironReportFormat", min = 1)
     @Redirect(
         method = { "generateReportLines", "addItemList", "buildItemLines" },
-        at = @At(value = "INVOKE", target = "Lappeng/util/Platform;fmt(D)Ljava/lang/String;"))
+        at = @At(value = "INVOKE", target = "Lappeng/util/Platform;fmt(D)Ljava/lang/String;"),
+        require = 0)
     private static String apeiron$formatReport(final double value) {
+        return BigGuiNumberCapture.formatReport(value);
+    }
+
+    @Group(name = "apeironReportFormat", min = 1)
+    @Redirect(
+        method = { "generateReportLines", "addItemList", "buildItemLines" },
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/client/gui/implementations/GuiStorageReshuffle;fmt(D)Ljava/lang/String;"),
+        require = 0)
+    private static String apeiron$formatLegacyReport(final double value) {
         return BigGuiNumberCapture.formatReport(value);
     }
 

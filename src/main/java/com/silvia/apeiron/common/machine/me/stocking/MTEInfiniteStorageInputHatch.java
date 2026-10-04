@@ -22,11 +22,11 @@ import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.util.GTSplit;
-import gregtech.common.tileentities.machines.IHatchWatcher;
 import gregtech.common.tileentities.machines.MTEHatchInputME;
 
 @IMetaTileEntity.SkipGenerateDescription
-public class MTEInfiniteStorageInputHatch extends MTEHatchInputME implements StockingInputHost {
+public class MTEInfiniteStorageInputHatch extends MTEHatchInputME
+    implements StockingInputHost, com.silvia.apeiron.compat.HatchWatcherHost {
 
     private final StockingInputLogic stocking = new StockingInputLogic(this, StockingInputLogic.Kind.FLUIDS);
 
@@ -132,12 +132,12 @@ public class MTEInfiniteStorageInputHatch extends MTEHatchInputME implements Sto
     }
 
     @Override
-    public void addWatcher(IHatchWatcher watcher) {
+    public void addWatcherCompat(Object watcher) {
         if (getStockingInput() != null) getStockingInput().addWatcher(watcher);
     }
 
     @Override
-    public void removeWatcher(IHatchWatcher watcher) {
+    public void removeWatcherCompat(Object watcher) {
         if (getStockingInput() != null) getStockingInput().removeWatcher(watcher);
     }
 

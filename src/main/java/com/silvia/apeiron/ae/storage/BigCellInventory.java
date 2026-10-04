@@ -8,6 +8,10 @@ import appeng.api.storage.data.IAEStack;
 /** Exact accounting alongside AE2's existing capacity and count getters. */
 public interface BigCellInventory extends BigIMEInventory {
 
+    boolean hasDistributionCard();
+
+    boolean hasOverflowCard();
+
     BigInteger getStoredItemCountBig();
 
     BigInteger getTotalTypesBig();

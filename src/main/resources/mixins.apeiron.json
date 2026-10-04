@@ -17,6 +17,7 @@
     "tst.compat.TstPatternEncodeGuardMixin",
     "gregtech.input.BigDualInputProcessingMixin",
     "gregtech.input.BigInputHatchElementMixin",
+    "gregtech.input.LegacyBigInputHatchElementMixin",
     "gregtech.input.BigInputRegistrationMixin",
     "aeinfinitycell.storage.CellCountBigMixin",
     "aeinfinitycell.storage.InfinityCellRecordBigMixin",
@@ -155,6 +156,8 @@
     "gregtech.energy.LegacyWirelessParallelGuiMixin",
     "ae.crafting.core.PatternBatchDispatchMixin",
     "ae.terminal.pattern.OptimizerPatternBigMixin",
+    "ae.terminal.pattern.LegacyOptimizerTaskMixin",
+    "ae.terminal.pattern.ModernOptimizerTaskMixin",
     "ae.terminal.pattern.ContainerOptimizePatternsBigMixin",
     "ae.crafting.core.UnlimitedCraftingSelectionMixin",
     "ae.crafting.gui.UnlimitedCraftingSelectionGuiMixin",
@@ -166,6 +169,11 @@
     "gregtech.energy.GodforgeWirelessGuiMixin",
     "gregtech.energy.TecTechWirelessRunningMixin",
     "tst.energy.OreFactoryWirelessEnergyMixin",
-    "gregtech.energy.GodforgeRecipePredictionMixin"
+    "gregtech.energy.GodforgeRecipePredictionMixin",
+    "gregtech.input.NativeInputWatcherMixin",
+    "gregtech.output.ModernMEOutputHatchMixin",
+    "ae.reshuffle.LegacyReshuffleTaskMixin",
+    "ae.crafting.core.LegacyCraftingEntrypointMixin",
+    "ae.crafting.core.ModernCraftingEntrypointMixin"
   ]
 }

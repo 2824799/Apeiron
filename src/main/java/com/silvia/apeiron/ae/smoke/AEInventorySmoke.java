@@ -27,7 +27,6 @@ import appeng.api.storage.data.IAEItemStack;
 import appeng.items.materials.MaterialType;
 import appeng.items.storage.ItemBasicStorageCell;
 import appeng.me.cache.GridStorageCache;
-import appeng.me.cache.ItemFlowGridCache;
 import appeng.me.cache.NetworkMonitor;
 import appeng.me.storage.ItemCellInventory;
 import appeng.me.storage.ItemCellInventoryHandler;
@@ -176,11 +175,14 @@ public final class AEInventorySmoke {
         network.addNewStorage(low);
         check(network instanceof BigIMEInventory, "network big inventory mixin was not applied");
 
-        ItemFlowGridCache flow = new ItemFlowGridCache(null);
+        Object flow = com.silvia.apeiron.compat.OptionalFlowStatistics.verificationCache();
         IGrid grid = (IGrid) Proxy
             .newProxyInstance(IGrid.class.getClassLoader(), new Class<?>[] { IGrid.class }, (proxy, method, args) -> {
                 if (method.getName()
-                    .equals("getCache") && args[0] == ItemFlowGridCache.class) return flow;
+                    .equals("getCache")
+                    && ((Class<?>) args[0]).getName()
+                        .equals("appeng.me.cache.ItemFlowGridCache"))
+                    return flow;
                 if (method.getName()
                     .equals("postEvent")) return args[0];
                 throw new UnsupportedOperationException("unexpected smoke grid call: " + method.getName());

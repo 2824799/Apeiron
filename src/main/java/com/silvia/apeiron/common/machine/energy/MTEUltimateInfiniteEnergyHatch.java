@@ -13,7 +13,7 @@ import gregtech.api.util.GTSplit;
 public final class MTEUltimateInfiniteEnergyHatch extends MTEInfiniteEnergyHatch {
 
     private static final gregtech.api.interfaces.IIconContainer OVERLAY = Textures.BlockIcons
-        .custom("apeiron", "energy/ultimate_infinite_energy");
+        .custom("apeiron:energy/ultimate_infinite_energy");
 
     public MTEUltimateInfiniteEnergyHatch(int id, String name, String regionalName) {
         super(id, name, regionalName);

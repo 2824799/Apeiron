@@ -37,18 +37,18 @@ import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTSplit;
 import gregtech.common.tileentities.machines.IDualInputInventory;
-import gregtech.common.tileentities.machines.IHatchWatcher;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
 @IMetaTileEntity.SkipGenerateDescription
-public class MTEInfinitePatternInputMirror extends MTEHatchInputBus implements BigDualInputHatch {
+public class MTEInfinitePatternInputMirror extends MTEHatchInputBus
+    implements BigDualInputHatch, com.silvia.apeiron.compat.HatchWatcherHost {
 
     private boolean linked;
     private int dimension, sourceX, sourceY, sourceZ;
     private MTEInfinitePatternInputAssembly lastSource;
     private MTEInfinitePatternInputAssembly uiPreview;
-    private final List<IHatchWatcher> forwarding = new ArrayList<>();
+    private final List<Object> forwarding = new ArrayList<>();
 
     public MTEInfinitePatternInputMirror(int id, String name, String regionalName) {
         super(id, name, regionalName, 10, 0);
@@ -137,29 +137,27 @@ public class MTEInfinitePatternInputMirror extends MTEHatchInputBus implements B
         if (source != lastSource) {
             detach();
             lastSource = source;
-            if (source != null) for (IHatchWatcher watcher : forwarding) source.addWatcher(watcher);
+            if (source != null) for (Object watcher : forwarding) source.addWatcherCompat(watcher);
         }
         return source;
     }
 
     private void detach() {
-        if (lastSource != null) for (IHatchWatcher watcher : forwarding) lastSource.removeWatcher(watcher);
+        if (lastSource != null) for (Object watcher : forwarding) lastSource.removeWatcherCompat(watcher);
         lastSource = null;
     }
 
     @Override
-    public void addWatcher(IHatchWatcher watcher) {
-        super.addWatcher(watcher);
+    public void addWatcherCompat(Object watcher) {
         if (forwarding.contains(watcher)) return;
         MTEInfinitePatternInputAssembly source = getInputSource();
         forwarding.add(watcher);
-        if (source != null) source.addWatcher(watcher);
+        if (source != null) source.addWatcherCompat(watcher);
     }
 
     @Override
-    public void removeWatcher(IHatchWatcher watcher) {
-        super.removeWatcher(watcher);
-        if (forwarding.remove(watcher) && lastSource != null) lastSource.removeWatcher(watcher);
+    public void removeWatcherCompat(Object watcher) {
+        if (forwarding.remove(watcher) && lastSource != null) lastSource.removeWatcherCompat(watcher);
     }
 
     @Override

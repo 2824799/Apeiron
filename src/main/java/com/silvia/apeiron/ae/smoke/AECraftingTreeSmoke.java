@@ -110,16 +110,18 @@ public final class AECraftingTreeSmoke {
             }
 
             final IGrid grid = grid(Collections.singletonList(first), diamond, BigInteger.valueOf(64));
-            final ICraftingJob<?> nativeJob = new CraftingJobFast<>(
-                null,
-                grid,
-                new BaseActionSource(),
-                emerald.copy(),
-                CraftingMode.STANDARD,
-                null).schedule()
-                    .get();
-            check(nativeJob instanceof CraftingTreeSource, "native fast planner cannot supply a tree");
-            craftedChild(roundTrip(((CraftingTreeSource) nativeJob).getJobTree()).originalRequest, BigInteger.ONE);
+            if (com.silvia.apeiron.compat.DependencyCapabilities.hasClass("appeng.crafting.fast.CraftingJobFast")) {
+                final ICraftingJob<?> nativeJob = new CraftingJobFast<>(
+                    null,
+                    grid,
+                    new BaseActionSource(),
+                    emerald.copy(),
+                    CraftingMode.STANDARD,
+                    null).schedule()
+                        .get();
+                check(nativeJob instanceof CraftingTreeSource, "native fast planner cannot supply a tree");
+                craftedChild(roundTrip(((CraftingTreeSource) nativeJob).getJobTree()).originalRequest, BigInteger.ONE);
+            }
 
             final CraftingJobV2<IAEItemStack> original = new CraftingJobV2<>(
                 null,
@@ -237,16 +239,42 @@ public final class AECraftingTreeSmoke {
             .isClient()) return;
         final GuiCraftingTree gui = new GuiCraftingTree(null, 0, 0, 300, 200);
         gui.setRequest(request);
-        java.lang.reflect.Field nodesField = GuiCraftingTree.class.getDeclaredField("allNodes");
+        java.lang.reflect.Field nodesField;
+        boolean modern;
+        try {
+            nodesField = GuiCraftingTree.class.getDeclaredField("allNodes");
+            modern = true;
+        } catch (NoSuchFieldException oldLayout) {
+            nodesField = GuiCraftingTree.class.getDeclaredField("treeNodes");
+            modern = false;
+        }
         nodesField.setAccessible(true);
-        List<?> nodes = (List<?>) nodesField.get(gui);
+        List<?> nodes = modern ? (List<?>) nodesField.get(gui)
+            : (List<?>) ((java.util.Map<?, ?>) nodesField.get(gui)).values()
+                .stream()
+                .flatMap(row -> ((List<?>) row).stream())
+                .collect(java.util.stream.Collectors.toList());
         check(nodes.size() >= 4, "native renderer produced an empty tree");
-        final java.lang.reflect.Field hasMissing = nodes.get(0)
-            .getClass()
-            .getSuperclass()
-            .getDeclaredField("hasMissing");
-        hasMissing.setAccessible(true);
-        check(hasMissing.getBoolean(nodes.get(0)) == missing, "native missing color did not propagate");
+        if (modern) {
+            final java.lang.reflect.Field hasMissing = nodes.get(0)
+                .getClass()
+                .getSuperclass()
+                .getDeclaredField("hasMissing");
+            hasMissing.setAccessible(true);
+            check(hasMissing.getBoolean(nodes.get(0)) == missing, "native missing color did not propagate");
+        } else {
+            boolean missingNode = false;
+            for (Object node : nodes) {
+                if (!node.getClass()
+                    .getSimpleName()
+                    .equals("RequestNode")) continue;
+                java.lang.reflect.Field nodeRequest = node.getClass()
+                    .getDeclaredField("request");
+                nodeRequest.setAccessible(true);
+                missingNode |= ((CraftingRequest) nodeRequest.get(node)).wasSimulated;
+            }
+            check(missingNode == missing, "legacy tree lost missing material color");
+        }
         final java.lang.reflect.Method display = GuiCraftingTree.class
             .getDeclaredMethod("getDisplayItemForRequest", CraftingRequest.class);
         display.setAccessible(true);
@@ -254,7 +282,7 @@ public final class AECraftingTreeSmoke {
             BigAEStackValues.get((IAEStack<?>) display.invoke(gui, request))
                 .equals(BigAEStackValues.get(request.stack)),
             "animated node display truncated its quantity");
-        gui.hideAvailable();
+        if (modern) gui.hideAvailable();
         gui.setRequest(request);
     }
 
