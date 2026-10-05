@@ -70,6 +70,7 @@ public final class TstOutputSmoke {
             verifySeparateOutputs();
             verifyWirelessAccumulator();
             verifyZeroEntryPersistence();
+            TstNativeOutputSmoke.verify();
             Apeiron.LOG.info(
                 "TST shared output calculation, three-device recognition, capacity and persistence verification passed");
         } catch (ReflectiveOperationException e) {

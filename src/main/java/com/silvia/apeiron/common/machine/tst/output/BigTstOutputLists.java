@@ -69,9 +69,9 @@ public final class BigTstOutputLists {
     }
 
     private static ItemStackLong item(ItemStack type, BigInteger count) {
-        final ItemStackLong entry = new ItemStackLong(
-            GTUtility.copyAmountUnsafe(1, type),
-            BigAEStackValues.saturatedLong(count));
+        final ItemStack identity = type.copy();
+        identity.stackSize = 1;
+        final ItemStackLong entry = new ItemStackLong(identity, BigAEStackValues.saturatedLong(count));
         set(entry, count);
         return entry;
     }

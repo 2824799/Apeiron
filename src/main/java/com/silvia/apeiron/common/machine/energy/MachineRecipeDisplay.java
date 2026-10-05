@@ -7,6 +7,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
+import com.silvia.apeiron.api.machine.tst.BigTstOutputController;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
 
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
@@ -23,6 +24,7 @@ public final class MachineRecipeDisplay {
                 .writeDisplayNBT();
         }
         BigMachineOutputQueue outputs = new BigMachineOutputQueue();
+        if (machine instanceof BigTstOutputController) ((BigTstOutputController) machine).copyRecipeOutputsBig(outputs);
         if (machine.mOutputItems != null) {
             for (ItemStack stack : machine.mOutputItems) {
                 if (stack != null && stack.stackSize > 0) outputs.addItem(stack, BigInteger.valueOf(stack.stackSize));

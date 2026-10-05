@@ -3,8 +3,12 @@ package com.silvia.apeiron.mixin.tst.output;
 import java.math.BigInteger;
 import java.util.List;
 
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.world.World;
 import net.minecraftforge.fluids.FluidStack;
 
 import org.spongepowered.asm.mixin.Final;
@@ -27,12 +31,15 @@ import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
 import com.silvia.apeiron.common.machine.tst.output.BigTstOutputLists;
 import com.silvia.apeiron.common.machine.tst.output.TstOutputCapacity;
+import com.silvia.apeiron.math.BigNumberFormatter;
 
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputBusME;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputME;
+import mcp.mobius.waila.api.IWailaConfigHandler;
+import mcp.mobius.waila.api.IWailaDataAccessor;
 
 /** Adapts the shared ME path without replacing recipe completion or subclass callbacks. */
 @Pseudo
@@ -186,6 +193,46 @@ public abstract class MultiMachineOutputBigMixin implements BigTstOutputControll
         apeiron$pending.load(tag);
     }
 
+    @Inject(method = "getWailaNBTData", at = @At("RETURN"), require = 1)
+    private void apeiron$exactHoverCounts(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world,
+        int x, int y, int z, CallbackInfo ci) {
+        for (int i = 0; i < Math.min(3, meOutputQueue.size()); i++) tag.setString(
+            "ApeironTstItemCount" + i,
+            BigNumberFormatter.formatExact(BigTstOutputLists.amount(meOutputQueue.get(i))));
+        for (int i = 0; i < Math.min(3 - Math.min(3, meOutputQueue.size()), meFluidOutputQueue.size()); i++)
+            tag.setString(
+                "ApeironTstFluidCount" + i,
+                BigNumberFormatter.formatExact(BigTstOutputLists.amount(meFluidOutputQueue.get(i))));
+    }
+
+    @Inject(method = "getWailaBody", at = @At("RETURN"), require = 1)
+    private void apeiron$exactHoverRows(ItemStack stack, List<String> lines, IWailaDataAccessor accessor,
+        IWailaConfigHandler config, CallbackInfo ci) {
+        NBTTagCompound tag = accessor.getNBTData();
+        apeiron$replaceHoverRows(lines, tag, "Item", false);
+        apeiron$replaceHoverRows(lines, tag, "Fluid", true);
+    }
+
+    @Unique
+    private static void apeiron$replaceHoverRows(List<String> lines, NBTTagCompound tag, String kind, boolean fluid) {
+        for (int i = 0; i < 3; i++) {
+            String exactKey = "ApeironTst" + kind + "Count" + i;
+            if (!tag.hasKey(exactKey)) continue;
+            String prefix = "  " + tag.getString("tstME" + kind + "Icon" + i)
+                + EnumChatFormatting.AQUA
+                + tag.getString("tstME" + kind + "Name" + i)
+                + EnumChatFormatting.RESET
+                + " x "
+                + EnumChatFormatting.GOLD;
+            String old = prefix
+                + com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil
+                    .formatNumber(tag.getLong("tstME" + kind + "Count" + i))
+                + (fluid ? "L" : "");
+            int index = lines.indexOf(old);
+            if (index >= 0) lines.set(index, prefix + tag.getString(exactKey) + (fluid ? "L" : ""));
+        }
+    }
+
     @Override
     public void mergeItemIntoMEOutputQueueBig(ItemStack type, BigInteger amount) {
         BigTstOutputLists.mergeItem(meOutputQueue, type, amount);
@@ -228,6 +275,13 @@ public abstract class MultiMachineOutputBigMixin implements BigTstOutputControll
         return meFluidOutputQueue.stream()
             .map(BigTstOutputLists::amount)
             .reduce(BigInteger.ZERO, BigInteger::add);
+    }
+
+    @Override
+    public void copyRecipeOutputsBig(BigMachineOutputQueue target) {
+        for (ItemStackLong output : meOutputQueue) target.addItem(output.itemStack(), BigTstOutputLists.amount(output));
+        for (FluidStackLong output : meFluidOutputQueue)
+            target.addFluid(output.fluidStack(), BigTstOutputLists.amount(output));
     }
 
     @Override

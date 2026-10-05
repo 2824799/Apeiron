@@ -6,6 +6,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
+
 /** Exact additions to TST's shared long ME output API. Existing method names and signatures are retained. */
 public interface BigTstOutputController {
 
@@ -20,6 +22,8 @@ public interface BigTstOutputController {
     BigInteger getRecipeItemOutputBig();
 
     BigInteger getRecipeFluidOutputBig();
+
+    void copyRecipeOutputsBig(BigMachineOutputQueue target);
 
     BigInteger getPendingItemOutputBig();
 

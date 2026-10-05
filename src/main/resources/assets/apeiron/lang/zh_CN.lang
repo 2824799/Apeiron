@@ -15,7 +15,7 @@ apeiron.machine.me_output.unlimited_cache=无限缓存
 gt.blockmachines.apeiron.eye_of_harmony_enhancement_module.name=鸿蒙之眼增强模块
 apeiron.machine.eye_of_harmony_enhancement_module.duration=运行时间（Tick）
 apeiron.machine.eye_of_harmony_enhancement_module.success_chance=成功率（0 到 1）
-apeiron.machine.eye_of_harmony_enhancement_module.desc=作为鸿蒙之眼结构中的一个输入仓位置放置，替换一个输入仓\n运行时间最低 1 Tick，不改变原本总电力结算\n成功率可设置为 0 到 1 之间的浮点数\n取消星阵数量上限\n支持无限输入仓、无限输入总线和无限输入总成\n右键打开设置界面
+apeiron.machine.eye_of_harmony_enhancement_module.desc=作为鸿蒙之眼结构中的一个输入仓位置放置，替换一个输入仓\n默认运行 128 Tick（6.4 秒），最低 1 Tick，不改变原本总电力结算\n默认成功率 0.5，可设置为 0 到 1 之间的浮点数\n小数成功率支持单次配方；并行成功数的整数部分精确计算，小数部分按概率结算\n连续配方衔接取料与工作，保持动画连续\n取消星阵数量上限\n支持无限输入仓、无限输入总线和无限输入总成\n右键打开设置界面
 
 gt.blockmachines.apeiron.infinite_pattern_input.name=无限样板输入总成
 gt.blockmachines.apeiron.infinite_pattern_input_mirror.name=无限样板输入总成镜像

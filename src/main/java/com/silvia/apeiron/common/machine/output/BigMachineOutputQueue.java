@@ -41,7 +41,9 @@ public final class BigMachineOutputQueue {
     public void addItem(final ItemStack type, final BigInteger amount) {
         if (type == null || amount.signum() == 0) return;
         if (amount.signum() < 0) throw new IllegalArgumentException("Negative item output");
-        final IAEItemStack key = AEItemStack.create(GTUtility.copyAmountUnsafe(1, type));
+        final ItemStack identity = type.copy();
+        identity.stackSize = 1;
+        final IAEItemStack key = AEItemStack.create(identity);
         items.insertBig(BigAEStackValues.copyWithSize(key, BigInteger.ZERO), amount);
     }
 

@@ -53,6 +53,8 @@ public final class EyeOfHarmonyEnhancementSmoke {
             SpaceProjectManager.spaceTeams = new HashMap<>();
             GlobalEnergyWorldSavedData.INSTANCE = new GlobalEnergyWorldSavedData();
             verifyRecipes();
+            verifySingleParallelChance();
+            EyeOfHarmonyCycleSmoke.verify();
             verifyStructureChecks();
             com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verifyEyeDrain();
             verifySettings();
@@ -64,7 +66,7 @@ public final class EyeOfHarmonyEnhancementSmoke {
             GlobalEnergyWorldSavedData.INSTANCE = save;
         }
         Apeiron.LOG.info(
-            "Eye enhancement verification passed: native chance/time preserved, long parallels, exact success, structure errors and settings");
+            "Eye enhancement verification passed: native chance/time preserved, long parallels, fractional single success, continuous tick cycles, structure errors and settings");
     }
 
     private static void verifyRecipes() throws ReflectiveOperationException {
@@ -102,7 +104,7 @@ public final class EyeOfHarmonyEnhancementSmoke {
 
         MTEEyeOfHarmonyEnhancementModule module = module();
         module.setDuration(3);
-        module.setSuccessChance(0.1D);
+        module.setSuccessChance(0.5D);
         eye.mInputHatches.add(module);
         prepare(eye, recipe);
         set(eye, "astralArrayAmount", 100_000_000L);
@@ -114,7 +116,7 @@ public final class EyeOfHarmonyEnhancementSmoke {
         check(parallels > Integer.MAX_VALUE, "astral limit was retained");
         check(
             (Long) get(eye, "successfulParallelAmount") == BigDecimal.valueOf(parallels)
-                .multiply(BigDecimal.valueOf(0.1D))
+                .multiply(BigDecimal.valueOf(0.5D))
                 .toBigInteger()
                 .longValueExact(),
             "success parallels were clipped to int");
@@ -171,8 +173,63 @@ public final class EyeOfHarmonyEnhancementSmoke {
             "input structure count was not normalized: hatches=" + eye.mInputHatches.size());
     }
 
+    private static void verifySingleParallelChance() throws ReflectiveOperationException {
+        Fixture eye = new Fixture();
+        MTEHatchInputBus bus = new MTEHatchInputBus("apeiron.verify.eye_chance_bus", 1, new String[0], null);
+        bus.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        eye.mInputBusses.add(bus);
+        MTEEyeOfHarmonyEnhancementModule enhancement = module();
+        eye.mInputHatches.add(enhancement);
+        EyeOfHarmonyRecipe recipe = new EyeOfHarmonyRecipe(
+            new ArrayList<>(),
+            new BlockDimensionDisplay("Ow"),
+            1.5D,
+            100,
+            100,
+            20,
+            0,
+            0.8D);
+        int successes = 0;
+        int failures = 0;
+        for (int trial = 0; trial < 128; trial++) {
+            prepare(eye, recipe);
+            enhancement.setSuccessChance(0.5D);
+            check(
+                eye.processRecipe(recipe)
+                    .wasSuccessful(),
+                "fractional single recipe did not start");
+            long successful = (Long) get(eye, "successfulParallelAmount");
+            check(successful == 0L || successful == 1L, "single recipe produced extra parallels");
+            if (successful == 1L) {
+                successes++;
+                check(
+                    ((com.silvia.apeiron.api.machine.tectech.BigEyeOfHarmonyOutput) (Object) eye)
+                        .getRecipeFluidOutputBig(0)
+                        .signum() > 0,
+                    "successful single recipe lost its products");
+            } else failures++;
+            check((Double) get(eye, "successChance") == 0.5D, "displayed chance disagrees with module");
+        }
+        check(successes > 0 && failures > 0, "fractional single chance always fails or always succeeds");
+        for (double chance : new double[] { 0.0D, 1.0D }) {
+            prepare(eye, recipe);
+            enhancement.setSuccessChance(chance);
+            check(
+                eye.processRecipe(recipe)
+                    .wasSuccessful(),
+                "endpoint chance recipe did not start");
+            check((Long) get(eye, "successfulParallelAmount") == (long) chance, "chance endpoint lost certainty");
+        }
+    }
+
     private static void verifySettings() {
         MTEEyeOfHarmonyEnhancementModule module = module();
+        check(module.getDuration() == 128 && module.getSuccessChance() == 0.5D, "new module defaults changed");
+        module.loadNBTData(new NBTTagCompound());
+        check(module.getDuration() == 128 && module.getSuccessChance() == 0.5D, "untagged placement defaults changed");
+        NBTTagCompound defaults = new NBTTagCompound();
+        module.setItemNBT(defaults);
+        check(!defaults.hasKey(MTEEyeOfHarmonyEnhancementModule.ROOT_TAG), "default module drop retained settings");
         module.setDuration(0);
         module.setSuccessChance(-1);
         check(module.getDuration() == 1 && module.getSuccessChance() == 0, "settings bounds ignored");

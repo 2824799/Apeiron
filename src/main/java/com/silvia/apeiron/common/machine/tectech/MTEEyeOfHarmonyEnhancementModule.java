@@ -31,8 +31,8 @@ public final class MTEEyeOfHarmonyEnhancementModule extends MTEHatchInput {
     public static final String ROOT_TAG = "ApeironEyeOfHarmonyEnhancement";
     public static final String DURATION_TAG = "Duration";
     public static final String SUCCESS_CHANCE_TAG = "SuccessChance";
-    public static final int DEFAULT_DURATION = 1;
-    public static final double DEFAULT_SUCCESS_CHANCE = 1.0D;
+    public static final int DEFAULT_DURATION = 128;
+    public static final double DEFAULT_SUCCESS_CHANCE = 0.5D;
 
     @SideOnly(Side.CLIENT)
     private static ITexture moduleTexture;

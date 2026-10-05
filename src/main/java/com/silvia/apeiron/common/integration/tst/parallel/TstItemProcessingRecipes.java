@@ -12,6 +12,7 @@ import com.Nxer.TwistSpaceTechnology.system.OreProcess.logic.OP_Values;
 import com.Nxer.TwistSpaceTechnology.util.rewrites.TST_ItemID;
 import com.silvia.apeiron.api.machine.parallel.ItemProcessingRecipe;
 import com.silvia.apeiron.api.machine.parallel.ItemProcessingRecipeSource;
+import com.silvia.apeiron.api.machine.tst.BigTstItemGiver;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
 import com.silvia.apeiron.common.machine.parallel.ItemProcessingRecipes;
 
@@ -39,10 +40,12 @@ public final class TstItemProcessingRecipes implements ItemProcessingRecipeSourc
         ItemStacksGiver giver = OP_Logic.getOutput(input);
         if (giver == null) return null;
         BigMachineOutputQueue outputs = new BigMachineOutputQueue();
-        for (Map.Entry<TST_ItemID, Long> entry : giver.cache.entrySet()) outputs.addItem(
-            entry.getKey()
-                .getItemStack(1),
-            BigInteger.valueOf(entry.getValue()));
+        for (Map.Entry<TST_ItemID, BigInteger> entry : ((BigTstItemGiver) giver).getItemAmountsBig()
+            .entrySet())
+            outputs.addItem(
+                entry.getKey()
+                    .getItemStack(1),
+                entry.getValue());
         return new ItemProcessingRecipe(
             BigInteger.valueOf(OP_Values.OreProcessRecipeEUt)
                 .multiply(BigInteger.valueOf(getDurationTicks())),

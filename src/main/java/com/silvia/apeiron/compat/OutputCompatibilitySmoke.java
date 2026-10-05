@@ -9,14 +9,18 @@ import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.silvia.apeiron.Apeiron;
+import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
 import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
+import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch;
 import com.silvia.apeiron.config.ApeironConfig;
 
 import gregtech.api.metatileentity.BaseMetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchOutput;
+import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.util.GTUtility;
+import gregtech.common.tileentities.machines.multi.MTEElectricBlastFurnace;
 
 /** Checks the actual GT-facing proxy, plus a finite tank on the old non-transaction API. */
 public final class OutputCompatibilitySmoke {
@@ -77,11 +81,56 @@ public final class OutputCompatibilitySmoke {
                 "finite fluid simulation exceeded tank capacity or changed tank");
             finite.commit();
             check(tank.getFluidAmount() == tank.getCapacity(), "finite fluid commit did not conserve output");
+            verifyNativeBatches();
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("GregTech output API verification failed", error);
         }
         Apeiron.LOG
             .info("GregTech output API verification passed: native transactions, simulation and finite fluid capacity");
+    }
+
+    private static void verifyNativeBatches() throws ReflectiveOperationException {
+        MTEElectricBlastFurnace machine = new MTEElectricBlastFurnace("apeiron.verify.native_batch");
+        machine.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        MTEBoundlessMEOutputBus bus = (MTEBoundlessMEOutputBus) tile(0).getMetaTileEntity();
+        MTEBoundlessMEOutputHatch hatch = (MTEBoundlessMEOutputHatch) tile(1).getMetaTileEntity();
+        bus.getProvider()
+            .setCheckMode(true);
+        hatch.getProvider()
+            .setCheckMode(true);
+        machine.addOutputBusToMachineList(bus.getBaseMetaTileEntity(), 0);
+        machine.addOutputHatchToMachineList(hatch.getBaseMetaTileEntity(), 0);
+        check(InfiniteEnergyHatches.find(machine) == null, "native batch unexpectedly has an energy hatch");
+        ItemStack[] items = new ItemStack[257];
+        FluidStack[] fluids = new FluidStack[257];
+        for (int i = 0; i < items.length; i++) {
+            items[i] = new ItemStack(Items.diamond, Integer.MAX_VALUE);
+            fluids[i] = new FluidStack(FluidRegistry.WATER, Integer.MAX_VALUE);
+        }
+        check(machine.addItemOutputs(items), "native item batch failed");
+        Method outputFluids = MTEMultiBlockBase.class.getDeclaredMethod("addFluidOutputs", FluidStack[].class);
+        outputFluids.setAccessible(true);
+        outputFluids.invoke(machine, (Object) fluids);
+        BigInteger expected = BigInteger.valueOf(Integer.MAX_VALUE)
+            .multiply(BigInteger.valueOf(items.length));
+        check(
+            bus.getProvider()
+                .getCachedAmountBig()
+                .equals(expected),
+            "native item batch truncated or repeated");
+        check(
+            hatch.getProvider()
+                .getCachedAmountBig()
+                .equals(expected),
+            "native fluid batch truncated or repeated");
+        check(
+            items[0].stackSize == Integer.MAX_VALUE && fluids[0].amount == Integer.MAX_VALUE,
+            "batch changed native source stacks");
+        check(
+            ((BigWirelessController) (Object) machine).getWirelessRecipeState()
+                .pending()
+                .isEmpty(),
+            "batch retained int-sized output cycles");
     }
 
     private static ApeironMachineTile tile(int offset) {

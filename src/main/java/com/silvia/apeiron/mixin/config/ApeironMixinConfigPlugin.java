@@ -35,6 +35,14 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(final String targetClassName, final String mixinClassName) {
+        if (mixinClassName.endsWith(".NativeOutputBatchMixin")) return ApeironConfig.areAeMixinsEnabled();
+        if (mixinClassName.endsWith(".ModernNativeFluidOutputBatchMixin")
+            || mixinClassName.endsWith(".LegacyNativeFluidOutputBatchMixin")) {
+            boolean modern = DependencyCapabilities
+                .hasMethod(targetClassName, "addFluidOutputs", "([Lnet/minecraftforge/fluids/FluidStack;)Z");
+            return ApeironConfig.areAeMixinsEnabled()
+                && modern == mixinClassName.endsWith(".ModernNativeFluidOutputBatchMixin");
+        }
         if (mixinClassName.endsWith(".LegacyModuleParallelGuiMixin")) return ApeironConfig.areAeMixinsEnabled()
             && DependencyCapabilities.hasMethod(targetClassName, "createInputWidget", null);
         if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gregtech.spaceelevator."))

@@ -15,7 +15,7 @@ apeiron.machine.me_output.unlimited_cache=Unlimited buffer
 gt.blockmachines.apeiron.eye_of_harmony_enhancement_module.name=Eye of Harmony Enhancement Module
 apeiron.machine.eye_of_harmony_enhancement_module.duration=Runtime (ticks)
 apeiron.machine.eye_of_harmony_enhancement_module.success_chance=Success chance (0 to 1)
-apeiron.machine.eye_of_harmony_enhancement_module.desc=Place it in an Eye of Harmony input hatch position to replace one input hatch\nMinimum runtime is 1 tick without changing the original total EU settlement\nSuccess chance accepts a floating point value from 0 to 1\nRemoves the Astral Array limit\nSupports Infinite Storage Input Hatch, Bus and Assembly\nRight click to open settings
+apeiron.machine.eye_of_harmony_enhancement_module.desc=Place it in an Eye of Harmony input hatch position to replace one input hatch\nDefault runtime is 128 ticks (6.4 seconds), minimum 1 tick, keeping the original total EU settlement\nDefault success chance is 0.5; accepts floating point values from 0 to 1\nFractional chance works for single recipes; parallel success keeps the exact integral count and rolls the remaining fraction\nConsecutive recipes join input and work with a continuous animation\nRemoves the Astral Array limit\nSupports Infinite Storage Input Hatch, Bus and Assembly\nRight click to open settings
 
 gt.blockmachines.apeiron.infinite_pattern_input.name=Infinite Pattern Input Assembly
 gt.blockmachines.apeiron.infinite_pattern_input_mirror.name=Infinite Pattern Input Assembly Mirror

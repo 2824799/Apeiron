@@ -1,7 +1,5 @@
 package com.silvia.apeiron.mixin.tectech;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 
@@ -20,18 +18,25 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputAssembly;
+import com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyInputSupport;
+import com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyRenderSupport;
 import com.silvia.apeiron.common.machine.tectech.MTEEyeOfHarmonyEnhancementModule;
+import com.silvia.apeiron.math.ChancedParallelCounts;
 
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchInput;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
+import gregtech.api.objects.XSTR;
 import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.structure.error.ErrorType;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.ParallelHelper;
 import gregtech.common.tileentities.machines.IDualInputHatch;
 import gregtech.common.tileentities.machines.MTEHatchInputME;
+import tectech.TecTech;
 import tectech.recipe.EyeOfHarmonyRecipe;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
@@ -48,6 +53,28 @@ public abstract class EyeOfHarmonyEnhancementMixin extends TTMultiblockBase {
     private double successChance;
     @Shadow(remap = false)
     private Map<Fluid, Long> validFluidMap;
+    @Shadow(remap = false)
+    private EyeOfHarmonyRecipe currentRecipe;
+    @Shadow(remap = false)
+    private boolean recipeRunning;
+    @Shadow(remap = false)
+    private boolean animationsEnabled;
+    @Unique
+    private boolean apeiron$inPostTick;
+    @Unique
+    private boolean apeiron$checkedThisTick;
+    @Unique
+    private boolean apeiron$deferRenderRemoval;
+
+    @Shadow(remap = false)
+    private void createRenderBlock(EyeOfHarmonyRecipe recipe) {
+        throw new AssertionError();
+    }
+
+    @Shadow(remap = false)
+    private void destroyRenderBlock() {
+        throw new AssertionError();
+    }
 
     @Shadow(remap = false)
     private double recipeChanceCalculator() {
@@ -83,14 +110,100 @@ public abstract class EyeOfHarmonyEnhancementMixin extends TTMultiblockBase {
     @Inject(method = "drainFluidFromHatchesAndStoreInternally", at = @At("HEAD"), cancellable = true, require = 1)
     private void apeiron$chargeStoredFluids(CallbackInfo ci) {
         if (!apeiron$enabled()) return;
-        com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyInputSupport
-            .drain(this, validFluidMap, astralArrayAmount, true);
+        EyeOfHarmonyInputSupport.drain(this, validFluidMap, astralArrayAmount, true);
         ci.cancel();
     }
 
     @ModifyConstant(method = "onPreTick", constant = @Constant(longValue = 20L), require = 1)
     private long apeiron$removeEnhancedDrainDelay(long nativeInterval) {
         return apeiron$enabled() ? 1L : nativeInterval;
+    }
+
+    @Inject(method = "checkProcessing_EM", at = @At("HEAD"), cancellable = true, require = 1)
+    private void apeiron$fillAndStartRecipe(CallbackInfoReturnable<CheckRecipeResult> cir) {
+        if (!apeiron$enabled()) return;
+        if (apeiron$inPostTick && apeiron$checkedThisTick) {
+            cir.setReturnValue(checkRecipeResult);
+            return;
+        }
+        if (apeiron$inPostTick) apeiron$checkedThisTick = true;
+        ItemStack planet = getControllerSlot();
+        if (planet == null) {
+            cir.setReturnValue(SimpleCheckRecipeResult.ofFailure("no_planet_block"));
+            return;
+        }
+        currentRecipe = TecTech.eyeOfHarmonyRecipeStorage.recipeLookUp(planet);
+        if (currentRecipe == null) {
+            cir.setReturnValue(CheckRecipeResultRegistry.NO_RECIPE);
+            return;
+        }
+        EyeOfHarmonyInputSupport.drain(this, validFluidMap, astralArrayAmount, true);
+        CheckRecipeResult result = ((MTEEyeOfHarmony) (Object) this).processRecipe(currentRecipe);
+        if (!result.wasSuccessful()) currentRecipe = null;
+        cir.setReturnValue(result);
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity tile, long tick) {
+        if (!tile.isServerSide() || !apeiron$enabled()) {
+            super.onPostTick(tile, tick);
+            return;
+        }
+        apeiron$inPostTick = true;
+        apeiron$checkedThisTick = false;
+        try {
+            // Use the native recipe bracket once before work, only after the structure is ready.
+            if (!recipeRunning && mMaxProgresstime <= 0
+                && mMachine
+                && mStartUpCheck < 0
+                && mUpdate != 1
+                && !cyclicUpdate_EM()
+                && !tile.hasWorkJustBeenEnabled()
+                && getRepairStatus() >= 3
+                && tile.isAllowedToWork()) {
+                if (checkRecipe()) {
+                    mEfficiency = Math.max(
+                        0,
+                        Math.min(
+                            mEfficiency + mEfficiencyIncrease,
+                            getMaxEfficiency(mInventory[1]) - (getIdealStatus() - getRepairStatus()) * 1000));
+                } else afterRecipeCheckFailed();
+                updateSlots();
+            }
+            super.onPostTick(tile, tick);
+        } finally {
+            apeiron$inPostTick = false;
+            if (apeiron$deferRenderRemoval) {
+                apeiron$deferRenderRemoval = false;
+                if (!recipeRunning || !animationsEnabled) destroyRenderBlock();
+            }
+        }
+    }
+
+    @Inject(method = "outputAfterRecipe_EM", at = @At("RETURN"), require = 1)
+    private void apeiron$allowNextRecipe(CallbackInfo ci) {
+        apeiron$checkedThisTick = false;
+    }
+
+    @Redirect(
+        method = "processRecipe",
+        at = @At(
+            value = "INVOKE",
+            target = "Ltectech/thing/metaTileEntity/multi/MTEEyeOfHarmony;createRenderBlock(Ltectech/recipe/EyeOfHarmonyRecipe;)V"),
+        require = 1)
+    private void apeiron$reuseRender(MTEEyeOfHarmony owner, EyeOfHarmonyRecipe recipe) {
+        if (!apeiron$enabled() || !EyeOfHarmonyRenderSupport.canReuse(owner, recipe)) createRenderBlock(recipe);
+    }
+
+    @Redirect(
+        method = "outputAfterRecipe_EM",
+        at = @At(
+            value = "INVOKE",
+            target = "Ltectech/thing/metaTileEntity/multi/MTEEyeOfHarmony;destroyRenderBlock()V"),
+        require = 1)
+    private void apeiron$keepRenderBetweenRecipes(MTEEyeOfHarmony owner) {
+        if (apeiron$enabled() && apeiron$inPostTick) apeiron$deferRenderRemoval = true;
+        else destroyRenderBlock();
     }
 
     @Inject(method = "processRecipe", at = @At("HEAD"), require = 1)
@@ -121,14 +234,8 @@ public abstract class EyeOfHarmonyEnhancementMixin extends TTMultiblockBase {
     private long apeiron$exactSuccessfulParallel(int chance, int parallels) {
         MTEEyeOfHarmonyEnhancementModule module = apeiron$module();
         if (module == null) return ParallelHelper.calculateIntegralChancedOutputMultiplier(chance, parallels);
-        double configuredChance = module.getSuccessChance();
-        if (parallelAmount <= 0 || configuredChance <= 0.0D) return 0L;
-        if (configuredChance >= 1.0D) return parallelAmount;
-        long result = BigDecimal.valueOf(parallelAmount)
-            .multiply(BigDecimal.valueOf(configuredChance))
-            .setScale(0, RoundingMode.FLOOR)
-            .longValue();
-        return Math.max(0L, Math.min(parallelAmount, result));
+        return ChancedParallelCounts
+            .calculate(parallelAmount, module.getSuccessChance(), XSTR.XSTR_INSTANCE::nextDouble);
     }
 
     @Redirect(

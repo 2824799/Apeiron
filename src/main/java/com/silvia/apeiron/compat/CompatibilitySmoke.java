@@ -21,6 +21,8 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.common.machine.me.output.verification.BoundlessMEOutputSmoke.verify();
         com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke.verify();
         OutputCompatibilitySmoke.verify();
+        if (cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology"))
+            com.silvia.apeiron.common.machine.tst.verification.TstOutputSmoke.verify();
         com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
         com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();

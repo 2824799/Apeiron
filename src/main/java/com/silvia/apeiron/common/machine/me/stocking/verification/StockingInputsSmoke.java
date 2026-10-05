@@ -466,6 +466,25 @@ public final class StockingInputsSmoke {
                         .equals(BigInteger.valueOf(100)),
                     "eye fluid drain consumed unrelated items");
 
+                // A completion can refill the next recipe while its native ME processing bracket is open.
+                stored.put(Materials.Hydrogen.mGas, 0L);
+                stored.put(Materials.Helium.mGas, 0L);
+                network.store(hydrogen, total);
+                network.store(helium, total);
+                logic.begin();
+                drain.invoke(eye);
+                check(logic.isProcessing(), "in-bracket eye refill closed its caller's input session");
+                check(
+                    logic.end()
+                        .wasSuccessful(),
+                    "in-bracket eye refill failed its final debit");
+                check(
+                    network.count(hydrogen)
+                        .equals(total.subtract(BigInteger.TEN.pow(10)))
+                        && network.count(helium)
+                            .equals(total.subtract(BigInteger.valueOf(20_000_000_000L))),
+                    "in-bracket eye refill was charged again when the session ended");
+
                 // Start with just hydrogen selected, then add helium. The hydrogen must stop at its own target.
                 stored.put(Materials.Hydrogen.mGas, 0L);
                 stored.put(Materials.Helium.mGas, 0L);
