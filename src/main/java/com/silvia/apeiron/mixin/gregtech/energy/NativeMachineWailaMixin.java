@@ -16,6 +16,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.silvia.apeiron.common.integration.waila.MachineWailaAliases;
+import com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyWailaSnapshot;
+
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 
 /** Native Waila displays three products. Serialize only those rows, retaining the full type count. */
@@ -54,6 +57,8 @@ public abstract class NativeMachineWailaMixin {
     private void apeiron$totalTypes(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x,
         int y, int z, CallbackInfo ci) {
         MTEMultiBlockBase machine = (MTEMultiBlockBase) (Object) this;
+        MachineWailaAliases.write(machine, tag);
+        EyeOfHarmonyWailaSnapshot.write(machine, tag);
         if (machine.mOutputItems != null) {
             tag.setInteger(
                 "outputItemLength",

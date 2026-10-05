@@ -10,6 +10,7 @@ apeiron.machine.boundless_me_output_bus.desc=多方块物品输出\n直接存入
 apeiron.machine.boundless_me_output_hatch.desc=多方块流体输出\n直接存入 ME 网络\n无限缓存，无需设置容量\n缓存数量与输出事务使用精确大数\n插入流体存储单元可过滤输出及使用缓存模式\n线缆剪切器右击切换 ME 连接方式\n螺丝刀右击切换缓存模式
 apeiron.machine.eye.pending_items=待输出物品：%s
 apeiron.machine.eye.pending_fluids=待输出流体：%s L
+apeiron.machine.eye.fluid_requirements=流体需求（已存／所需）
 apeiron.machine.me_output.unlimited_cache=无限缓存
 gt.blockmachines.apeiron.eye_of_harmony_enhancement_module.name=鸿蒙之眼增强模块
 apeiron.machine.eye_of_harmony_enhancement_module.duration=运行时间（Tick）

@@ -49,6 +49,11 @@ import gregtech.common.items.IDMetaTool01;
 import gregtech.common.items.MetaGeneratedTool01;
 import gregtech.common.tileentities.machines.multi.MTEElectricBlastFurnace;
 import gregtech.common.tileentities.machines.multi.turbines.MTELargeTurbineSteam;
+import gtneioreplugin.plugin.block.BlockDimensionDisplay;
+import gtneioreplugin.plugin.block.ModBlocks;
+import tectech.TecTech;
+import tectech.recipe.EyeOfHarmonyRecipe;
+import tectech.recipe.EyeOfHarmonyRecipeStorage;
 
 /** Detached, transformed AE inventories and recipe projections; does not open a GUI or touch player inventories. */
 public final class StockingInputsSmoke {
@@ -376,59 +381,265 @@ public final class StockingInputsSmoke {
 
     public static void verifyEyeDrain() throws ReflectiveOperationException {
         IAEStack<?> hydrogen = AEFluidStack.create(Materials.Hydrogen.getGas(1));
+        IAEStack<?> helium = AEFluidStack.create(Materials.Helium.getGas(1));
         IAEStack<?> arrays = AEItemStack.create(tectech.thing.CustomItemList.astralArrayFabricator.get(1));
-        for (boolean mixed : new boolean[] { false, true }) {
-            Network network = new Network();
-            BigInteger total = BigInteger.TEN.pow(30);
-            network.store(hydrogen, total);
-            network.store(arrays, BigInteger.valueOf(100));
-            Input logic = new Input(network, mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.FLUIDS);
-            logic.setMark(0, hydrogen);
-            tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony eye = new tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony(
-                "apeiron.verify.eye_me");
-            eye.setBaseMetaTileEntity(new BaseMetaTileEntity());
-            ApeironMachineTile enhancement = new ApeironMachineTile();
-            enhancement.setInitialValuesAsNBT(
-                null,
-                (short) ApeironConfig.getMachineId(ApeironMachines.EYE_OF_HARMONY_ENHANCEMENT_OFFSET));
-            eye.mInputHatches
-                .add((gregtech.api.metatileentity.implementations.MTEHatchInput) enhancement.getMetaTileEntity());
-            if (mixed) {
-                Assembly assembly = new Assembly(logic);
-                logic.setMark(1, arrays);
-                check(
-                    eye.addInputHatchToMachineList(assembly.getBaseMetaTileEntity(), 0),
-                    "eye assembly registration failed");
-            } else {
-                eye.mInputHatches.add(new Hatch(logic));
-            }
-            java.lang.reflect.Method drain = tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony.class
-                .getDeclaredMethod("drainFluidFromHatchesAndStoreInternally");
-            drain.setAccessible(true);
-            java.lang.reflect.Field tanks = tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony.class
-                .getDeclaredField("validFluidMap");
-            tanks.setAccessible(true);
-            for (int tick = 1; tick <= 3; tick++) {
-                drain.invoke(eye);
-                BigInteger moved = BigInteger.valueOf(Integer.MAX_VALUE)
-                    .multiply(BigInteger.valueOf(tick));
+        EyeOfHarmonyRecipeStorage originalStorage = TecTech.eyeOfHarmonyRecipeStorage;
+        Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+        java.lang.reflect.Field singleton = unsafeClass.getDeclaredField("theUnsafe");
+        singleton.setAccessible(true);
+        FixtureStorage fixtureStorage = (FixtureStorage) unsafeClass.getMethod("allocateInstance", Class.class)
+            .invoke(singleton.get(null), FixtureStorage.class);
+        fixtureStorage.recipe = new EyeOfHarmonyRecipe(
+            new ArrayList<>(),
+            new BlockDimensionDisplay("Ow"),
+            1.5D,
+            10_000_000_000L,
+            20_000_000_000L,
+            20,
+            0,
+            0.8D);
+        TecTech.eyeOfHarmonyRecipeStorage = fixtureStorage;
+        try {
+            for (boolean mixed : new boolean[] { false, true }) {
+                Network network = new Network();
+                BigInteger total = BigInteger.TEN.pow(30);
+                network.store(hydrogen, total);
+                network.store(helium, total);
+                network.store(arrays, BigInteger.valueOf(100));
+                Input logic = new Input(
+                    network,
+                    mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.FLUIDS);
+                logic.setMark(0, hydrogen);
+                logic.setMark(1, helium);
+                tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony eye = new tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony(
+                    "apeiron.verify.eye_me");
+                eye.setBaseMetaTileEntity(new BaseMetaTileEntity());
+                eye.mInventory[eye.getControllerSlotIndex()] = new ItemStack(ModBlocks.getBlock("Ow"));
+                ApeironMachineTile enhancement = new ApeironMachineTile();
+                enhancement.setInitialValuesAsNBT(
+                    null,
+                    (short) ApeironConfig.getMachineId(ApeironMachines.EYE_OF_HARMONY_ENHANCEMENT_OFFSET));
+                eye.mInputHatches
+                    .add((gregtech.api.metatileentity.implementations.MTEHatchInput) enhancement.getMetaTileEntity());
+                if (mixed) {
+                    Assembly assembly = new Assembly(logic);
+                    check(
+                        eye.addInputHatchToMachineList(assembly.getBaseMetaTileEntity(), 0),
+                        "eye assembly registration failed");
+                } else {
+                    eye.mInputHatches.add(new Hatch(logic));
+                }
+                java.lang.reflect.Field tanks = tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony.class
+                    .getDeclaredField("validFluidMap");
+                tanks.setAccessible(true);
+                @SuppressWarnings("unchecked")
+                java.util.Map<net.minecraftforge.fluids.Fluid, Long> stored = (java.util.Map<net.minecraftforge.fluids.Fluid, Long>) tanks
+                    .get(eye);
+                java.lang.reflect.Method drain = tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony.class
+                    .getDeclaredMethod("drainFluidFromHatchesAndStoreInternally");
+                drain.setAccessible(true);
+                logic.addWatcher(eye);
+                eye.mMachine = true;
+                eye.onPreTick(eye.getBaseMetaTileEntity(), 2L);
                 check(
                     network.count(hydrogen)
-                        .equals(total.subtract(moved)),
-                    "eye fluid view changed without charging ME");
+                        .equals(total.subtract(BigInteger.TEN.pow(10))),
+                    "eye hydrogen debit was truncated or repeated");
                 check(
-                    ((java.util.Map<?, ?>) tanks.get(eye)).get(Materials.Hydrogen.mGas)
-                        .equals(moved.longValueExact()),
-                    "eye tank credit differs from ME debit");
+                    network.count(helium)
+                        .equals(total.subtract(BigInteger.valueOf(20_000_000_000L))),
+                    "eye helium debit was truncated or repeated");
+                check(
+                    stored.get(Materials.Hydrogen.mGas) == 10_000_000_000L
+                        && stored.get(Materials.Helium.mGas) == 20_000_000_000L,
+                    "eye did not charge both fluids to their exact recipe requirements");
+                drain.invoke(eye);
+                check(
+                    network.count(hydrogen)
+                        .equals(total.subtract(BigInteger.TEN.pow(10)))
+                        && network.count(helium)
+                            .equals(total.subtract(BigInteger.valueOf(20_000_000_000L))),
+                    "eye continued pulling fluid after the recipe requirements were met");
                 check(!logic.isProcessing(), "eye drain left an open input session");
+                check(
+                    network.count(arrays)
+                        .equals(BigInteger.valueOf(100)),
+                    "eye fluid drain consumed unrelated items");
+
+                // Start with just hydrogen selected, then add helium. The hydrogen must stop at its own target.
+                stored.put(Materials.Hydrogen.mGas, 0L);
+                stored.put(Materials.Helium.mGas, 0L);
+                network.store(hydrogen, total);
+                network.store(helium, total);
+                logic.setMark(1, null);
+                eye.onPreTick(eye.getBaseMetaTileEntity(), 3L);
+                check(
+                    stored.get(Materials.Hydrogen.mGas) == 10_000_000_000L && stored.get(Materials.Helium.mGas) == 0L,
+                    "first selected fluid was not pulled in one tick");
+                logic.setMark(1, helium);
+                eye.onPreTick(eye.getBaseMetaTileEntity(), 4L);
+                check(
+                    stored.get(Materials.Hydrogen.mGas) == 10_000_000_000L
+                        && stored.get(Materials.Helium.mGas) == 20_000_000_000L,
+                    "late fluid mark overfilled the satisfied fluid");
+                check(
+                    network.count(hydrogen)
+                        .equals(total.subtract(BigInteger.valueOf(10_000_000_000L))),
+                    "hydrogen was charged again while waiting for helium");
+
+                // An extraction race may partially withdraw fluid; the common transaction must refund before credit.
+                stored.put(Materials.Hydrogen.mGas, 0L);
+                stored.put(Materials.Helium.mGas, 0L);
+                network.store(hydrogen, total);
+                network.store(helium, total);
+                logic.refresh();
+                network.partialFluid = true;
+                drain.invoke(eye);
+                check(
+                    stored.get(Materials.Hydrogen.mGas) == 0L && stored.get(Materials.Helium.mGas) == 0L
+                        && network.count(hydrogen)
+                            .equals(total)
+                        && network.count(helium)
+                            .equals(total),
+                    "failed eye fluid transaction credited a tank or lost a refund");
+                drain.invoke(eye);
+                check(
+                    stored.get(Materials.Hydrogen.mGas) == 10_000_000_000L
+                        && stored.get(Materials.Helium.mGas) == 20_000_000_000L,
+                    "eye did not retry the rolled-back exact fluid request");
+
+                // Existing excess is retained, but it must never cause another network debit for that fluid.
+                stored.put(Materials.Hydrogen.mGas, 15_000_000_000L);
+                stored.put(Materials.Helium.mGas, 5_000_000_000L);
+                network.store(hydrogen, total);
+                network.store(helium, total);
+                logic.refresh();
+                drain.invoke(eye);
+                check(
+                    stored.get(Materials.Hydrogen.mGas) == 15_000_000_000L
+                        && stored.get(Materials.Helium.mGas) == 20_000_000_000L
+                        && network.count(hydrogen)
+                            .equals(total)
+                        && network.count(helium)
+                            .equals(total.subtract(BigInteger.valueOf(15_000_000_000L))),
+                    "already-full fluid kept draining or pre-existing fluid was destroyed");
+
+                // Predict the next recipe's arrays rather than trusting the previous recipe's parallel field.
+                IAEStack<?> plasma = AEFluidStack.create(Materials.RawStarMatter.getFluid(1));
+                network.store(plasma, total);
+                logic.setMark(2, plasma);
+                java.lang.reflect.Field arrayCount = tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony.class
+                    .getDeclaredField("astralArrayAmount");
+                arrayCount.setAccessible(true);
+                arrayCount.setLong(eye, 8637L);
+                BigInteger requiredPlasma = com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyFluidRequirements
+                    .forRecipe(
+                        fixtureStorage.recipe,
+                        com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyFluidRequirements
+                            .plannedParallels(eye, 8637L, true))
+                    .get(Materials.RawStarMatter.mFluid);
+                drain.invoke(eye);
+                check(
+                    BigInteger.valueOf(stored.get(Materials.RawStarMatter.mFluid))
+                        .equals(requiredPlasma)
+                        && network.count(plasma)
+                            .equals(total.subtract(requiredPlasma)),
+                    "stellar plasma request used stale parallels or an int-sized debit");
+
+                arrayCount.setLong(eye, 0L);
+                stored.put(Materials.RawStarMatter.mFluid, 0L);
+                network.store(plasma, total);
+                if (mixed) logic.setMark(3, arrays);
+                else {
+                    gregtech.api.metatileentity.implementations.MTEHatchInputBus bus = new gregtech.api.metatileentity.implementations.MTEHatchInputBus(
+                        "apeiron.verify.eye_pending_arrays",
+                        1,
+                        new String[0],
+                        null);
+                    bus.setBaseMetaTileEntity(new BaseMetaTileEntity());
+                    bus.mInventory[0] = tectech.thing.CustomItemList.astralArrayFabricator.get(1);
+                    bus.mInventory[0].stackSize = 100;
+                    eye.mInputBusses.add(bus);
+                    logic.refresh();
+                }
+                check(
+                    com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyFluidRequirements
+                        .plannedParallels(eye, 0L, true) == 4096L,
+                    "unabsorbed input arrays were omitted from the next fluid requirement");
+                requiredPlasma = com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyFluidRequirements
+                    .forRecipe(fixtureStorage.recipe, 4096L)
+                    .get(Materials.RawStarMatter.mFluid);
+                drain.invoke(eye);
+                check(
+                    BigInteger.valueOf(stored.get(Materials.RawStarMatter.mFluid))
+                        .equals(requiredPlasma)
+                        && network.count(arrays)
+                            .equals(BigInteger.valueOf(100)),
+                    "pending arrays selected the wrong fluid or were consumed by a fluid preview");
+                eye.mInventory[eye.getControllerSlotIndex()] = null;
+                stored.put(Materials.RawStarMatter.mFluid, 0L);
+                drain.invoke(eye);
+                check(
+                    stored.get(Materials.RawStarMatter.mFluid) == 0L && network.count(plasma)
+                        .equals(total.subtract(requiredPlasma)),
+                    "eye without a planet pulled recipe fluid");
+
+                // Renewable fluid sources have no finite count, but still stop at the per-recipe target.
+                eye.mInventory[eye.getControllerSlotIndex()] = new ItemStack(ModBlocks.getBlock("Ow"));
+                if (mixed) logic.setMark(3, null);
+                else eye.mInputBusses.clear();
+                stored.put(Materials.Hydrogen.mGas, 0L);
+                stored.put(Materials.Helium.mGas, 0L);
+                network.store(hydrogen, BigInteger.ZERO);
+                network.store(helium, BigInteger.ZERO);
+                ((InfiniteAEStack) network.find(hydrogen)).setInfinite(true);
+                ((InfiniteAEStack) network.find(helium)).setInfinite(true);
+                logic.refresh();
+                drain.invoke(eye);
+                check(
+                    stored.get(Materials.Hydrogen.mGas) == 10_000_000_000L
+                        && stored.get(Materials.Helium.mGas) == 20_000_000_000L
+                        && BigAEStackValues.isInfinite(network.find(hydrogen))
+                        && BigAEStackValues.isInfinite(network.find(helium)),
+                    "renewable fluids were truncated, depleted or overfilled");
+
+                // Multiple finite sources share one deficit; preserve unrelated items in the common inventory.
+                MTEMultiBlockBase physical = new MTEElectricBlastFurnace("apeiron.verify.internal_fluid_targets");
+                FluidStack first = Materials.Hydrogen.getGas(40), second = Materials.Hydrogen.getGas(50);
+                FluidStack other = new FluidStack(FluidRegistry.WATER, 12);
+                ItemStack catalyst = new ItemStack(Items.diamond, 3);
+                java.util.Map<net.minecraftforge.fluids.Fluid, Long> finiteTanks = new java.util.HashMap<>();
+                finiteTanks.put(Materials.Hydrogen.mGas, 25L);
+                com.silvia.apeiron.common.machine.parallel.BigRecipeInventory finite = new com.silvia.apeiron.common.machine.parallel.BigRecipeInventory(
+                    physical,
+                    new ItemStack[] { catalyst },
+                    new FluidStack[] { first, second, other });
+                check(
+                    finite.fillFluids(
+                        finiteTanks,
+                        Collections.singletonMap(Materials.Hydrogen.mGas, BigInteger.valueOf(100)))
+                        && finiteTanks.get(Materials.Hydrogen.mGas) == 100L
+                        && first.amount == 0
+                        && second.amount == 15
+                        && other.amount == 12
+                        && catalyst.stackSize == 3,
+                    "common tank refill exceeded the shared deficit or consumed another input");
             }
-            check(
-                network.count(arrays)
-                    .equals(BigInteger.valueOf(100)),
-                "eye fluid drain consumed unrelated items");
+        } finally {
+            TecTech.eyeOfHarmonyRecipeStorage = originalStorage;
         }
         Apeiron.LOG.info(
-            "Eye ME input verification passed: separate/mixed hatches, repeated fluid debits and internal tank conservation");
+            "Eye ME input verification passed: one-tick exact hydrogen/helium/plasma, late marks, independent caps, rollback and separate/mixed hatches");
+    }
+
+    private static final class FixtureStorage extends EyeOfHarmonyRecipeStorage {
+
+        private EyeOfHarmonyRecipe recipe;
+
+        @Override
+        public EyeOfHarmonyRecipe recipeLookUp(ItemStack stack) {
+            return recipe;
+        }
     }
 
     private static void verifyBoilerConsumption() {
@@ -796,14 +1007,16 @@ public final class StockingInputsSmoke {
         public IAEStack<?> extractItemsBig(IAEStack<?> request, Actionable mode, BaseActionSource source) {
             IAEStack<?> stock = find(request);
             if (stock == null) return null;
-            BigInteger moved = count(request).min(BigAEStackValues.get(request));
+            boolean renewable = BigAEStackValues.isInfinite(stock);
+            BigInteger moved = renewable ? BigAEStackValues.get(request)
+                : count(request).min(BigAEStackValues.get(request));
             if (mode == Actionable.MODULATE && partialFluid
                 && request instanceof appeng.api.storage.data.IAEFluidStack) {
                 moved = moved.divide(BigInteger.valueOf(2));
                 partialFluid = false;
             }
             if (moved.signum() <= 0) return null;
-            if (mode == Actionable.MODULATE) store(stock, count(stock).subtract(moved));
+            if (mode == Actionable.MODULATE && !renewable) store(stock, count(stock).subtract(moved));
             return amount(request, moved);
         }
 

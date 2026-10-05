@@ -171,6 +171,8 @@ public final class WailaSnapshotSmoke {
                 !MachineWailaSnapshot.write(null, new TileEntity(), new NBTTagCompound()),
                 "non-GT tile path changed");
             verifyCodec();
+            com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyWailaSmoke.verify();
+            MachineWailaCompatibilitySmoke.verify();
             Apeiron.LOG.info(
                 "Waila snapshot verification passed: 360-pattern save {} bytes, idle HUD {} bytes, 24 busy buffers {} bytes; "
                     + "transformed OmniOcular skips disk saves for Apeiron and native GT, and Waila codec bounds arbitrary providers",

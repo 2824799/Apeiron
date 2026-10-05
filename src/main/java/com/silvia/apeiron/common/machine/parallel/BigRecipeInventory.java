@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
@@ -20,6 +21,7 @@ import com.silvia.apeiron.common.machine.me.input.storage.BigPatternBuffer;
 import com.silvia.apeiron.common.machine.me.stocking.StockingInputHost;
 import com.silvia.apeiron.common.machine.me.stocking.StockingInputLogic;
 
+import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.util.item.AEFluidStack;
 import appeng.util.item.AEItemStack;
@@ -95,6 +97,40 @@ public final class BigRecipeInventory {
         physical.add(view);
         owners.add(owner);
         ownerSlots.add(slot);
+    }
+
+    /** Fills long-backed machine tanks with exact per-fluid debits from the shared recipe transaction. */
+    public boolean fillFluids(Map<Fluid, Long> stored, Map<Fluid, BigInteger> targets) {
+        BigInteger[] debit = new BigInteger[stocks.size()];
+        Map<Fluid, Long> next = new LinkedHashMap<>(stored);
+        boolean changed = false;
+        for (int i = 0; i < stocks.size(); i++) {
+            debit[i] = BigInteger.ZERO;
+            IAEStack<?> stock = stocks.get(i);
+            if (!(stock instanceof IAEFluidStack)) continue;
+            Fluid type = ((IAEFluidStack) stock).getFluidStack()
+                .getFluid();
+            BigInteger target = targets.get(type);
+            if (target == null) continue;
+            BigInteger current = BigInteger.valueOf(next.getOrDefault(type, 0L));
+            BigInteger missing = target.min(BigInteger.valueOf(Long.MAX_VALUE))
+                .subtract(current);
+            BigInteger amount = BigAEStackValues.isInfinite(stock) ? missing
+                : BigAEStackValues.get(stock)
+                    .min(missing);
+            if (amount.signum() <= 0) continue;
+            debit[i] = amount;
+            next.put(
+                type,
+                current.add(amount)
+                    .longValueExact());
+            changed = true;
+        }
+        if (!changed) return false;
+        consume(debit);
+        stored.clear();
+        stored.putAll(next);
+        return true;
     }
 
     public void consume(BigInteger[] debit) {

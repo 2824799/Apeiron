@@ -90,6 +90,36 @@ public class WailaNBTBudgetTest {
     }
 
     @Test
+    public void eyeRequirementsAndLegacyAliasesSurviveAnOversizedProvider() throws Exception {
+        NBTTagCompound tag = new NBTTagCompound();
+        for (int i = 0; i < 256; i++)
+            tag.setString("large" + i, String.join("", java.util.Collections.nCopies(4000, "矿")));
+        NBTTagCompound display = new NBTTagCompound();
+        NBTTagList rows = new NBTTagList();
+        NBTTagCompound hydrogen = new NBTTagCompound();
+        hydrogen.setString("fluid", "hydrogen");
+        hydrogen.setString("stored", "1234");
+        hydrogen.setString("required", "10000000000");
+        rows.appendTag(hydrogen);
+        display.setTag("requirements", rows);
+        tag.setTag("ApeironEyeOfHarmony", display);
+        tag.setLong("stored.fluid.hydrogen", 1234);
+        tag.setLong("eyeOfHarmonyOutputastralArrayAmount", 0);
+        tag.setLong("eyeOfHarmonyOutputparallelAmount", 1);
+        byte[] energy = java.math.BigInteger.TEN.pow(30)
+            .negate()
+            .toByteArray();
+        tag.setByteArray("eyeOfHarmonyOutputusedEU", energy);
+        NBTTagCompound result = WailaNBTBudget.limit(tag);
+        assertEquals(display, result.getCompoundTag("ApeironEyeOfHarmony"));
+        assertEquals(1234, result.getLong("stored.fluid.hydrogen"));
+        assertTrue(result.hasKey("eyeOfHarmonyOutputastralArrayAmount"));
+        assertEquals(1, result.getLong("eyeOfHarmonyOutputparallelAmount"));
+        assertArrayEquals(energy, result.getByteArray("eyeOfHarmonyOutputusedEU"));
+        assertTrue(size(result) <= WailaNBTBudget.MAX_BYTES);
+    }
+
+    @Test
     public void numericValuesAreNeverCutToAnIncorrectPrefix() {
         NBTTagCompound tag = new NBTTagCompound();
         String exact = java.math.BigInteger.TEN.pow(600)
@@ -104,6 +134,24 @@ public class WailaNBTBudgetTest {
         NBTTagCompound limited = WailaNBTBudget.limit(tag);
         assertEquals(exact, limited.getString("amount"));
         assertFalse(limited.hasKey("oversized"));
+    }
+
+    @Test
+    public void arbitraryProviderScalarsSurviveNodeBudgetExhaustion() {
+        NBTTagCompound tag = new NBTTagCompound();
+        NBTTagList inventory = new NBTTagList();
+        for (int i = 0; i < 64; i++) {
+            NBTTagCompound item = new NBTTagCompound();
+            for (int j = 0; j < 64; j++) item.setLong("attribute" + j, j);
+            inventory.appendTag(item);
+        }
+        tag.setTag("Inventory", inventory);
+        tag.setLong("thirdPartyTemperature", 1234567L);
+        tag.setString("thirdPartyPhase", "Cooling");
+        NBTTagCompound result = WailaNBTBudget.limit(tag);
+        assertTrue(result.getBoolean("ApeironWailaTruncated"));
+        assertEquals(1234567L, result.getLong("thirdPartyTemperature"));
+        assertEquals("Cooling", result.getString("thirdPartyPhase"));
     }
 
     private static int size(NBTTagCompound tag) throws Exception {

@@ -17,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.silvia.apeiron.common.machine.energy.MachineWailaSnapshot;
 import com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay;
+import com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyWailaDisplay;
 
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
@@ -40,6 +41,9 @@ public abstract class WirelessTooltipMixin {
     @Inject(method = "getWailaBody", at = @At("RETURN"), cancellable = true, require = 1)
     private void apeiron$exactUpperRows(ItemStack item, List<String> lines, IWailaDataAccessor accessor,
         IWailaConfigHandler config, CallbackInfoReturnable<List<String>> cir) {
-        cir.setReturnValue(WirelessWailaDisplay.updateOmni(cir.getReturnValue(), accessor.getNBTData()));
+        cir.setReturnValue(
+            EyeOfHarmonyWailaDisplay.updateOmni(
+                WirelessWailaDisplay.updateOmni(cir.getReturnValue(), accessor.getNBTData()),
+                accessor.getNBTData()));
     }
 }

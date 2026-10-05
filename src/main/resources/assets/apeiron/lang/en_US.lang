@@ -10,6 +10,7 @@ apeiron.machine.boundless_me_output_bus.desc=Item Output for Multiblocks\nStores
 apeiron.machine.boundless_me_output_hatch.desc=Fluid Output for Multiblocks\nStores directly into ME\nUnlimited buffer; no capacity setting required\nExact arbitrary-precision counts and output transactions\nInsert a fluid storage cell for partition filters and cache mode\nRight click with wire cutter to change ME connections\nRight click with screwdriver to toggle Cache Mode
 apeiron.machine.eye.pending_items=Pending item output: %s
 apeiron.machine.eye.pending_fluids=Pending fluid output: %s L
+apeiron.machine.eye.fluid_requirements=Required fluids (stored / required)
 apeiron.machine.me_output.unlimited_cache=Unlimited buffer
 gt.blockmachines.apeiron.eye_of_harmony_enhancement_module.name=Eye of Harmony Enhancement Module
 apeiron.machine.eye_of_harmony_enhancement_module.duration=Runtime (ticks)

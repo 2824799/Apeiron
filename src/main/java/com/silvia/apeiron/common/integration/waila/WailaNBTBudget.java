@@ -29,7 +29,13 @@ public final class WailaNBTBudget {
         "isBooting", "energyUsage", "energyTier", "progress", "maxProgress", "ApeironSavedPushCalls",
         "ApeironBufferStatus", "ApeironActualWirelessEUt", "ApeironActualWirelessEUtDisplay",
         "ApeironActualWirelessTotalEUDisplay", "ApeironActualWirelessAmperageDisplay", "ApeironWirelessInputVoltage",
-        "ApeironWirelessOutputRows" };
+        "ApeironWirelessOutputRows", "ApeironEyeOfHarmony", "stored.fluid.hydrogen", "stored.fluid.helium",
+        "stored.fluid.rawstarmatter", "eyeOfHarmonyOutputrecipeRunning", "eyeOfHarmonyOutputrecipeSuccessChance",
+        "eyeOfHarmonyOutputrocketTier", "eyeOfHarmonyOutputcurrentCircuitMultiplier",
+        "eyeOfHarmonyOutputanimationsEnabled", "eyeOfHarmonyOutputparallelAmount",
+        "eyeOfHarmonyOutputsuccessfulParallelAmount", "eyeOfHarmonyOutputyield", "eyeOfHarmonyOutputastralArrayAmount",
+        "eyeOfHarmonyOutputoutputEU_BigInt", "eyeOfHarmonyOutputusedEU", "eyeOfHarmonyOutputfluidOutput",
+        "eyeOfHarmonyOutputrecipeStarMatter", "eyeOfHarmonyOutputrecipeStellarPlasma" };
 
     private int bytes = MAX_BYTES - 128; // Root header and the truncation marker also occupy space.
     private int nodes = MAX_NODES;
@@ -88,6 +94,21 @@ public final class WailaNBTBudget {
                 if (depth == 0) for (String key : PRIORITY) if (input.hasKey(key)) {
                     entry(input, output, key, depth);
                     visited.add(key);
+                }
+                // A large inventory must not consume the budget before an arbitrary provider's ordinary status.
+                if (depth == 0) {
+                    int scanned = 0;
+                    for (String key : input.func_150296_c()) {
+                        if (++scanned > MAX_KEYS) break;
+                        NBTBase value = input.getTag(key);
+                        byte type = value.getId();
+                        boolean scalar = type >= 1 && type <= 6 || type == 8 && ((NBTTagString) value).func_150285_a_()
+                            .length() <= 256;
+                        if (!visited.contains(key) && scalar) {
+                            entry(input, output, key, depth);
+                            visited.add(key);
+                        }
+                    }
                 }
                 int examined = 0;
                 for (String key : input.func_150296_c()) {

@@ -43,6 +43,8 @@ public abstract class EyeOfHarmonyEnhancementMixin extends TTMultiblockBase {
     @Shadow(remap = false)
     private long parallelAmount;
     @Shadow(remap = false)
+    private long astralArrayAmount;
+    @Shadow(remap = false)
     private double successChance;
     @Shadow(remap = false)
     private Map<Fluid, Long> validFluidMap;
@@ -81,8 +83,14 @@ public abstract class EyeOfHarmonyEnhancementMixin extends TTMultiblockBase {
     @Inject(method = "drainFluidFromHatchesAndStoreInternally", at = @At("HEAD"), cancellable = true, require = 1)
     private void apeiron$chargeStoredFluids(CallbackInfo ci) {
         if (!apeiron$enabled()) return;
-        com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyInputSupport.drain(this, validFluidMap);
+        com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyInputSupport
+            .drain(this, validFluidMap, astralArrayAmount, true);
         ci.cancel();
+    }
+
+    @ModifyConstant(method = "onPreTick", constant = @Constant(longValue = 20L), require = 1)
+    private long apeiron$removeEnhancedDrainDelay(long nativeInterval) {
+        return apeiron$enabled() ? 1L : nativeInterval;
     }
 
     @Inject(method = "processRecipe", at = @At("HEAD"), require = 1)
