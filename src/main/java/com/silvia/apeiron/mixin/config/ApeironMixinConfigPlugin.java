@@ -35,6 +35,8 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(final String targetClassName, final String mixinClassName) {
+        if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gregtech.quantum."))
+            return ApeironConfig.areAeMixinsEnabled() && DependencyCapabilities.hasClass(targetClassName);
         if (mixinClassName.endsWith(".NativeOutputBatchMixin")) return ApeironConfig.areAeMixinsEnabled();
         if (mixinClassName.endsWith(".ModernNativeFluidOutputBatchMixin")
             || mixinClassName.endsWith(".LegacyNativeFluidOutputBatchMixin")) {
@@ -115,6 +117,15 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
                     .getResource(targetClassName.replace('.', '/') + ".class") != null;
         }
         if (mixinClassName.startsWith(TST_MIXIN_PREFIX)) {
+            if (mixinClassName.endsWith(".LegacyTstOutputQueueMixin") && !DependencyCapabilities
+                .hasMethod(targetClassName, "replaceMEOutputQueues", "(Ljava/util/List;Ljava/util/List;)V"))
+                return false;
+            if (mixinClassName.endsWith(".ModernTstOutputQueueMixin")
+                && !DependencyCapabilities.hasMethod(targetClassName, "mergeOutputItems", "(Ljava/util/List;)V"))
+                return false;
+            if (mixinClassName.endsWith(".WirelessOutputBigMixin")
+                && !DependencyCapabilities.hasMethod(targetClassName, "mergeWirelessOutputsIntoMEQueue", "()V"))
+                return false;
             return ApeironConfig.isTstBigOutputEnabled() && ApeironConfig.areAeMixinsEnabled()
                 && getClass().getClassLoader()
                     .getResource(

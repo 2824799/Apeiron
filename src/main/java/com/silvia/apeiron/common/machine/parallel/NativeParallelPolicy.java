@@ -24,6 +24,10 @@ public final class NativeParallelPolicy {
     private NativeParallelPolicy() {}
 
     public static boolean supports(ParallelHelper helper) {
+        return supports(helper, false);
+    }
+
+    public static boolean supports(ParallelHelper helper, boolean exactOutputProvider) {
         Class<?> type = helper.getClass();
         if (type != ParallelHelper.class && !type.getName()
             .equals(TST_HELPER)) return false;
@@ -36,7 +40,7 @@ public final class NativeParallelPolicy {
                         case "customItemOutputCalculation":
                         case "customFluidOutputCalculation":
                             field.setAccessible(true);
-                            if (field.get(helper) != null) return false;
+                            if (!exactOutputProvider && field.get(helper) != null) return false;
                             break;
                         case "chanceMultiplier":
                             field.setAccessible(true);

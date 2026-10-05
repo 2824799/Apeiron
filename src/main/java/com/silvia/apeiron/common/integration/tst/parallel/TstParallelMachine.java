@@ -2,7 +2,7 @@ package com.silvia.apeiron.common.integration.tst.parallel;
 
 import com.silvia.apeiron.api.machine.parallel.ParallelMachine;
 
-/** Production machines with an INT_MAX parallel mode in TST 0.8.0-RC1.3. Entries do not install adapters. */
+/** Production machines with an INT_MAX parallel mode in TST 0.8.0-RC2.1. Entries do not install adapters. */
 public enum TstParallelMachine implements ParallelMachine {
 
     INDUSTRIAL_MAGIC_MATRIX("GT_TileEntity_IndustrialMagicMatrix", "工业注魔矩阵", "需要英雄证明。"),

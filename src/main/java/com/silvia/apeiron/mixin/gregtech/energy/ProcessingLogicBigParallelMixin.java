@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.silvia.apeiron.api.machine.parallel.BigRecipeOutputProvider;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
 import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
 import com.silvia.apeiron.common.machine.energy.MTEInfiniteEnergyHatch;
@@ -91,12 +92,18 @@ public abstract class ProcessingLogicBigParallelMixin {
         MTEMultiBlockBase controller = (MTEMultiBlockBase) machine;
         MTEInfiniteEnergyHatch hatch = InfiniteEnergyHatches.find(controller);
         if (hatch == null || InfiniteEnergyHatches.isNativeWirelessController(controller)) return nativeHelper;
-        if (!BigRecipeParallelHelper.supports(recipe) || !NativeParallelPolicy.supports(nativeHelper))
-            return nativeHelper;
+        BigRecipeOutputProvider provider = this instanceof BigRecipeOutputProvider
+            && ((BigRecipeOutputProvider) this).hasExactRecipeOutputs() ? (BigRecipeOutputProvider) this : null;
+        if (!(provider == null ? BigRecipeParallelHelper.supports(recipe)
+            : BigRecipeParallelHelper.supportsInputs(recipe))
+            || !NativeParallelPolicy.supports(nativeHelper, provider != null)) return nativeHelper;
         return new BigRecipeParallelHelper(
             controller,
             hatch,
-            ((BigWirelessController) machine).getWirelessRecipeState()).setRecipe(recipe)
+            ((BigWirelessController) machine).getWirelessRecipeState())
+                .setExactOutputCalculator(
+                    provider == null ? null : count -> provider.calculateRecipeOutputsBig(recipe, count))
+                .setRecipe(recipe)
                 .setItemInputs(inputItems)
                 .setFluidInputs(inputFluids)
                 .setMachine(machine, protectItems, protectFluids)

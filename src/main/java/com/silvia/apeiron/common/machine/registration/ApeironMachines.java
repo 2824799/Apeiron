@@ -18,6 +18,7 @@ import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
 import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputAssembly;
 import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputBus;
 import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputHatch;
+import com.silvia.apeiron.common.machine.quantum.MTEQuantumEnhancementModule;
 import com.silvia.apeiron.common.machine.tectech.MTEEyeOfHarmonyEnhancementModule;
 import com.silvia.apeiron.config.ApeironConfig;
 
@@ -42,6 +43,8 @@ public final class ApeironMachines {
     public static final int STORAGE_INPUT_HATCH_OFFSET = 8;
     public static final int STORAGE_INPUT_ASSEMBLY_OFFSET = 9;
     public static final int EYE_OF_HARMONY_ENHANCEMENT_OFFSET = 11;
+    public static final int QUANTUM_ENHANCEMENT_OFFSET = 12;
+    public static MTEQuantumEnhancementModule quantumEnhancementModule;
     public static MTEInfiniteProgrammingCircuitProvider circuitProvider;
     public static MTEInfiniteStorageInputBus storageInputBus;
     public static MTEInfiniteStorageInputHatch storageInputHatch;
@@ -126,6 +129,10 @@ public final class ApeironMachines {
             ApeironConfig.getMachineId(EYE_OF_HARMONY_ENHANCEMENT_OFFSET),
             "apeiron.eye_of_harmony_enhancement_module",
             "Eye of Harmony Enhancement Module");
+        quantumEnhancementModule = new MTEQuantumEnhancementModule(
+            ApeironConfig.getMachineId(QUANTUM_ENHANCEMENT_OFFSET),
+            "apeiron.quantum_enhancement_module",
+            "Quantum Force Transformer Enhancement Block");
         Apeiron.LOG.info(
             "Apeiron machine ID reservation: {}..{} ({} IDs); ME outputs: {}, {}, {}",
             ApeironConfig.getMachineIdStart(),
@@ -160,7 +167,8 @@ public final class ApeironMachines {
                 || existing == storageInputBus
                 || existing == storageInputHatch
                 || existing == storageInputAssembly
-                || existing == eyeOfHarmonyEnhancementModule)) continue;
+                || existing == eyeOfHarmonyEnhancementModule
+                || existing == quantumEnhancementModule)) continue;
             if (existing != null) {
                 throw new IllegalStateException(
                     "Apeiron's configured 100-ID reservation conflicts at ID " + id

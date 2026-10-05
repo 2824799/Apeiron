@@ -32,6 +32,7 @@ import com.silvia.apeiron.common.machine.tst.output.TstOutputCapacity;
 import com.silvia.apeiron.config.ApeironConfig;
 
 import gregtech.api.enums.HatchElement;
+import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.BaseMetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.util.GTRecipe;
@@ -125,7 +126,11 @@ public final class TstOutputSmoke {
                     .amount() == Long.MAX_VALUE,
             "legacy long projections");
         final Machine machine = new Machine();
-        method(GTCM_MultiMachineBase.class, "replaceMEOutputQueues", List.class, List.class)
+        if (modernQueues()) {
+            machine.setMEOutput(true);
+            method(GTCM_MultiMachineBase.class, "mergeOutputItems", List.class).invoke(machine, itemOutputs);
+            method(GTCM_MultiMachineBase.class, "mergeOutputFluids", List.class).invoke(machine, fluidOutputs);
+        } else method(GTCM_MultiMachineBase.class, "replaceMEOutputQueues", List.class, List.class)
             .invoke(machine, itemOutputs, fluidOutputs);
         final BigTstOutputController big = (BigTstOutputController) machine;
         check(
@@ -134,6 +139,21 @@ public final class TstOutputSmoke {
                 && big.getRecipeFluidOutputBig()
                     .equals(expected),
             "helper-to-controller transfer truncated counts");
+        if (modernQueues()) {
+            method(GTCM_MultiMachineBase.class, "multiplyProcessingOutputs", int.class).invoke(machine, 7);
+            check(
+                big.getRecipeItemOutputBig()
+                    .equals(expected.multiply(BigInteger.valueOf(7)))
+                    && big.getRecipeFluidOutputBig()
+                        .equals(expected.multiply(BigInteger.valueOf(7))),
+                "RC2 output multiplier saturated long quantities");
+            check(
+                BigTstOutputLists.amount(itemOutputs.get(0))
+                    .equals(expected)
+                    && BigTstOutputLists.amount(fluidOutputs.get(0))
+                        .equals(expected),
+                "output transfer changed source list");
+        }
     }
 
     private static void verifyController() {
@@ -280,9 +300,16 @@ public final class TstOutputSmoke {
         final Field processing = MTEMultiBlockBase.class.getDeclaredField("processingLogic");
         processing.setAccessible(true);
         processing.set(wireless, logic);
-        final Method merge = method(WirelessEnergyMultiMachineBase.class, "mergeWirelessOutputsIntoMEQueue");
-        merge.invoke(wireless);
-        merge.invoke(wireless);
+        wireless.setMEOutput(true);
+        if (modernQueues()) {
+            final Method merge = method(GTCM_MultiMachineBase.class, "mergeProcessingOutputs", ProcessingLogic.class);
+            merge.invoke(wireless, logic);
+            merge.invoke(wireless, logic);
+        } else {
+            final Method merge = method(WirelessEnergyMultiMachineBase.class, "mergeWirelessOutputsIntoMEQueue");
+            merge.invoke(wireless);
+            merge.invoke(wireless);
+        }
         final BigTstOutputController big = (BigTstOutputController) wireless;
         check(
             big.getRecipeItemOutputBig()
@@ -332,6 +359,11 @@ public final class TstOutputSmoke {
         final Method method = owner.getDeclaredMethod(name, parameters);
         method.setAccessible(true);
         return method;
+    }
+
+    private static boolean modernQueues() {
+        return com.silvia.apeiron.compat.DependencyCapabilities
+            .hasMethod(GTCM_MultiMachineBase.class.getName(), "mergeOutputItems", "(Ljava/util/List;)V");
     }
 
     private static void check(boolean condition, String message) {

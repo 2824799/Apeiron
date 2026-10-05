@@ -1,6 +1,8 @@
 # TST 无限并行与无限能源仓
 
-研究与框架实现日期：2026-10-01。TST 最新发布为 `0.8.0-RC1.3`，GT 最新发布为 `5.09.54.192`。本轮核对了最新 GT 标签下的无线电网、世界存档、团队管理、并行处理器和无线能源仓；这些相关文件与项目当前编译依赖 `5.09.54.190` 的参考源码一致。
+本文保留 2026-10-01 的初期框架研究，当时使用 TST `0.8.0-RC1.3`。当前编译与开发运行依赖已于 2026-10-05 更新到 TST `0.8.0-RC2.1`，GT 编译依赖仍为 `5.09.54.190`。当前可用功能见 README 和实现代码。
+
+RC2.1 将普通与无线配方输出统一到 `mergeProcessingOutputs`，移除了 `replaceMEOutputQueues` 和 `mergeWirelessOutputsIntoMEQueue`。Apeiron 按方法签名选用 RC1 或 RC2 适配，保留完整输出数量和新版产物倍率；公共并行计算器、物品合并器、星核取样及矿处执行入口已核对，新旧 TST 运行自检均已覆盖。
 
 ## 已落地的框架
 
@@ -128,13 +130,13 @@ JMH 24 个测项完成并保留结果。验证范围为框架与真实无线 API
 
 ## 源码依据
 
-- [TST 0.8.0-RC1.3 发布](https://github.com/Nxer/Twist-Space-Technology-Mod/releases/tag/0.8.0-RC1.3)
+- [TST 0.8.0-RC2.1 发布](https://github.com/Nxer/Twist-Space-Technology-Mod/releases/tag/0.8.0-RC2.1)
 - [GT 5.09.54.192 发布](https://github.com/GTNewHorizons/GT5-Unofficial/releases/tag/5.09.54.192)
 - [GT 无线账户接口](https://github.com/GTNewHorizons/GT5-Unofficial/blob/5.09.54.192/src/main/java/gregtech/common/misc/WirelessNetworkManager.java)
 - [GT 无线账户存档](https://github.com/GTNewHorizons/GT5-Unofficial/blob/5.09.54.192/src/main/java/gregtech/common/misc/GlobalEnergyWorldSavedData.java)
 - [GT 多安无线仓](https://github.com/GTNewHorizons/GT5-Unofficial/blob/5.09.54.192/src/main/java/tectech/thing/metaTileEntity/hatch/MTEHatchWirelessMulti.java)
-- [TST 无线机器公共基类](https://github.com/Nxer/Twist-Space-Technology-Mod/blob/0.8.0-RC1.3/src/main/java/com/Nxer/TwistSpaceTechnology/common/machine/multiMachineClasses/WirelessEnergyMultiMachineBase.java)
-- [TST 公共处理逻辑](https://github.com/Nxer/Twist-Space-Technology-Mod/blob/0.8.0-RC1.3/src/main/java/com/Nxer/TwistSpaceTechnology/common/machine/multiMachineClasses/processingLogics/GTCM_ProcessingLogic.java)
-- [TST 公共并行计算器](https://github.com/Nxer/Twist-Space-Technology-Mod/blob/0.8.0-RC1.3/src/main/java/com/Nxer/TwistSpaceTechnology/common/machine/multiMachineClasses/processingLogics/GTCM_ParallelHelper.java)
+- [TST 无线机器公共基类](https://github.com/Nxer/Twist-Space-Technology-Mod/blob/0.8.0-RC2.1/src/main/java/com/Nxer/TwistSpaceTechnology/common/machine/multiMachineClasses/WirelessEnergyMultiMachineBase.java)
+- [TST 公共处理逻辑](https://github.com/Nxer/Twist-Space-Technology-Mod/blob/0.8.0-RC2.1/src/main/java/com/Nxer/TwistSpaceTechnology/common/machine/multiMachineClasses/processingLogics/GTCM_ProcessingLogic.java)
+- [TST 公共并行计算器](https://github.com/Nxer/Twist-Space-Technology-Mod/blob/0.8.0-RC2.1/src/main/java/com/Nxer/TwistSpaceTechnology/common/machine/multiMachineClasses/processingLogics/GTCM_ParallelHelper.java)
 
 TST 本地源码保存在 `/home/nahida/app/game/minecraft/_temp/Twist-Space-Technology-Mod/`，GT 最新版本研究用文件保存在 `/home/nahida/app/game/minecraft/_temp/GT5-Unofficial-5.09.54.192-research/`。

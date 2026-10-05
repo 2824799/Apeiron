@@ -102,21 +102,6 @@ public abstract class MultiMachineOutputBigMixin implements BigTstOutputControll
         ci.cancel();
     }
 
-    @Inject(
-        method = "replaceMEOutputQueues(Ljava/util/List;Ljava/util/List;)V",
-        at = @At("HEAD"),
-        cancellable = true,
-        require = 1)
-    private void apeiron$replace(List<ItemStackLong> items, List<FluidStackLong> fluids, CallbackInfo ci) {
-        meOutputQueue.clear();
-        meFluidOutputQueue.clear();
-        for (ItemStackLong entry : items)
-            mergeItemIntoMEOutputQueueBig(entry.itemStack(), BigTstOutputLists.amount(entry));
-        for (FluidStackLong entry : fluids)
-            mergeFluidIntoMEOutputQueueBig(entry.fluidStack(), BigTstOutputLists.amount(entry));
-        ci.cancel();
-    }
-
     @Inject(method = "checkMEOutputCapacity", at = @At("HEAD"), cancellable = true, require = 1)
     private void apeiron$checkCapacity(List<ItemStackLong> items, List<FluidStackLong> fluids,
         CallbackInfoReturnable<CheckRecipeResult> cir) {

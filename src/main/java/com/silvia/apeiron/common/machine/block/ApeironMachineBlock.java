@@ -54,5 +54,7 @@ public final class ApeironMachineBlock extends BlockMachines {
             stacks.add(ApeironMachines.storageInputAssembly.getStackForm(1L));
         if (ApeironMachines.eyeOfHarmonyEnhancementModule != null)
             stacks.add(ApeironMachines.eyeOfHarmonyEnhancementModule.getStackForm(1L));
+        if (ApeironMachines.quantumEnhancementModule != null)
+            stacks.add(ApeironMachines.quantumEnhancementModule.getStackForm(1L));
     }
 }

@@ -4,7 +4,7 @@ dependencies {
     runtimeOnlyNonPublishable("apeiron.development:aeinfinitycell:1.0.5:dev")
     runtimeOnlyNonPublishable("apeiron.development:appeu:1.0.2:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NewHorizonsCoreMod:2.9.82:dev")
-    runtimeOnlyNonPublishable("apeiron.development:TwistSpaceTechnology:0.8.0-RC1.3:dev")
+    runtimeOnlyNonPublishable("apeiron.development:TwistSpaceTechnology:0.8.0-RC2.1:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Electro-Magic-Tools:1.7.25:dev") {
         exclude group: "curse.maven", module: "thaumcraft-nei-plugin-225095"
     }

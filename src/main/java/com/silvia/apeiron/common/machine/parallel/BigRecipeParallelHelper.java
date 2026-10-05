@@ -34,6 +34,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
     private BigInteger totalPerParallel;
     private BigInteger totalEnergy;
     private BigMachineOutputQueue exactOutputs = new BigMachineOutputQueue();
+    private java.util.function.Function<BigInteger, List<IAEStack<?>>> outputCalculator;
 
     public BigRecipeParallelHelper(MTEMultiBlockBase controller, MTEInfiniteEnergyHatch hatch,
         WirelessRecipeState state) {
@@ -43,14 +44,25 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
     }
 
     public static boolean supports(GTRecipe recipe) {
-        if (recipe.mAltFluidInputs != null) return false;
-        for (int i = 0; i < recipe.mInputs.length; i++) if (recipe.getInputChance(i) != 10000) return false;
-        for (int i = 0; i < recipe.mFluidInputs.length; i++) if (recipe.getFluidInputChance(i) != 10000) return false;
+        if (!supportsInputs(recipe)) return false;
         for (int i = 0; i < recipe.mOutputs.length; i++)
             if (recipe.getOutputChance(i) != 10000 && recipe.getOutputChance(i) != 0) return false;
         for (int i = 0; i < recipe.mFluidOutputs.length; i++)
             if (recipe.getFluidOutputChance(i) != 10000 && recipe.getFluidOutputChance(i) != 0) return false;
         return true;
+    }
+
+    public static boolean supportsInputs(GTRecipe recipe) {
+        if (recipe.mAltFluidInputs != null) return false;
+        for (int i = 0; i < recipe.mInputs.length; i++) if (recipe.getInputChance(i) != 10000) return false;
+        for (int i = 0; i < recipe.mFluidInputs.length; i++) if (recipe.getFluidInputChance(i) != 10000) return false;
+        return true;
+    }
+
+    public BigRecipeParallelHelper setExactOutputCalculator(
+        java.util.function.Function<BigInteger, List<IAEStack<?>>> calculator) {
+        outputCalculator = calculator;
+        return this;
     }
 
     @Override
@@ -125,6 +137,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
     }
 
     private List<IAEStack<?>> outputs(BigInteger count) {
+        if (outputCalculator != null) return outputCalculator.apply(count);
         List<IAEStack<?>> values = new ArrayList<>();
         for (int i = 0; i < Math.min(recipe.mOutputs.length, controller.getItemOutputLimit()); i++)
             if (recipe.mOutputs[i] != null && recipe.getOutputChance(i) > 0) values.add(

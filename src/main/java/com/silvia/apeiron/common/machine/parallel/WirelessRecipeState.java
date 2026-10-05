@@ -124,6 +124,13 @@ public final class WirelessRecipeState {
         return running ? recipeOutputs.outputTypes() : 0;
     }
 
+    /** Machine bonuses multiply only this recipe's products, never its paid energy or older pending batches. */
+    public void multiplyRecipeOutputs(BigInteger factor) {
+        if (!running) return;
+        recipeOutputs.multiply(factor);
+        hudOutputs = null;
+    }
+
     public BigMachineOutputQueue pending() {
         return pendingOutputs;
     }

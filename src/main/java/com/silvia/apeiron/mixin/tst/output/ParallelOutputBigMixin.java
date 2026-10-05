@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Output chance calculation adapted from Twist Space Technology 0.8.0-RC1.3 (Nxer and contributors).
+// Output chance calculation adapted from Twist Space Technology 0.8.0-RC2.1 (Nxer and contributors).
 package com.silvia.apeiron.mixin.tst.output;
 
 import java.math.BigInteger;

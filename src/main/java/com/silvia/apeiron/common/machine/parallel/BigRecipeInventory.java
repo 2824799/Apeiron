@@ -43,14 +43,7 @@ public final class BigRecipeInventory {
 
     public BigRecipeInventory(MTEMultiBlockBase machine, MTEMultiBlockBase sharedInputs, ItemStack[] items,
         FluidStack[] fluids) {
-        BigPatternBuffer found = null;
-        for (IDualInputHatch hatch : machine.mDualInputHatches) if (hatch instanceof BigDualInputHatch) {
-            MTEInfinitePatternInputAssembly source = ((BigDualInputHatch) hatch).getInputSource();
-            if (source == null) continue;
-            for (BigPatternBuffer candidate : source.getBuffers())
-                if (candidate.ownsViews(items, fluids)) found = candidate;
-        }
-        buffer = found;
+        buffer = findPatternBuffer(machine, items, fluids);
         if (buffer != null) stocks.addAll(buffer.getStacksBig());
         else {
             List<StockingInputLogic> networks = new ArrayList<>();
@@ -73,6 +66,18 @@ public final class BigRecipeInventory {
                 addPhysical(fluid, AEFluidStack.create(fluid), networks);
             }
         }
+    }
+
+    /** Resolve the active source by view identity, including mirrors, without merging isolated recipes. */
+    public static BigPatternBuffer findPatternBuffer(MTEMultiBlockBase machine, ItemStack[] items,
+        FluidStack[] fluids) {
+        for (IDualInputHatch hatch : machine.mDualInputHatches) if (hatch instanceof BigDualInputHatch) {
+            MTEInfinitePatternInputAssembly source = ((BigDualInputHatch) hatch).getInputSource();
+            if (source == null) continue;
+            for (BigPatternBuffer candidate : source.getBuffers())
+                if (candidate.ownsViews(items, fluids)) return candidate;
+        }
+        return null;
     }
 
     public List<IAEStack<?>> getStacksBig() {

@@ -67,6 +67,12 @@ public final class BigMachineOutputQueue {
         return items.isEmpty() && fluids.isEmpty();
     }
 
+    public void multiply(BigInteger factor) {
+        if (factor.signum() <= 0) throw new IllegalArgumentException("Output multiplier must be positive");
+        items.updateAllBig((type, amount) -> amount.multiply(factor));
+        fluids.updateAllBig((type, amount) -> amount.multiply(factor));
+    }
+
     /** Display consumers receive detached exact stacks and cannot consume this output ledger. */
     public List<IAEStack<?>> snapshotOutputs() {
         final List<IAEStack<?>> result = new ArrayList<>();

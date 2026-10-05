@@ -26,6 +26,7 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
         com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
+        com.silvia.apeiron.common.machine.quantum.verification.QuantumEnhancementSmoke.verify();
         com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyEnhancementSmoke.verify();
         com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyWailaSmoke.verify();
         com.silvia.apeiron.common.integration.waila.verification.MachineWailaCompatibilitySmoke.verify();
