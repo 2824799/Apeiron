@@ -172,6 +172,12 @@ public class MTEInfiniteStorageInputBus extends MTEHatchInputBusME
     }
 
     @Override
+    public void setItemNBT(NBTTagCompound tag) {
+        super.setItemNBT(tag);
+        getStockingInput().saveItemState(tag);
+    }
+
+    @Override
     public void saveNBTData(NBTTagCompound tag) {
         super.saveNBTData(tag);
         tag.removeTag("circuit");

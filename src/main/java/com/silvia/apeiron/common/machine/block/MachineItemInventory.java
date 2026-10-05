@@ -16,7 +16,7 @@ public final class MachineItemInventory {
         NBTTagList inventory = new NBTTagList();
         for (int slot = 0; slot < machine.mInventory.length; slot++) {
             ItemStack stack = machine.mInventory[slot];
-            if (stack == null) continue;
+            if (stack == null || stack.stackSize <= 0) continue;
             NBTTagCompound entry = stack.writeToNBT(new NBTTagCompound());
             entry.setInteger("IntSlot", slot);
             if (stack.stackSize > Byte.MAX_VALUE) entry.setInteger("Count", stack.stackSize);

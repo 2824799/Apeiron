@@ -362,6 +362,15 @@ public class MTEInfiniteProgrammingCircuitProvider extends MTEHatch
     }
 
     @Override
+    public void setItemNBT(NBTTagCompound tag) {
+        super.setItemNBT(tag);
+        tag.removeTag("ApeironAllSides");
+        tag.removeTag("proxy");
+        if (additionalConnection) tag.setBoolean("ApeironAllSides", true);
+        com.silvia.apeiron.common.machine.block.MachineItemInventory.write(this, tag);
+    }
+
+    @Override
     public void saveNBTData(NBTTagCompound tag) {
         super.saveNBTData(tag);
         tag.setBoolean("ApeironAllSides", additionalConnection);
@@ -371,6 +380,7 @@ public class MTEInfiniteProgrammingCircuitProvider extends MTEHatch
     @Override
     public void loadNBTData(NBTTagCompound tag) {
         super.loadNBTData(tag);
+        com.silvia.apeiron.common.machine.block.MachineItemInventory.read(this, tag);
         additionalConnection = tag.getBoolean("ApeironAllSides");
         getProxy().readFromNBT(tag);
         updateSides();

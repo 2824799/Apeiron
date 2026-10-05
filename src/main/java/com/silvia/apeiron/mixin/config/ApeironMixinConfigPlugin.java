@@ -18,6 +18,7 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
 
     private static final String AE_MIXIN_PREFIX = "com.silvia.apeiron.mixin.ae.";
     private static final String EYE_OUTPUT_MIXIN = "com.silvia.apeiron.mixin.tectech.EyeOfHarmonyBigOutputMixin";
+    private static final String EYE_ENHANCEMENT_MIXIN = "com.silvia.apeiron.mixin.tectech.EyeOfHarmonyEnhancementMixin";
     private static final String TST_MIXIN_PREFIX = "com.silvia.apeiron.mixin.tst.";
     private static final String INFINITY_CELL_MIXIN_PREFIX = "com.silvia.apeiron.mixin.aeinfinitycell.";
 
@@ -34,6 +35,10 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(final String targetClassName, final String mixinClassName) {
+        if (mixinClassName.endsWith(".LegacyModuleParallelGuiMixin")) return ApeironConfig.areAeMixinsEnabled()
+            && DependencyCapabilities.hasMethod(targetClassName, "createInputWidget", null);
+        if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gregtech.spaceelevator."))
+            return ApeironConfig.areAeMixinsEnabled() && DependencyCapabilities.hasClass(targetClassName);
         if (mixinClassName.endsWith(".LegacyOptimizerTaskMixin")
             || mixinClassName.endsWith(".ModernOptimizerTaskMixin")) {
             final boolean modern = DependencyCapabilities.hasMethod(
@@ -112,6 +117,10 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
         }
         if (EYE_OUTPUT_MIXIN.equals(mixinClassName)) {
             return ApeironConfig.isEyeOfHarmonyBigOutputEnabled() && ApeironConfig.areAeMixinsEnabled();
+        }
+        if (EYE_ENHANCEMENT_MIXIN.equals(mixinClassName)) {
+            return ApeironConfig.areAeMixinsEnabled() && getClass().getClassLoader()
+                .getResource("tectech/thing/metaTileEntity/multi/MTEEyeOfHarmony.class") != null;
         }
         return !mixinClassName.startsWith(AE_MIXIN_PREFIX) || ApeironConfig.areAeMixinsEnabled();
     }

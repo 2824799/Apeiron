@@ -180,7 +180,9 @@ public class MTEInfiniteMEOutputAssembly extends MTEBoundlessMEOutputBus {
     @Override
     public void setItemNBT(NBTTagCompound tag) {
         super.setItemNBT(tag);
-        tag.setTag(FLUID_NBT, fluidState(true));
+        final NBTTagCompound fluids = fluidState(true);
+        if (!fluids.hasNoTags()) tag.setTag(FLUID_NBT, fluids);
+        else tag.removeTag(FLUID_NBT);
     }
 
     @Override

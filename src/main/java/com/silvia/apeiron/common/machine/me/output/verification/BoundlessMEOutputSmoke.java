@@ -59,6 +59,7 @@ public final class BoundlessMEOutputSmoke {
     private BoundlessMEOutputSmoke() {}
 
     public static void verify() {
+        com.silvia.apeiron.common.machine.block.verification.MachineDropsSmoke.verify();
         check(GameRegistry.findBlock(Apeiron.MODID, "machines") == ApeironMachines.block, "own block registry");
         check(GregTechAPI.METATILEENTITIES[ApeironConfig.getMachineId(0)] == ApeironMachines.itemOutputBus, "item ID");
         check(
@@ -306,7 +307,8 @@ public final class BoundlessMEOutputSmoke {
             ApeironMachines.INFINITE_ENERGY_HATCH_OFFSET, ApeironMachines.PATTERN_INPUT_ASSEMBLY_OFFSET,
             ApeironMachines.PATTERN_INPUT_MIRROR_OFFSET, ApeironMachines.CIRCUIT_PROVIDER_OFFSET,
             ApeironMachines.STORAGE_INPUT_BUS_OFFSET, ApeironMachines.STORAGE_INPUT_HATCH_OFFSET,
-            ApeironMachines.STORAGE_INPUT_ASSEMBLY_OFFSET, ApeironMachines.ULTIMATE_ENERGY_HATCH_OFFSET };
+            ApeironMachines.STORAGE_INPUT_ASSEMBLY_OFFSET, ApeironMachines.ULTIMATE_ENERGY_HATCH_OFFSET,
+            ApeironMachines.EYE_OF_HARMONY_ENHANCEMENT_OFFSET };
         check(
             entries.size() == expectedOffsets.length,
             "creative and NEI enumeration has missing or duplicate machines");

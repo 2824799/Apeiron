@@ -38,6 +38,8 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Override
     public ParallelLimit getParallelLimitBig() {
+        if (this instanceof com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule)
+            return ((com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) this).getModuleParallelLimitBig();
         return InfiniteEnergyHatches.find(apeiron$machine()) == null
             ? ParallelLimit.bounded(apeiron$machine().getTrueParallel())
             : apeiron$wireless.getLimit();

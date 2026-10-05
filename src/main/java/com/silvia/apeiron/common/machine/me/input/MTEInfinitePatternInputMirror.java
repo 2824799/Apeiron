@@ -246,7 +246,9 @@ public class MTEInfinitePatternInputMirror extends MTEHatchInputBus
     @Override
     public void setItemNBT(NBTTagCompound tag) {
         super.setItemNBT(tag);
-        writeLink(tag);
+        for (String key : new String[] { "ApeironInputLinked", "ApeironInputDimension", "ApeironInputX",
+            "ApeironInputY", "ApeironInputZ" }) tag.removeTag(key);
+        if (linked) writeLink(tag);
     }
 
     @Override

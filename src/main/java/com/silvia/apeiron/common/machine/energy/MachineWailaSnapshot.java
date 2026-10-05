@@ -15,6 +15,7 @@ import net.minecraft.tileentity.TileEntity;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
 import com.silvia.apeiron.common.integration.waila.WailaNBTBudget;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
+import com.silvia.apeiron.common.machine.parallel.ItemProcessingRecipes;
 import com.silvia.apeiron.config.ApeironConfig;
 import com.silvia.apeiron.math.BigNumberFormatter;
 
@@ -68,10 +69,8 @@ public final class MachineWailaSnapshot {
         boolean wireless = machine instanceof BigWirelessController
             && ((BigWirelessController) machine).getWirelessRecipeState()
                 .isRunning();
-        boolean factory = machine.getClass()
-            .getName()
-            .equals("com.Nxer.TwistSpaceTechnology.system.OreProcess.machines.TST_OreProcessingFactory");
-        if (!wireless && !factory
+        boolean itemSource = ItemProcessingRecipes.hasSource(machine.getRecipeMap());
+        if (!wireless && !itemSource
             && (machine.mOutputItems == null || machine.mOutputItems.length <= 64)
             && (machine.mOutputFluids == null || machine.mOutputFluids.length <= 64)) return false;
         machine.getWailaNBTData(player, tile, tag, tile.getWorldObj(), tile.xCoord, tile.yCoord, tile.zCoord);

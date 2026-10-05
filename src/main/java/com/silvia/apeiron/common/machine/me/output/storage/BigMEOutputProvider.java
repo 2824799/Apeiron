@@ -479,7 +479,12 @@ public abstract class BigMEOutputProvider<T extends IAEStack<T>> {
     }
 
     public void setItemNBT(NBTTagCompound aNBT) {
-        writeCacheAndSettings(aNBT);
+        for (String key : new String[] { "additionalConnection", "cacheMode", "myPriority", "baseCapacity",
+            "ApeironBaseCapacity", "checkMode", "proxy" }) aNBT.removeTag(key);
+        writeCache(aNBT);
+        if (additionalConnection) aNBT.setBoolean("additionalConnection", true);
+        if (cacheMode) aNBT.setBoolean("cacheMode", true);
+        if (myPriority != 0) aNBT.setInteger("myPriority", myPriority);
     }
 
     public void flushCachedStack() {
@@ -627,19 +632,24 @@ public abstract class BigMEOutputProvider<T extends IAEStack<T>> {
     }
 
     private void writeCacheAndSettings(NBTTagCompound aNBT) {
+        writeCache(aNBT);
+        aNBT.setBoolean("additionalConnection", additionalConnection);
+        aNBT.removeTag("baseCapacity");
+        aNBT.removeTag("ApeironBaseCapacity");
+        aNBT.removeTag("checkMode");
+        aNBT.setBoolean("cacheMode", cacheMode);
+        aNBT.setInteger("myPriority", myPriority);
+    }
+
+    private void writeCache(NBTTagCompound aNBT) {
         NBTTagList cacheTag = new NBTTagList();
         cache.iterateAllBig((s, amount) -> {
             NBTTagCompound tag = env.saveStackToNBT(BigAEStackValues.copyWithSize(s, amount));
             cacheTag.appendTag(tag);
         });
 
-        aNBT.setBoolean("additionalConnection", additionalConnection);
-        aNBT.setTag("cache", cacheTag);
-        aNBT.removeTag("baseCapacity");
-        aNBT.removeTag("ApeironBaseCapacity");
-        aNBT.removeTag("checkMode");
-        aNBT.setBoolean("cacheMode", cacheMode);
-        aNBT.setInteger("myPriority", myPriority);
+        if (cacheTag.tagCount() > 0) aNBT.setTag("cache", cacheTag);
+        else aNBT.removeTag("cache");
     }
 
     public void loadNBTData(NBTTagCompound aNBT) {

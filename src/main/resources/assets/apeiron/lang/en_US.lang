@@ -11,6 +11,10 @@ apeiron.machine.boundless_me_output_hatch.desc=Fluid Output for Multiblocks\nSto
 apeiron.machine.eye.pending_items=Pending item output: %s
 apeiron.machine.eye.pending_fluids=Pending fluid output: %s L
 apeiron.machine.me_output.unlimited_cache=Unlimited buffer
+gt.blockmachines.apeiron.eye_of_harmony_enhancement_module.name=Eye of Harmony Enhancement Module
+apeiron.machine.eye_of_harmony_enhancement_module.duration=Runtime (ticks)
+apeiron.machine.eye_of_harmony_enhancement_module.success_chance=Success chance (0 to 1)
+apeiron.machine.eye_of_harmony_enhancement_module.desc=Place it in an Eye of Harmony input hatch position to replace one input hatch\nMinimum runtime is 1 tick without changing the original total EU settlement\nSuccess chance accepts a floating point value from 0 to 1\nRemoves the Astral Array limit\nSupports Infinite Storage Input Hatch, Bus and Assembly\nRight click to open settings
 
 gt.blockmachines.apeiron.infinite_pattern_input.name=Infinite Pattern Input Assembly
 gt.blockmachines.apeiron.infinite_pattern_input_mirror.name=Infinite Pattern Input Assembly Mirror

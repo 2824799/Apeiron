@@ -73,6 +73,15 @@ public final class StockingFilter {
         return meta;
     }
 
+    public boolean isDefault() {
+        return minimum.equals(BigInteger.ONE) && "1".equals(minimumText)
+            && refreshTicks == 100
+            && modId.isEmpty()
+            && "*".equals(itemId)
+            && ore.isEmpty()
+            && meta == OreDictionary.WILDCARD_VALUE;
+    }
+
     public void setMeta(int value) {
         meta = value < 0 ? OreDictionary.WILDCARD_VALUE : value;
     }

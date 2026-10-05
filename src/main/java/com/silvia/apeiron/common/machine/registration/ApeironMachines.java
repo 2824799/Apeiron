@@ -18,6 +18,7 @@ import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
 import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputAssembly;
 import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputBus;
 import com.silvia.apeiron.common.machine.me.stocking.MTEInfiniteStorageInputHatch;
+import com.silvia.apeiron.common.machine.tectech.MTEEyeOfHarmonyEnhancementModule;
 import com.silvia.apeiron.config.ApeironConfig;
 
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -40,10 +41,12 @@ public final class ApeironMachines {
     public static final int STORAGE_INPUT_BUS_OFFSET = 7;
     public static final int STORAGE_INPUT_HATCH_OFFSET = 8;
     public static final int STORAGE_INPUT_ASSEMBLY_OFFSET = 9;
+    public static final int EYE_OF_HARMONY_ENHANCEMENT_OFFSET = 11;
     public static MTEInfiniteProgrammingCircuitProvider circuitProvider;
     public static MTEInfiniteStorageInputBus storageInputBus;
     public static MTEInfiniteStorageInputHatch storageInputHatch;
     public static MTEInfiniteStorageInputAssembly storageInputAssembly;
+    public static MTEEyeOfHarmonyEnhancementModule eyeOfHarmonyEnhancementModule;
     public static MTEInfinitePatternInputAssembly patternInputAssembly;
     public static MTEInfinitePatternInputMirror patternInputMirror;
     public static ApeironMachineBlock block;
@@ -119,6 +122,10 @@ public final class ApeironMachines {
             ApeironConfig.getMachineId(STORAGE_INPUT_ASSEMBLY_OFFSET),
             "apeiron.infinite_storage_input_assembly",
             "Infinite Storage Input Assembly");
+        eyeOfHarmonyEnhancementModule = new MTEEyeOfHarmonyEnhancementModule(
+            ApeironConfig.getMachineId(EYE_OF_HARMONY_ENHANCEMENT_OFFSET),
+            "apeiron.eye_of_harmony_enhancement_module",
+            "Eye of Harmony Enhancement Module");
         Apeiron.LOG.info(
             "Apeiron machine ID reservation: {}..{} ({} IDs); ME outputs: {}, {}, {}",
             ApeironConfig.getMachineIdStart(),
@@ -152,7 +159,8 @@ public final class ApeironMachines {
                 || existing == circuitProvider
                 || existing == storageInputBus
                 || existing == storageInputHatch
-                || existing == storageInputAssembly)) continue;
+                || existing == storageInputAssembly
+                || existing == eyeOfHarmonyEnhancementModule)) continue;
             if (existing != null) {
                 throw new IllegalStateException(
                     "Apeiron's configured 100-ID reservation conflicts at ID " + id

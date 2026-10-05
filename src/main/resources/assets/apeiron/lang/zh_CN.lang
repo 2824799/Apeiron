@@ -11,6 +11,10 @@ apeiron.machine.boundless_me_output_hatch.desc=多方块流体输出\n直接存�
 apeiron.machine.eye.pending_items=待输出物品：%s
 apeiron.machine.eye.pending_fluids=待输出流体：%s L
 apeiron.machine.me_output.unlimited_cache=无限缓存
+gt.blockmachines.apeiron.eye_of_harmony_enhancement_module.name=鸿蒙之眼增强模块
+apeiron.machine.eye_of_harmony_enhancement_module.duration=运行时间（Tick）
+apeiron.machine.eye_of_harmony_enhancement_module.success_chance=成功率（0 到 1）
+apeiron.machine.eye_of_harmony_enhancement_module.desc=作为鸿蒙之眼结构中的一个输入仓位置放置，替换一个输入仓\n运行时间最低 1 Tick，不改变原本总电力结算\n成功率可设置为 0 到 1 之间的浮点数\n取消星阵数量上限\n支持无限输入仓、无限输入总线和无限输入总成\n右键打开设置界面
 
 gt.blockmachines.apeiron.infinite_pattern_input.name=无限样板输入总成
 gt.blockmachines.apeiron.infinite_pattern_input_mirror.name=无限样板输入总成镜像

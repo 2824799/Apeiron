@@ -564,6 +564,28 @@ public class StockingInputLogic {
         root.setTag("ApeironStockingInput", tag);
     }
 
+    public void saveItemState(NBTTagCompound root) {
+        NBTTagCompound tag = new NBTTagCompound();
+        if (!filter.isDefault()) {
+            NBTTagCompound saved = filter.save();
+            for (String key : saved.func_150296_c()) tag.setTag(key, saved.getTag(key));
+        }
+        if (autoPull) tag.setBoolean("auto", true);
+        NBTTagList marksTag = new NBTTagList();
+        for (int i = 0; i < SLOT_COUNT; i++) if (marks[i] != null) {
+            NBTTagCompound cell = BigPatternStackCodec.write(marks[i]);
+            cell.setInteger("slot", i);
+            marksTag.appendTag(cell);
+        }
+        if (marksTag.tagCount() > 0) tag.setTag("marks", marksTag);
+        NBTTagList refundsTag = new NBTTagList();
+        for (IAEStack<?> stack : refunds) if (BigAEStackValues.get(stack)
+            .signum() > 0) refundsTag.appendTag(BigPatternStackCodec.write(stack));
+        if (refundsTag.tagCount() > 0) tag.setTag("refunds", refundsTag);
+        if (tag.hasNoTags()) root.removeTag("ApeironStockingInput");
+        else root.setTag("ApeironStockingInput", tag);
+    }
+
     public NBTTagCompound copyConfiguration() {
         NBTTagCompound root = new NBTTagCompound();
         save(root);

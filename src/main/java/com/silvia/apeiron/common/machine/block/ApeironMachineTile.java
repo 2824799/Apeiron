@@ -48,7 +48,7 @@ public final class ApeironMachineTile extends BaseMetaTileEntity {
         }
         boolean inventory = false;
         ItemStack[] physical = machine == null ? new ItemStack[0] : machine.getRealInventory();
-        for (int slot = 0; slot < physical.length; slot++) if (physical[slot] != null) {
+        for (int slot = 0; slot < physical.length; slot++) if (physical[slot] != null && physical[slot].stackSize > 0) {
             inventory = true;
             if (!(machine instanceof com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly)
                 || slot >= com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly.PATTERN_COUNT)
@@ -63,8 +63,19 @@ public final class ApeironMachineTile extends BaseMetaTileEntity {
         for (int i = 0; i < drops.size(); i++) {
             final ItemStack original = drops.get(i);
             final ItemStack own = new ItemStack(ApeironMachines.block, original.stackSize, original.getItemDamage());
-            if (keep && original.hasTagCompound()) {
-                own.setTagCompound(original.getTagCompound());
+            if (original.hasTagCompound()) {
+                final ItemStack normalized = new ItemStack(
+                    ApeironMachines.block,
+                    original.stackSize,
+                    original.getItemDamage());
+                normalized.setTagCompound(
+                    (net.minecraft.nbt.NBTTagCompound) original.getTagCompound()
+                        .copy());
+                MachineItemNbt.normalize(normalized);
+                if (normalized.hasTagCompound()) own.setTagCompound(normalized.getTagCompound());
+            }
+            if (keep) {
+                if (!own.hasTagCompound()) own.setTagCompound(new net.minecraft.nbt.NBTTagCompound());
                 net.minecraft.nbt.NBTTagCompound contents = new net.minecraft.nbt.NBTTagCompound();
                 if (items.signum() > 0)
                     contents.setString("items", com.silvia.apeiron.math.BigNumberFormatter.formatExact(items));
@@ -75,6 +86,8 @@ public final class ApeironMachineTile extends BaseMetaTileEntity {
                 if (!contents.hasNoTags()) own.getTagCompound()
                     .setTag("ApeironContents", contents);
             }
+            if (own.hasTagCompound() && own.getTagCompound()
+                .hasNoTags()) own.setTagCompound(null);
             drops.set(i, own);
         }
         return drops;

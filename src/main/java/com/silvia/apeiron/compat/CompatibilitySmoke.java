@@ -24,6 +24,8 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
         com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
+        com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyEnhancementSmoke.verify();
+        com.silvia.apeiron.common.machine.spaceelevator.verification.SpaceElevatorIntegrationSmoke.verify();
         if (cpw.mods.fml.common.FMLCommonHandler.instance()
             .getSide()
             .isClient()) com.silvia.apeiron.common.machine.energy.verification.WirelessPowerPanelSmoke.verify();

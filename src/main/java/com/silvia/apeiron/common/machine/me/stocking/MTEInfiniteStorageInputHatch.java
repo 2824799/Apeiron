@@ -147,6 +147,12 @@ public class MTEInfiniteStorageInputHatch extends MTEHatchInputME
     }
 
     @Override
+    public void setItemNBT(NBTTagCompound tag) {
+        super.setItemNBT(tag);
+        getStockingInput().saveItemState(tag);
+    }
+
+    @Override
     public void saveNBTData(NBTTagCompound tag) {
         super.saveNBTData(tag);
         getStockingInput().save(tag);

@@ -768,7 +768,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
         NBTTagList contents = new NBTTagList();
         for (BigPatternBuffer buffer : buffers) contents.appendTag(buffer.writeNBT());
         NBTTagList physicalInventory = new NBTTagList();
-        for (int i = 0; i < mInventory.length; i++) if (mInventory[i] != null) {
+        for (int i = 0; i < mInventory.length; i++) if (mInventory[i] != null && mInventory[i].stackSize > 0) {
             NBTTagCompound entry = mInventory[i].writeToNBT(new NBTTagCompound());
             entry.setInteger("slot", i);
             physicalInventory.appendTag(entry);
@@ -788,7 +788,20 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     @Override
     public void setItemNBT(NBTTagCompound tag) {
         super.setItemNBT(tag);
-        writeState(tag);
+        tag.removeTag(STATE_KEY);
+        tag.removeTag("proxy");
+        boolean contents = additionalConnection || multiplierView
+            || !patternOptimization
+            || !terminalVisible
+            || !customName.isEmpty();
+        for (BigInteger multiplier : multipliers) contents |= !multiplier.equals(BigInteger.ONE);
+        for (ItemStack stack : mInventory) contents |= stack != null && stack.stackSize > 0;
+        for (BigPatternBuffer buffer : buffers) {
+            buffer.reconcile();
+            contents |= !buffer.isEmpty() || buffer.hasRecipe();
+        }
+        if (contents) writeState(tag);
+        else tag.removeTag(STATE_KEY);
     }
 
     @Override

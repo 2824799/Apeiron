@@ -8,6 +8,11 @@ public final class InfiniteEnergyHatches {
     private InfiniteEnergyHatches() {}
 
     public static MTEInfiniteEnergyHatch find(MTEMultiBlockBase machine) {
+        if (machine instanceof com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) {
+            MTEMultiBlockBase parent = ((com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) machine)
+                .getEnergyParent();
+            if (parent != null) return find(parent);
+        }
         MTEInfiniteEnergyHatch ordinary = null;
         for (MTEHatchEnergy hatch : machine.mEnergyHatches)
             if (hatch instanceof MTEInfiniteEnergyHatch && hatch.isValid()) {
@@ -24,6 +29,11 @@ public final class InfiniteEnergyHatches {
     }
 
     public static long processingVoltage(MTEMultiBlockBase machine) {
+        if (machine instanceof com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) {
+            MTEMultiBlockBase parent = ((com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) machine)
+                .getEnergyParent();
+            if (parent != null) return processingVoltage(parent);
+        }
         return isUltimate(machine) ? Long.MAX_VALUE
             : ((com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine).getWirelessRecipeState()
                 .getVoltageSetting();
@@ -35,4 +45,15 @@ public final class InfiniteEnergyHatches {
             .equals("WirelessEnergyMultiMachineBase")) return true;
         return false;
     }
+
+    public static int targetDuration(MTEMultiBlockBase machine) {
+        if (machine instanceof com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) {
+            MTEMultiBlockBase parent = ((com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) machine)
+                .getEnergyParent();
+            if (parent != null) machine = parent;
+        }
+        return ((com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine).getWirelessRecipeState()
+            .getTargetDuration();
+    }
+
 }

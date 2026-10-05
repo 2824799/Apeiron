@@ -374,6 +374,63 @@ public final class StockingInputsSmoke {
             "Steam turbine stocking verification passed: real flow calculation, repeated exact steam consumption and empty network");
     }
 
+    public static void verifyEyeDrain() throws ReflectiveOperationException {
+        IAEStack<?> hydrogen = AEFluidStack.create(Materials.Hydrogen.getGas(1));
+        IAEStack<?> arrays = AEItemStack.create(tectech.thing.CustomItemList.astralArrayFabricator.get(1));
+        for (boolean mixed : new boolean[] { false, true }) {
+            Network network = new Network();
+            BigInteger total = BigInteger.TEN.pow(30);
+            network.store(hydrogen, total);
+            network.store(arrays, BigInteger.valueOf(100));
+            Input logic = new Input(network, mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.FLUIDS);
+            logic.setMark(0, hydrogen);
+            tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony eye = new tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony(
+                "apeiron.verify.eye_me");
+            eye.setBaseMetaTileEntity(new BaseMetaTileEntity());
+            ApeironMachineTile enhancement = new ApeironMachineTile();
+            enhancement.setInitialValuesAsNBT(
+                null,
+                (short) ApeironConfig.getMachineId(ApeironMachines.EYE_OF_HARMONY_ENHANCEMENT_OFFSET));
+            eye.mInputHatches
+                .add((gregtech.api.metatileentity.implementations.MTEHatchInput) enhancement.getMetaTileEntity());
+            if (mixed) {
+                Assembly assembly = new Assembly(logic);
+                logic.setMark(1, arrays);
+                check(
+                    eye.addInputHatchToMachineList(assembly.getBaseMetaTileEntity(), 0),
+                    "eye assembly registration failed");
+            } else {
+                eye.mInputHatches.add(new Hatch(logic));
+            }
+            java.lang.reflect.Method drain = tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony.class
+                .getDeclaredMethod("drainFluidFromHatchesAndStoreInternally");
+            drain.setAccessible(true);
+            java.lang.reflect.Field tanks = tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony.class
+                .getDeclaredField("validFluidMap");
+            tanks.setAccessible(true);
+            for (int tick = 1; tick <= 3; tick++) {
+                drain.invoke(eye);
+                BigInteger moved = BigInteger.valueOf(Integer.MAX_VALUE)
+                    .multiply(BigInteger.valueOf(tick));
+                check(
+                    network.count(hydrogen)
+                        .equals(total.subtract(moved)),
+                    "eye fluid view changed without charging ME");
+                check(
+                    ((java.util.Map<?, ?>) tanks.get(eye)).get(Materials.Hydrogen.mGas)
+                        .equals(moved.longValueExact()),
+                    "eye tank credit differs from ME debit");
+                check(!logic.isProcessing(), "eye drain left an open input session");
+            }
+            check(
+                network.count(arrays)
+                    .equals(BigInteger.valueOf(100)),
+                "eye fluid drain consumed unrelated items");
+        }
+        Apeiron.LOG.info(
+            "Eye ME input verification passed: separate/mixed hatches, repeated fluid debits and internal tank conservation");
+    }
+
     private static void verifyBoilerConsumption() {
         Class<?> boilerClass;
         try {
