@@ -16,6 +16,7 @@ import com.silvia.apeiron.ae.storage.BigCellInventoryHandler;
 import com.silvia.apeiron.ae.storage.BigInventoryAdaptors;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
 import com.silvia.apeiron.ae.storage.BigStorageCell;
+import com.silvia.apeiron.ae.storage.StorageCellMounts;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.InsertionMode;
@@ -39,6 +40,7 @@ import appeng.me.cache.NetworkMonitor;
 import appeng.me.storage.FluidCellInventory;
 import appeng.me.storage.FluidCellInventoryHandler;
 import appeng.me.storage.MEIInventoryWrapper;
+import appeng.me.storage.MEInventoryHandler;
 import appeng.me.storage.MEMonitorIInventory;
 import appeng.me.storage.NetworkInventoryHandler;
 import appeng.util.AEStackTypeFilter;
@@ -235,6 +237,8 @@ public final class AEBackendSmoke {
                 .equals(HUGE.subtract(BigInteger.valueOf(7))),
             "small fluid extraction truncated huge remaining balance");
 
+        verifyFluidSplitExtraction();
+
         final IStorageGrid storageGrid = (IStorageGrid) Proxy.newProxyInstance(
             IStorageGrid.class.getClassLoader(),
             new Class<?>[] { IStorageGrid.class },
@@ -278,6 +282,56 @@ public final class AEBackendSmoke {
             BigAEStackValues.get(network.getAvailableItem(input, IterationCounter.fetchNewId()))
                 .equals(HUGE.subtract(BigInteger.valueOf(7))),
             "reshuffle cancellation did not restore exact source count");
+    }
+
+    private static void verifyFluidSplitExtraction() throws AppEngException {
+        final BigInteger half = BigInteger.valueOf(1368);
+        final ItemStack firstItem = new ItemStack(new FluidVerificationCell());
+        final FluidCellInventory first = new FluidCellInventory(firstItem, null);
+        final FluidCellInventory second = new FluidCellInventory(new ItemStack(new FluidVerificationCell()), null);
+        final FluidCellInventoryHandler high = new FluidCellInventoryHandler(first);
+        final FluidCellInventoryHandler low = new FluidCellInventoryHandler(second);
+        final FluidCellInventoryHandler duplicate = new FluidCellInventoryHandler(
+            new FluidCellInventory(firstItem, null));
+        check(
+            StorageCellMounts
+                .unique(
+                    java.util.Arrays
+                        .asList(high, new MEInventoryHandler<>(duplicate, AEFluidStackType.FLUID_STACK_TYPE), low))
+                .size() == 2,
+            "ordinary fluid cell duplicate mounts were not normalized");
+        check(
+            StorageCellMounts.unique(java.util.Arrays.asList(high, low))
+                .size() == 2,
+            "different ordinary fluid cells were merged");
+        high.setPriority(10);
+        low.setPriority(0);
+        final NetworkInventoryHandler<IAEFluidStack> network = new NetworkInventoryHandler<>(
+            AEFluidStackType.FLUID_STACK_TYPE,
+            new appeng.me.cache.SecurityCache(null));
+        network.addNewStorage(high);
+        network.addNewStorage(low);
+        final IAEFluidStack stored = water(half);
+        check(
+            BigMEInventories.injectItemsBig(first, stored, Actionable.MODULATE, SOURCE) == null,
+            "first split fluid cell rejected setup");
+        check(
+            BigMEInventories.injectItemsBig(second, stored, Actionable.MODULATE, SOURCE) == null,
+            "second split fluid cell rejected setup");
+        final BigInteger total = half.multiply(BigInteger.valueOf(2L));
+        final IAEFluidStack request = water(total);
+        check(
+            BigAEStackValues.get(network.extractItems(request, Actionable.SIMULATE, SOURCE))
+                .equals(total),
+            "legacy fluid network simulation lost one backend");
+        check(
+            BigAEStackValues.get(network.extractItems(request, Actionable.MODULATE, SOURCE))
+                .equals(total),
+            "legacy fluid network extraction lost one backend");
+        check(
+            BigAEStackValues.get(network.getAvailableItem(request, IterationCounter.fetchNewId()))
+                .signum() == 0,
+            "split fluid extraction left a phantom network amount");
     }
 
     private static void check(final boolean condition, final String message) {

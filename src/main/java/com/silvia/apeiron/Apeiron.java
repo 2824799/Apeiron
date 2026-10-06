@@ -69,6 +69,8 @@ public final class Apeiron {
             com.silvia.apeiron.common.machine.energy.verification.WirelessPowerPanelSmoke.verify();
             com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
             com.silvia.apeiron.common.machine.energy.verification.WirelessMachineIntegrationSmoke.verify();
+            if (cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology"))
+                com.silvia.apeiron.common.machine.tst.verification.TstGeneratedEnergySmoke.verify();
             if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()
                 .exitJava(0, false);
         }

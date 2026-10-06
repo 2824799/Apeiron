@@ -254,6 +254,7 @@ public final class InfiniteEnergySmoke {
                     .equals(BigInteger.TEN.pow(25)),
                 "manual parallel cap ignored");
             verifyControls(owner, controller.recipes);
+            verifyChanceOutputs(owner);
         } finally {
             GlobalVariableStorage.GlobalEnergy = oldEnergy;
             SpaceProjectManager.spaceTeams = oldTeams;
@@ -477,6 +478,96 @@ public final class InfiniteEnergySmoke {
             "explicit zero failed to survive save");
         Apeiron.LOG.info(
             "Energy controls: full-batch budget, physical output capacity, lossless time, exact debit, pause/reload and safe defaults passed");
+    }
+
+    private static void verifyChanceOutputs(UUID owner) {
+        RecipeMap<?> recipes = RecipeMapBuilder.of("apeiron.verify.chanced_wireless_recipes")
+            .maxIO(1, 1, 0, 1)
+            .build();
+        recipes.addRecipe(
+            gregtech.api.util.GTRecipeBuilder.builder()
+                .itemInputs(new ItemStack(Items.diamond, 2))
+                .itemOutputs(new ItemStack(Items.emerald, 3))
+                .outputChances(5000)
+                .fluidOutputs(
+                    new net.minecraftforge.fluids.FluidStack(net.minecraftforge.fluids.FluidRegistry.WATER, 7))
+                .fluidOutputChances(7500)
+                .duration(20)
+                .eut(8)
+                .build()
+                .get());
+        Controller controller = fixture(owner, recipes, true);
+        controller.mOutputHatches
+            .add((com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch) tile(1).getMetaTileEntity());
+        WirelessRecipeState state = ((BigWirelessController) (Object) controller).getWirelessRecipeState();
+        state.setParallelSettingBig(BigInteger.ZERO);
+        MTEInfinitePatternInputAssembly inputs = input(controller, HUGE);
+        WirelessNetworkManager.setUserEU(owner, HUGE.multiply(BigInteger.valueOf(160)));
+        runRecipe(controller, inputs);
+        check(
+            state.getParallelsBig()
+                .equals(HUGE)
+                && inputs.getBuffers()
+                    .get(0)
+                    .isEmpty(),
+            "standard chance recipe bypassed exact input/parallel execution");
+        BigInteger itemCount = BigInteger.ZERO, fluidCount = BigInteger.ZERO;
+        for (appeng.api.storage.data.IAEStack<?> output : state.getOutputDisplay()) {
+            if (output instanceof appeng.api.storage.data.IAEItemStack)
+                itemCount = itemCount.add(BigAEStackValues.get(output));
+            else fluidCount = fluidCount.add(BigAEStackValues.get(output));
+        }
+        check(
+            itemCount.signum() > 0 && itemCount.compareTo(HUGE.multiply(BigInteger.valueOf(3))) < 0,
+            "item probability became all-or-nothing");
+        check(
+            fluidCount.signum() > 0 && fluidCount.compareTo(HUGE.multiply(BigInteger.valueOf(7))) < 0,
+            "fluid guaranteed/fractional chances lost");
+        NBTTagCompound saved = state.save();
+        WirelessRecipeState restored = new WirelessRecipeState();
+        restored.load(saved);
+        check(
+            restored.getOutputDisplay()
+                .stream()
+                .map(BigAEStackValues::get)
+                .reduce(BigInteger.ZERO, BigInteger::add)
+                .equals(itemCount.add(fluidCount)),
+            "chance recipe was rerolled on reload");
+        controller.complete();
+        controller.complete();
+        check(
+            ((MTEBoundlessMEOutputBus) controller.mOutputBusses.get(0)).getProvider()
+                .getCachedAmountBig()
+                .equals(itemCount)
+                && ((com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch) controller.mOutputHatches
+                    .get(0)).getProvider()
+                        .getCachedAmountBig()
+                        .equals(fluidCount),
+            "chance completion lost or duplicated outputs");
+
+        Controller finite = fixture(owner, recipes, true);
+        finite.mOutputBusses.clear();
+        gregtech.api.metatileentity.implementations.MTEHatchOutputBus bus = new gregtech.api.metatileentity.implementations.MTEHatchOutputBus(
+            "apeiron.verify.chance_finite",
+            1,
+            1,
+            new String[0],
+            null);
+        bus.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        finite.mOutputBusses.add(bus);
+        finite.mOutputHatches
+            .add((com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch) tile(1).getMetaTileEntity());
+        WirelessRecipeState finiteState = ((BigWirelessController) (Object) finite).getWirelessRecipeState();
+        finiteState.setParallelSettingBig(BigInteger.ZERO);
+        MTEInfinitePatternInputAssembly finiteInput = input(finite, HUGE);
+        runRecipe(finite, finiteInput);
+        check(
+            finiteState.getParallelsBig()
+                .equals(BigInteger.valueOf(21)),
+            "probability planning did not reserve worst-case physical capacity");
+        check(bus.getStackInSlot(0) == null, "probability planning wrote into physical inventory");
+        Apeiron.LOG.info(
+            "Shared probability recipe verification passed: item/fluid chances, over-100% rolls, exact inputs, finite worst-case capacity, save and single output lifecycle");
     }
 
     private static void check(boolean value, String message) {

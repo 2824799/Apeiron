@@ -2,6 +2,9 @@ package com.silvia.apeiron.mixin.aeinfinitycell.ae;
 
 import java.math.BigInteger;
 
+import net.minecraft.item.ItemStack;
+
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Shadow;
@@ -11,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.storage.BigUnlimitedMEInventory;
+import com.silvia.apeiron.ae.storage.StorageInventoryIdentity;
 import com.silvia.apeiron.api.aeinfinitycell.BigInfinityCellRecord;
 
 import appeng.api.config.Actionable;
@@ -23,7 +27,16 @@ import cn.dancingsnow.aeinfinitycell.storage.InfinityCellRecord;
 /** Keeps legacy signatures while exposing exact transfers for every supported channel. */
 @Pseudo
 @Mixin(targets = "cn.dancingsnow.aeinfinitycell.ae.AbstractInfinityInventoryHandler", remap = false)
-public abstract class InfinityInventoryBigMixin implements BigUnlimitedMEInventory {
+public abstract class InfinityInventoryBigMixin implements BigUnlimitedMEInventory, StorageInventoryIdentity {
+
+    @Shadow
+    @Final
+    private ItemStack cellStack;
+
+    @Override
+    public Object getStorageInventoryIdentity() {
+        return cellStack;
+    }
 
     @Shadow
     protected abstract InfinityCellRecord record();

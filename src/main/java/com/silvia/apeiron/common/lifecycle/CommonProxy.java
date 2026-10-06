@@ -31,7 +31,9 @@ public class CommonProxy {
     public void postInit(FMLPostInitializationEvent event) {
         ApeironMachines.validateRegisteredReservation();
         if (ApeironConfig.areAeMixinsEnabled() && ApeironConfig.isTstBigOutputEnabled()
-            && cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology"))
+            && cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology")) {
             com.silvia.apeiron.common.integration.tst.parallel.TstItemProcessingRecipes.register();
+            com.silvia.apeiron.common.integration.tst.parallel.TstGeneratedRecipeSources.register();
+        }
     }
 }

@@ -11,6 +11,7 @@ import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.api.machine.parallel.ParallelLimit;
 import com.silvia.apeiron.common.machine.energy.MTEInfiniteEnergyHatch;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
+import com.silvia.apeiron.math.RecipeOutputCounts;
 
 import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
@@ -18,6 +19,8 @@ import appeng.api.storage.data.IAEStack;
 import appeng.util.item.AEFluidStack;
 import appeng.util.item.AEItemStack;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
+import gregtech.api.objects.XSTR;
+import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.ParallelHelper;
@@ -33,7 +36,6 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
     private BigInteger euPerParallel;
     private BigInteger totalPerParallel;
     private BigInteger totalEnergy;
-    private BigMachineOutputQueue exactOutputs = new BigMachineOutputQueue();
     private java.util.function.Function<BigInteger, List<IAEStack<?>>> outputCalculator;
 
     public BigRecipeParallelHelper(MTEMultiBlockBase controller, MTEInfiniteEnergyHatch hatch,
@@ -45,10 +47,8 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
 
     public static boolean supports(GTRecipe recipe) {
         if (!supportsInputs(recipe)) return false;
-        for (int i = 0; i < recipe.mOutputs.length; i++)
-            if (recipe.getOutputChance(i) != 10000 && recipe.getOutputChance(i) != 0) return false;
-        for (int i = 0; i < recipe.mFluidOutputs.length; i++)
-            if (recipe.getFluidOutputChance(i) != 10000 && recipe.getFluidOutputChance(i) != 0) return false;
+        for (int i = 0; i < recipe.mOutputs.length; i++) if (recipe.getOutputChance(i) < 0) return false;
+        for (int i = 0; i < recipe.mFluidOutputs.length; i++) if (recipe.getFluidOutputChance(i) < 0) return false;
         return true;
     }
 
@@ -115,19 +115,13 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
             }
             parallels = lower;
             if (parallels.signum() == 0) {
-                result = CheckRecipeResultRegistry.ITEM_OUTPUT_FULL;
+                result = outputResult(BigInteger.ONE);
                 return false;
             }
         }
-        exactOutputs = new BigMachineOutputQueue();
         totalEnergy = hatch.isUltimate() ? totalPerParallel.multiply(parallels)
             : com.silvia.apeiron.math.RecipeDisplayNumbers.effectiveEUt(euPerParallel.multiply(parallels), efficiency)
                 .multiply(BigInteger.valueOf(duration));
-        for (IAEStack<?> output : outputs(parallels)) {
-            if (output instanceof IAEItemStack)
-                exactOutputs.addItem(((IAEItemStack) output).getItemStack(), BigAEStackValues.get(output));
-            else exactOutputs.addFluid(((IAEFluidStack) output).getFluidStack(), BigAEStackValues.get(output));
-        }
         // Only the native single-recipe OC/hook uses this compatibility view; no big output arrays are materialized.
         currentParallel = 1;
         itemOutputs = new ItemStack[0];
@@ -136,28 +130,46 @@ public final class BigRecipeParallelHelper extends ParallelHelper {
         return true;
     }
 
-    private List<IAEStack<?>> outputs(BigInteger count) {
+    private List<IAEStack<?>> outputs(BigInteger count, boolean capacity) {
         if (outputCalculator != null) return outputCalculator.apply(count);
         List<IAEStack<?>> values = new ArrayList<>();
         for (int i = 0; i < Math.min(recipe.mOutputs.length, controller.getItemOutputLimit()); i++)
             if (recipe.mOutputs[i] != null && recipe.getOutputChance(i) > 0) values.add(
                 BigAEStackValues.copyWithSize(
                     AEItemStack.create(recipe.mOutputs[i]),
-                    count.multiply(BigInteger.valueOf(recipe.mOutputs[i].stackSize))));
+                    outputCount(count, recipe.getOutputChance(i), capacity)
+                        .multiply(BigInteger.valueOf(recipe.mOutputs[i].stackSize))));
         for (int i = 0; i < Math.min(recipe.mFluidOutputs.length, controller.getFluidOutputLimit()); i++)
             if (recipe.mFluidOutputs[i] != null && recipe.getFluidOutputChance(i) > 0) values.add(
                 BigAEStackValues.copyWithSize(
                     AEFluidStack.create(recipe.mFluidOutputs[i]),
-                    count.multiply(BigInteger.valueOf(recipe.mFluidOutputs[i].amount))));
+                    outputCount(count, recipe.getFluidOutputChance(i), capacity)
+                        .multiply(BigInteger.valueOf(recipe.mFluidOutputs[i].amount))));
         return values;
     }
 
+    private static BigInteger outputCount(BigInteger count, int chance, boolean capacity) {
+        return capacity ? RecipeOutputCounts.maximum(count, chance)
+            : RecipeOutputCounts.roll(count, chance, XSTR.XSTR_INSTANCE);
+    }
+
     private boolean outputsFit(BigInteger count) {
-        return com.silvia.apeiron.common.machine.output.BigRecipeOutputCapacity.fits(controller, outputs(count));
+        return outputResult(count).wasSuccessful();
+    }
+
+    private CheckRecipeResult outputResult(BigInteger count) {
+        return com.silvia.apeiron.common.machine.output.BigRecipeOutputCapacity.check(controller, outputs(count, true));
     }
 
     public void commit(int duration) {
         if (state.isRunning() || duration < 1) throw new IllegalStateException("Wireless controller already running");
+        // Capacity planning and repeated native duration calculations never draw random outputs.
+        BigMachineOutputQueue exactOutputs = new BigMachineOutputQueue();
+        for (IAEStack<?> output : outputs(parallels, false)) {
+            if (output instanceof IAEItemStack)
+                exactOutputs.addItem(((IAEItemStack) output).getItemStack(), BigAEStackValues.get(output));
+            else exactOutputs.addFluid(((IAEFluidStack) output).getFluidStack(), BigAEStackValues.get(output));
+        }
         inputs.consume(parallels);
         state.startExact(parallels, totalEnergy, duration, exactOutputs, hatch.isUltimate());
     }

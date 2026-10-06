@@ -18,6 +18,8 @@ import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import gregtech.api.interfaces.IOutputBus;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputBusME;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputME;
@@ -30,6 +32,11 @@ public final class BigRecipeOutputCapacity {
     private BigRecipeOutputCapacity() {}
 
     public static boolean fits(MTEMultiBlockBase machine, List<IAEStack<?>> outputs) {
+        return check(machine, outputs).wasSuccessful();
+    }
+
+    /** Identifies the channel that cannot accept the outputs without committing either transaction. */
+    public static CheckRecipeResult check(MTEMultiBlockBase machine, List<IAEStack<?>> outputs) {
         List<Consumer<IAEItemStack>> items = new ArrayList<>();
         List<Consumer<IAEFluidStack>> fluids = new ArrayList<>();
         for (IOutputBus bus : machine.getOutputBusses()) {
@@ -137,8 +144,10 @@ public final class BigRecipeOutputCapacity {
                 for (Consumer<IAEItemStack> target : items) target.accept((IAEItemStack) output);
             else for (Consumer<IAEFluidStack> target : fluids) target.accept((IAEFluidStack) output);
             if (BigAEStackValues.get(output)
-                .signum() > 0) return false;
+                .signum() > 0)
+                return output instanceof IAEItemStack ? CheckRecipeResultRegistry.ITEM_OUTPUT_FULL
+                    : CheckRecipeResultRegistry.FLUID_OUTPUT_FULL;
         }
-        return true;
+        return CheckRecipeResultRegistry.SUCCESSFUL;
     }
 }

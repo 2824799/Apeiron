@@ -118,20 +118,21 @@ public final class ItemProcessingRecipes {
             any = true;
         }
         if (!any) return CheckRecipeResultRegistry.NO_RECIPE;
-        ItemProcessingPlan plan = ItemProcessingPlan.calculate(
-            available,
-            renewable,
-            costs,
-            parallelLimit,
-            hatch.getAvailableEUBig(),
-            debit -> BigRecipeOutputCapacity.fits(machine, outputs(recipes, debit).snapshotOutputs()));
+        CheckRecipeResult[] outputFailure = { CheckRecipeResultRegistry.NO_RECIPE };
+        ItemProcessingPlan plan = ItemProcessingPlan
+            .calculate(available, renewable, costs, parallelLimit, hatch.getAvailableEUBig(), debit -> {
+                CheckRecipeResult result = BigRecipeOutputCapacity
+                    .check(machine, outputs(recipes, debit).snapshotOutputs());
+                if (!result.wasSuccessful()) outputFailure[0] = result;
+                return result.wasSuccessful();
+            });
         if (plan.getParallelsBig()
             .signum() <= 0) {
             if (minimumCost.compareTo(hatch.getAvailableEUBig()) > 0)
                 return CheckRecipeResultRegistry.insufficientPower(
                     minimumCost.min(BigInteger.valueOf(Long.MAX_VALUE))
                         .longValue());
-            return CheckRecipeResultRegistry.ITEM_OUTPUT_FULL;
+            return outputFailure[0];
         }
         int duration = hatch.isUltimate() ? InfiniteEnergyHatches.targetDuration(machine) : source.getDurationTicks();
         BigMachineOutputQueue output = outputs(recipes, plan.getDebits());

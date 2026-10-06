@@ -35,7 +35,8 @@ public final class BigInputAllocation {
     }
 
     public BigInteger maximum(ParallelLimit limit) {
-        if (costs.length == 0) return limit.applyTo(BigInteger.ONE);
+        if (costs.length == 0) return limit.getBound()
+            .orElse(BigInteger.ONE);
         BigInteger upper = null;
         for (int i = 0; i < costs.length; i++) {
             BigInteger stock = BigInteger.ZERO;

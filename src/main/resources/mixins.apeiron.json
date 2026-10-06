@@ -16,6 +16,7 @@
   "mixins": [
     "ae.terminal.core.PatternBufferQuickMoveMixin",
     "tst.compat.TstPatternEncodeGuardMixin",
+    "tst.energy.WaterPurifierRecipeAccessor",
     "gregtech.input.BigDualInputProcessingMixin",
     "gregtech.input.BigInputHatchElementMixin",
     "gregtech.input.LegacyBigInputHatchElementMixin",
@@ -29,6 +30,8 @@
     "aeinfinitycell.stack.EUStackBigMixin",
     "gregtech.output.MixedOutputRegistrationMixin",
     "gregtech.output.MixedOutputHatchElementMixin",
+    "gregtech.output.TecTechMixedOutputRegistrationMixin",
+    "gregtech.output.GtppMixedOutputRegistrationMixin",
     "gregtech.output.PendingBigOutputTickMixin",
     "gregtech.output.PendingBigOutputDropMixin",
     "gregtech.output.MultiBlockProcessingAccessor",
@@ -63,6 +66,7 @@
     "ae.storage.NetworkInventoryHandlerMixin",
     "ae.storage.NetworkMonitorMixin",
     "ae.storage.GridStorageCacheBigMixin",
+    "ae.storage.CellProviderMountsMixin",
     "ae.storage.SecurityInventoryMixin",
     "ae.storage.CreativeCellInventoryMixin",
     "ae.terminal.core.GuiMEMonitorableMixin",
@@ -191,6 +195,8 @@
     "gregtech.energy.GodforgeRecipePredictionMixin",
     "gregtech.input.NativeInputWatcherMixin",
     "gregtech.output.ModernMEOutputHatchMixin",
+    "gregtech.output.NativeMEOutputCapacityMixin",
+    "gregtech.output.LegacyNativeMEOutputCapacityMixin",
     "ae.reshuffle.LegacyReshuffleTaskMixin",
     "ae.crafting.core.LegacyCraftingEntrypointMixin",
     "ae.crafting.core.ModernCraftingEntrypointMixin"

@@ -17,6 +17,8 @@ import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
 import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
 import com.silvia.apeiron.common.machine.me.output.storage.BigMEOutputProvider;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
+import com.silvia.apeiron.common.machine.output.BigRecipeOutputCapacity;
+import com.silvia.apeiron.compat.OutputTransactions;
 import com.silvia.apeiron.config.ApeironConfig;
 import com.silvia.apeiron.math.BigNumberFormatter;
 import com.silvia.apeiron.math.BigValueCodec;
@@ -27,6 +29,11 @@ import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.common.tileentities.machines.multi.MTEElectricBlastFurnace;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
+import tectech.thing.metaTileEntity.multi.godforge.MTEExoticModule;
+import tectech.thing.metaTileEntity.multi.godforge.MTEMoltenModule;
+import tectech.thing.metaTileEntity.multi.godforge.MTEPlasmaModule;
+import tectech.thing.metaTileEntity.multi.godforge.MTESmeltingModule;
 
 /** Checks both exact channels, their shared node, simulation, save/reload and dropped-item state. */
 public final class InfiniteMEOutputAssemblySmoke {
@@ -132,6 +139,28 @@ public final class InfiniteMEOutputAssemblySmoke {
         final MTEElectricBlastFurnace ordinary = new MTEElectricBlastFurnace("apeiron.verification.generic_output");
         ordinary.setBaseMetaTileEntity(new BaseMetaTileEntity());
         assertRegistration(ordinary);
+        verifyTecTechRegistration(new MTEMoltenModule("apeiron.verification.molten_output"));
+        verifyTecTechRegistration(new MTESmeltingModule("apeiron.verification.smelting_output"));
+        verifyTecTechRegistration(new MTEPlasmaModule("apeiron.verification.plasma_output"));
+        verifyTecTechRegistration(new MTEExoticModule("apeiron.verification.exotic_output"));
+        verifyGtppRegistration();
+        IndustrialElectrolyzerOutputSmoke.verify();
+        if (cpw.mods.fml.common.Loader.isModLoaded("sciencenotleisure")) {
+            for (String module : new String[] { "FOGExtractorModule", "FOGAlloySmelterModule",
+                "FOGAlloyBlastSmelterModule", "FOGSolarMuonCatalystModule" }) {
+                try {
+                    TTMultiblockBase gtnl = (TTMultiblockBase) Class
+                        .forName("com.science.gtnl.common.machine.multiblock." + module)
+                        .getConstructor(String.class)
+                        .newInstance("apeiron.verification." + module);
+                    verifyTecTechRegistration(gtnl);
+                } catch (ReflectiveOperationException e) {
+                    throw new IllegalStateException(
+                        "GTNL module output registration verification failed: " + module,
+                        e);
+                }
+            }
+        }
         if (cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology")) {
             try {
                 final MTEMultiBlockBase tst = (MTEMultiBlockBase) Class
@@ -146,6 +175,100 @@ public final class InfiniteMEOutputAssemblySmoke {
         }
         Apeiron.LOG.info(
             "Mixed output generic registration verification passed: GT/TST, both hatch counts, repeat scan and rebuild");
+    }
+
+    private static void verifyGtppRegistration() {
+        gtPlusPlus.xmod.gregtech.common.tileentities.machines.multi.production.MTEMassFabricator controller = new gtPlusPlus.xmod.gregtech.common.tileentities.machines.multi.production.MTEMassFabricator(
+            "apeiron.verify.gtpp_output_scanners");
+        controller.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        MTEInfiniteMEOutputAssembly assembly = assembly();
+        for (int adder = 0; adder < 3; adder++) {
+            controller.mOutputBusses.clear();
+            controller.mOutputHatches.clear();
+            for (int repeat = 0; repeat < 3; repeat++) {
+                boolean added = adder == 0 ? controller.addToMachineList(assembly.getBaseMetaTileEntity(), 0)
+                    : adder == 1
+                        ? controller
+                            .addToMachineList((gregtech.api.interfaces.metatileentity.IMetaTileEntity) assembly, 0)
+                        : controller.addOutputToMachineList(assembly.getBaseMetaTileEntity(), 0);
+                check(added, "GT++ scanner rejected mixed output");
+            }
+            check(
+                controller.mOutputBusses.size() == 1 && controller.mOutputHatches.size() == 1,
+                "GT++ scanner did not register both output channels exactly once");
+            BigMachineOutputQueue outputs = new BigMachineOutputQueue();
+            outputs.addItem(new ItemStack(Items.diamond), HUGE);
+            outputs.addFluid(new FluidStack(FluidRegistry.WATER, 1), HUGE);
+            check(BigRecipeOutputCapacity.fits(controller, outputs.snapshotOutputs()), "GT++ mixed capacity rejected");
+        }
+    }
+
+    private static void verifyTecTechRegistration(TTMultiblockBase controller) {
+        controller.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        final MTEInfiniteMEOutputAssembly assembly = assembly();
+        for (int scan = 0; scan < 2; scan++) {
+            for (int adder = 0; adder < 3; adder++) {
+                controller.mOutputBusses.clear();
+                controller.mOutputHatches.clear();
+                for (int repeat = 0; repeat < 3; repeat++) {
+                    boolean accepted = adder == 0
+                        ? controller.addClassicToMachineList(assembly.getBaseMetaTileEntity(), 0)
+                        : adder == 1 ? controller.addOutputToMachineList(assembly.getBaseMetaTileEntity(), 0)
+                            : controller.addToMachineList(assembly.getBaseMetaTileEntity(), 0);
+                    check(accepted, "TecTech hatch scanner rejected assembly");
+                }
+                check(
+                    controller.mOutputBusses.size() == 1 && controller.mOutputHatches.size() == 1,
+                    "TecTech scanner did not register both output types exactly once");
+                check(
+                    controller.mOutputHatches.get(0) == assembly.getFluidOutput(),
+                    "TecTech registered the wrong fluid view");
+                check(
+                    HatchElement.OutputHatch.count(controller) == 1 && HatchElement.OutputBus.count(controller) == 1,
+                    "TecTech structure is missing an output channel");
+                check(
+                    OutputTransactions.hatches(controller)
+                        .contains(assembly.getFluidOutput()),
+                    "TecTech capacity calculation cannot see the fluid output");
+                BigMachineOutputQueue outputs = new BigMachineOutputQueue();
+                outputs.addItem(new ItemStack(Items.diamond), HUGE);
+                outputs.addFluid(new FluidStack(FluidRegistry.WATER, 1), HUGE);
+                check(
+                    BigRecipeOutputCapacity.fits(controller, outputs.snapshotOutputs()),
+                    "TecTech incorrectly reported insufficient fluid output space");
+                check(
+                    assembly.getProvider()
+                        .getCachedAmountBig()
+                        .signum() == 0
+                        && assembly.getFluidProvider()
+                            .getCachedAmountBig()
+                            .signum() == 0,
+                    "TecTech output simulation modified caches");
+                check(
+                    controller.addOutputBusToMachineList(assembly.getBaseMetaTileEntity(), 0)
+                        && controller.addOutputHatchToMachineList(assembly.getBaseMetaTileEntity(), 0),
+                    "TecTech specialized hatch adders rejected assembly");
+                check(
+                    controller.mOutputBusses.size() == 1 && controller.mOutputHatches.size() == 1,
+                    "TecTech mixed scanners duplicated the output ports");
+                check(
+                    assembly.getBaseMetaTileEntity()
+                        .getMetaTileEntity() == assembly,
+                    "TecTech scanner replaced the physical output assembly");
+            }
+        }
+        BigMachineOutputQueue outputs = new BigMachineOutputQueue();
+        outputs.addItem(new ItemStack(Items.diamond), HUGE);
+        outputs.addFluid(new FluidStack(FluidRegistry.WATER, 1), HUGE);
+        check(
+            outputs.flush(controller.getOutputBusses(), OutputTransactions.hatches(controller), true, true)
+                && outputs.isEmpty(),
+            "TecTech did not emit both exact output channels");
+        checkCounts(assembly, HUGE, HUGE);
+        Apeiron.LOG.info(
+            "TecTech mixed output scanners and exact capacity verification passed: {}",
+            controller.getClass()
+                .getSimpleName());
     }
 
     private static boolean matches(HatchElement element, MTEInfiniteMEOutputAssembly assembly) {

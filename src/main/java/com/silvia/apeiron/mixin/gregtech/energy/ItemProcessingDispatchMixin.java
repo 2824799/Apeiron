@@ -4,6 +4,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+import com.silvia.apeiron.common.machine.parallel.GeneratedRecipes;
 import com.silvia.apeiron.common.machine.parallel.ItemProcessingRecipes;
 
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
@@ -21,6 +22,7 @@ public abstract class ItemProcessingDispatchMixin {
         require = 1)
     private CheckRecipeResult apeiron$processItemSource(MTEMultiBlockBase machine) {
         CheckRecipeResult result = ItemProcessingRecipes.process(machine);
+        if (result == null) result = GeneratedRecipes.process(machine);
         return result == null ? machine.checkProcessing() : result;
     }
 }

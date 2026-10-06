@@ -60,6 +60,18 @@ public class BigInputAllocationTest {
     }
 
     @Test
+    public void catalystOnlyRecipesUseTheEnergyOrManualBoundWithoutConsumingTheCircuit() {
+        BigInteger bound = BigInteger.TEN.pow(70);
+        BigInputAllocation allocation = new BigInputAllocation(
+            new BigInteger[] { BigInteger.ONE },
+            new BigInteger[0],
+            new boolean[0][]);
+        assertEquals(bound, allocation.maximum(ParallelLimit.bounded(bound)));
+        assertArrayEquals(new BigInteger[] { BigInteger.ZERO }, allocation.allocate(bound));
+        assertEquals(BigInteger.ONE, allocation.maximum(ParallelLimit.unlimited()));
+    }
+
+    @Test
     public void manualCapAndEmptyCostsHaveFiniteResults() {
         BigInputAllocation allocation = new BigInputAllocation(
             new BigInteger[] { BigInteger.TEN.pow(600) },

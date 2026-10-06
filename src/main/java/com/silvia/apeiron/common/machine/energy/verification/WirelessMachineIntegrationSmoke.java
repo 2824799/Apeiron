@@ -298,6 +298,61 @@ public final class WirelessMachineIntegrationSmoke {
                     "second source did not use shared completion");
             }
             verifyFallbackAndValidation(owner, recipeMap);
+            verifyOutputErrors(owner);
+        }
+
+        private static void verifyOutputErrors(UUID owner) {
+            RecipeMap<?> map = RecipeMapBuilder.of("apeiron.verify.item_source_output_errors")
+                .maxIO(1, 1, 0, 1)
+                .build();
+            ItemProcessingRecipes.register(map, new ItemProcessingRecipeSource() {
+
+                @Override
+                public int getDurationTicks() {
+                    return 7;
+                }
+
+                @Override
+                public ItemProcessingRecipe findRecipe(ItemStack input) {
+                    if (input.getItem() != Items.diamond) return null;
+                    BigMachineOutputQueue outputs = new BigMachineOutputQueue();
+                    outputs.addItem(new ItemStack(Items.emerald), BigInteger.ONE);
+                    outputs.addFluid(
+                        new net.minecraftforge.fluids.FluidStack(net.minecraftforge.fluids.FluidRegistry.WATER, 1),
+                        BigInteger.valueOf(7));
+                    return new ItemProcessingRecipe(BigInteger.valueOf(11), outputs);
+                }
+            });
+            for (boolean missingItems : new boolean[] { false, true }) {
+                ItemSourceFixture machine = new ItemSourceFixture();
+                machine.recipes = map;
+                MTEInfinitePatternInputAssembly input = attach(machine, owner, 3);
+                if (missingItems) {
+                    machine.mOutputBusses.clear();
+                    machine.mOutputHatches.add(
+                        (com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch) tile(1, owner)
+                            .getMetaTileEntity());
+                }
+                BigInteger balance = HUGE.multiply(BigInteger.valueOf(11));
+                WirelessNetworkManager.setUserEU(owner, balance);
+                check(
+                    !((MultiBlockProcessingAccessor) (Object) machine).apeiron$checkRecipe(),
+                    "item-source capacity accepted missing channel");
+                check(
+                    machine.getCheckRecipeResult()
+                        .equals(
+                            missingItems ? CheckRecipeResultRegistry.ITEM_OUTPUT_FULL
+                                : CheckRecipeResultRegistry.FLUID_OUTPUT_FULL),
+                    "item-source capacity reported the wrong output channel");
+                check(
+                    input.getBuffers()
+                        .get(0)
+                        .getItemAmountBig()
+                        .equals(HUGE)
+                        && WirelessNetworkManager.getUserEU(owner)
+                            .equals(balance),
+                    "item-source capacity failure consumed input or energy");
+            }
         }
 
         private static void verifyFallbackAndValidation(UUID owner, RecipeMap<?> recipeMap) {

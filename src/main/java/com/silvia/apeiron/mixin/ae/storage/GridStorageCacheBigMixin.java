@@ -16,6 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.silvia.apeiron.ae.storage.BigCellInventoryHandler;
 import com.silvia.apeiron.ae.storage.BigStorageGrid;
+import com.silvia.apeiron.ae.storage.StorageCellMounts;
 
 import appeng.api.storage.ICellCacheRegistry;
 import appeng.api.storage.ICellProvider;
@@ -89,7 +90,7 @@ public abstract class GridStorageCacheBigMixin implements BigStorageGrid {
         final Map<ICellCacheRegistry, Boolean> seen = new IdentityHashMap<>();
         for (final ICellProvider provider : this.activeCellProviders) {
             for (final IAEStackType<?> type : AEStackTypeRegistry.getAllTypes()) {
-                final List<IMEInventoryHandler> handlers = provider.getCellArray(type);
+                final List<IMEInventoryHandler> handlers = StorageCellMounts.unique(provider.getCellArray(type));
                 if (handlers == null) continue;
                 for (final IMEInventoryHandler handler : handlers) {
                     final ICellCacheRegistry registry = apeiron$findRegistry(handler);

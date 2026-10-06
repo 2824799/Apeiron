@@ -219,6 +219,58 @@ public final class StockingInputsSmoke {
         }
     }
 
+    /** Reuses the real stocking adapters to verify custom generators debit ME once, above int and long. */
+    public static void verifyGeneratedInput(MTEMultiBlockBase machine, FluidStack type, BigInteger parallels,
+        boolean mixed) {
+        Network network = new Network();
+        IAEStack<?> water = AEFluidStack.create(type);
+        BigInteger initial = parallels.multiply(BigInteger.valueOf(type.amount));
+        network.store(water, initial);
+        Input input = new Input(network, mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.FLUIDS);
+        check(input.setMark(0, water), "generator water mark failed");
+        IMetaTileEntity hatch = mixed ? new Assembly(input) : new Hatch(input);
+        if (mixed) {
+            check(machine.addToMachineList(hatch.getBaseMetaTileEntity(), 0), "generator rejected dual stocking input");
+        } else {
+            check(
+                machine.addInputHatchToMachineList(hatch.getBaseMetaTileEntity(), 0),
+                "generator rejected stocking input hatch");
+        }
+        boolean started = ((com.silvia.apeiron.mixin.gregtech.output.MultiBlockProcessingAccessor) machine)
+            .apeiron$checkRecipe();
+        if (!started) {
+            String visible = machine.getStoredFluids()
+                .stream()
+                .map(fluid -> fluid.getFluid() + "=" + fluid.amount)
+                .collect(java.util.stream.Collectors.joining(","));
+            throw new IllegalStateException(
+                "Stocking verification: generator with stocking input rejected recipe ("
+                    + machine.getCheckRecipeResult()
+                        .getID()
+                    + ", visible="
+                    + visible
+                    + ", state="
+                    + ((com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine).getWirelessRecipeState()
+                        .getParallelsBig()
+                    + ")");
+        }
+        com.silvia.apeiron.common.machine.parallel.WirelessRecipeState state = ((com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine)
+            .getWirelessRecipeState();
+        check(
+            state.getParallelsBig()
+                .equals(parallels),
+            "generator truncated stocking ME amount");
+        check(
+            network.count(water)
+                .signum() == 0,
+            "generator stocking debit was missing or incomplete");
+        machine.endRecipeProcessing();
+        check(
+            network.count(water)
+                .signum() == 0,
+            "repeated recipe end charged ME twice");
+    }
+
     private static void verifyNativeExtraction() {
         BigInteger total = BigInteger.TEN.pow(50);
         for (boolean mixed : new boolean[] { false, true }) {

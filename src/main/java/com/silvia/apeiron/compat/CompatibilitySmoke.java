@@ -18,11 +18,15 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.ae.smoke.AECraftingPlanningSmoke.verify();
         com.silvia.apeiron.ae.smoke.AECraftingTreeSmoke.verify();
         com.silvia.apeiron.ae.smoke.AEBackendSmoke.verify();
+        if (cpw.mods.fml.common.Loader.isModLoaded("aeinfinitycell"))
+            com.silvia.apeiron.common.integration.aeinfinitycell.verification.InfinityCellSmoke.verify();
         com.silvia.apeiron.common.machine.me.output.verification.BoundlessMEOutputSmoke.verify();
         com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke.verify();
         OutputCompatibilitySmoke.verify();
-        if (cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology"))
+        if (cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology")) {
             com.silvia.apeiron.common.machine.tst.verification.TstOutputSmoke.verify();
+            com.silvia.apeiron.common.machine.tst.verification.TstGeneratedEnergySmoke.verify();
+        }
         com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
         com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
@@ -36,6 +40,9 @@ public final class CompatibilitySmoke {
             .isClient()) com.silvia.apeiron.common.machine.energy.verification.WirelessPowerPanelSmoke.verify();
         if (DependencyCapabilities.hasClass("tectech.thing.metaTileEntity.multi.godforge.MTESmeltingModule"))
             com.silvia.apeiron.common.machine.energy.verification.WirelessMachineIntegrationSmoke.verify();
+        if (DependencyCapabilities
+            .hasClass("gtPlusPlus.xmod.gregtech.common.tileentities.machines.multi.production.MTEMassFabricator"))
+            com.silvia.apeiron.common.machine.energy.verification.MassFabricatorEnergySmoke.verify();
         Apeiron.LOG
             .info("Apeiron compatibility verification passed: {}", System.getenv("APEIRON_COMPATIBILITY_PROFILE"));
     }

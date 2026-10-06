@@ -22,6 +22,7 @@ import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.storage.BigCellInventory;
 import com.silvia.apeiron.ae.storage.BigMEInventory;
 import com.silvia.apeiron.ae.storage.BigStorageCell;
+import com.silvia.apeiron.ae.storage.StorageInventoryIdentity;
 import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigValueCodec;
 
@@ -37,7 +38,12 @@ import appeng.me.storage.CellInventoryHandler;
 
 /** Exact item accounting; fluid cells continue to use AE2's implementation. */
 @Mixin(value = CellInventory.class, remap = false)
-public abstract class CellInventoryMixin implements BigCellInventory, BigMEInventory {
+public abstract class CellInventoryMixin implements BigCellInventory, BigMEInventory, StorageInventoryIdentity {
+
+    @Override
+    public Object getStorageInventoryIdentity() {
+        return cellItem;
+    }
 
     @Shadow
     @Final

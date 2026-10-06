@@ -37,6 +37,9 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(final String targetClassName, final String mixinClassName) {
         if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gregtech.quantum."))
             return ApeironConfig.areAeMixinsEnabled() && DependencyCapabilities.hasClass(targetClassName);
+        if (mixinClassName.endsWith(".TecTechMixedOutputRegistrationMixin")
+            || mixinClassName.endsWith(".GtppMixedOutputRegistrationMixin"))
+            return ApeironConfig.areAeMixinsEnabled() && DependencyCapabilities.hasClass(targetClassName);
         if (mixinClassName.endsWith(".NativeOutputBatchMixin")) return ApeironConfig.areAeMixinsEnabled();
         if (mixinClassName.endsWith(".ModernNativeFluidOutputBatchMixin")
             || mixinClassName.endsWith(".LegacyNativeFluidOutputBatchMixin")) {
@@ -77,6 +80,12 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.endsWith(".ModernMEOutputHatchMixin")) return ApeironConfig.areAeMixinsEnabled()
             && DependencyCapabilities.hasClass("gregtech.api.interfaces.IOutputHatch");
+        if (mixinClassName.endsWith(".NativeMEOutputCapacityMixin")) return ApeironConfig.areAeMixinsEnabled()
+            && DependencyCapabilities.hasMethod(targetClassName, "canDumpItemToME", "(Ljava/util/List;)Z")
+            && DependencyCapabilities.hasMethod(targetClassName, "canDumpFluidToME", "(Ljava/util/List;)Z");
+        if (mixinClassName.endsWith(".LegacyNativeMEOutputCapacityMixin")) return ApeironConfig.areAeMixinsEnabled()
+            && DependencyCapabilities.hasMethod(targetClassName, "canDumpFluidToME", "()Z")
+            && !DependencyCapabilities.hasMethod(targetClassName, "canDumpFluidToME", "(Ljava/util/List;)Z");
         if (mixinClassName.endsWith(".LegacyReshuffleTaskMixin")) return ApeironConfig.areAeMixinsEnabled()
             && !DependencyCapabilities.hasClass("appeng.helpers.ReshuffleTask$PendingInjection");
         if (mixinClassName.endsWith(".ReshuffleTaskMixin")) return ApeironConfig.areAeMixinsEnabled()
