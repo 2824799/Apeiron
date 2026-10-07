@@ -105,6 +105,10 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
                 return DependencyCapabilities.hasMethod(targetClassName, "mergeOutputItems", "(Ljava/util/List;)V");
             case "WirelessOutputBigMixin":
                 return DependencyCapabilities.hasMethod(targetClassName, "mergeWirelessOutputsIntoMEQueue", "()V");
+            case "StructurePreviewItemSourceMixin":
+                return DependencyCapabilities.hasClass(targetClassName)
+                    && DependencyCapabilities.hasClass("codechicken.nei.ItemList")
+                    && DependencyCapabilities.hasClass("gregtech.common.blocks.ItemMachines");
             default:
                 return true;
         }

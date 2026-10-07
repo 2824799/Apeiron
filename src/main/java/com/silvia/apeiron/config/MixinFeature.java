@@ -13,6 +13,7 @@ public enum MixinFeature {
     EYE_ENHANCEMENT("mixins.tectech", "enableEyeOfHarmonyEnhancement"),
     PROGRAMMABLE_HATCHES("mixins.programmablehatches", "enablePatternOptimization"),
     PACKET_DIAGNOSTICS("mixins.network", "enablePayloadDiagnostics"),
+    STRUCTURE_PREVIEW("mixins.structurepreview", "enableStructurePreviewCompatibility"),
     EYE_OUTPUT(null, null),
     TST_OUTPUT(null, null),
     TST_PATTERN(null, null),
@@ -58,6 +59,9 @@ public enum MixinFeature {
                 return "Programmable Hatches 样板优化适配：允许优化矩阵与 Apeiron 样板倍增配合，减少重复配送。\n" + "也处理样板优化过程中的超大数量；关闭后停用这些优化适配。";
             case PACKET_DIAGNOSTICS:
                 return "网络报错详情：数据包过大时，在日志中补充大小和来源信息，便于排查断线。\n" + "本项不扩大数据包容量，也不改变正常游戏内容；关闭后不再补充这些诊断信息。";
+            case STRUCTURE_PREVIEW:
+                return "多方块结构预览兼容：当结构位置同时接受原版仓室和 Apeiron 仓室时，预览优先显示 GregTech 原版机器方块。\n"
+                    + "实际结构检查仍同时接受所有已注册的兼容仓室；关闭后恢复预览程序原有的候选顺序。";
             default:
                 throw new IllegalStateException("No player description for configurable feature: " + this);
         }
@@ -74,6 +78,8 @@ public enum MixinFeature {
                 return ApeironConfig.isLightweightWailaEnabled();
             case PACKET_DIAGNOSTICS:
                 return enabled;
+            case STRUCTURE_PREVIEW:
+                return core && enabled;
             case EYE_OUTPUT:
                 return core && ApeironConfig.isEyeOfHarmonyBigOutputEnabled();
             case TST_OUTPUT:
@@ -103,6 +109,7 @@ public enum MixinFeature {
         if (local.startsWith("proghatches.")) return PROGRAMMABLE_HATCHES;
         if (local.startsWith("compat.waila.")) return WAILA_BUDGET;
         if (local.startsWith("network.")) return PACKET_DIAGNOSTICS;
+        if (local.startsWith("blockrenderer.")) return STRUCTURE_PREVIEW;
         throw new IllegalArgumentException("Mixin has no configuration owner: " + name);
     }
 }

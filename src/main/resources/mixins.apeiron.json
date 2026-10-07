@@ -10,6 +10,7 @@
   "target": "@env(DEFAULT)",
   "compatibilityLevel": "JAVA_8",
   "client": [
+    "blockrenderer.StructurePreviewItemSourceMixin",
     "gregtech.spaceelevator.LegacyModuleParallelGuiMixin",
     "network.CustomPayloadDiagnosticsMixin",
     "aeinfinitycell.stack.EUStackRendererBigMixin",
