@@ -47,6 +47,34 @@ public class MachineIdConfigTest {
     }
 
     @Test
+    public void refreshesHelpInExistingFilesWithoutResettingPlayerSettings() throws Exception {
+        final File file = folder.newFile();
+        ApeironConfig.load(file);
+        final Configuration edited = new Configuration(file);
+        edited.get("mixins.appliedenergistics2", "enableAeMixins", true)
+            .set(false);
+        edited.get("machines", "machineIdStart", 31300)
+            .set(32000);
+        edited.save(); // Simulate an existing file without the current generated help.
+
+        ApeironConfig.load(file);
+
+        assertFalse(ApeironConfig.areAeMixinsEnabled());
+        assertEquals(32000, ApeironConfig.getMachineIdStart());
+        final String saved = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+        assertTrue(saved.contains("核心功能总开关"));
+        assertTrue(saved.contains("默认 31300"));
+        final Configuration reloaded = new Configuration(file);
+        assertFalse(
+            reloaded.get("mixins.appliedenergistics2", "enableAeMixins", true)
+                .getBoolean(true));
+        assertEquals(
+            32000,
+            reloaded.get("machines", "machineIdStart", 31300)
+                .getInt());
+    }
+
+    @Test
     public void reservesOneHundredIdsFromTheConfiguredStart() throws Exception {
         ApeironConfig.load(folder.newFile());
         assertEquals(31300, ApeironConfig.getMachineIdStart());

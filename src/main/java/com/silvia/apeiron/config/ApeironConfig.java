@@ -66,7 +66,8 @@ public final class ApeironConfig {
                 ENABLE_AE_MIXINS,
                 CATEGORY_AE_MIXINS,
                 true,
-                "Enable the cooperating AE large-number and GT input/output/energy core. Disable as one unit; requires a restart and matching client/server settings.");
+                "核心功能总开关：支持 AE2 大数存储、自动合成，以及 GT 机器的输入、输出和无线能源适配。\n" + "关闭后，上述功能及依赖它们的可选模组适配会一并停用；不会将已有大数存档转换为普通存档。\n"
+                    + "默认开启。修改后必须重启游戏／服务端，客户端与服务端应保持一致。");
             configuration.getCategory(CATEGORY_MIXINS)
                 .remove(ENABLE_AE_MIXINS);
             if (configuration.hasKey("mixins.gregtech", ENABLE_EYE_OUTPUT)) {
@@ -90,48 +91,54 @@ public final class ApeironConfig {
                 ENABLE_EYE_OUTPUT,
                 CATEGORY_TECTECH_MIXINS,
                 true,
-                "Enable Eye of Harmony big-number output. TecTech is bundled with GregTech but has the distinct mod ID tectech. "
-                    + "Requires AE large-number Mixins and a restart. Prioritizes Apeiron ME output blocks.");
+                "鸿蒙之眼大数输出：将完整数量的产物优先送入 Apeiron 的无限 ME 输出设备。\n"
+                    + "关闭后停用此输出适配；增强模块的设置由 enableEyeOfHarmonyEnhancement 单独控制。\n"
+                    + "需要 TecTech 和核心开关 enableAeMixins。默认开启；修改后重启，客户端与服务端保持一致。");
             tstOutputEnabled = configuration.getBoolean(
                 ENABLE_TST_OUTPUT,
                 CATEGORY_TST_MIXINS,
                 true,
-                "Enable Twist Space Technology shared big-number ME output. Requires AE Mixins and restart. "
-                    + "Supports Infinite ME Output Bus, Hatch and Assembly; custom machine output logic needs separate adapters.");
+                "TST 大数适配：支持其公共输出流程，以及已适配的星核钻机、矿物处理厂等机器。\n" + "可向无限 ME 输出总线、输出仓和输出总成输送大批产物，也控制 TST 专用能源适配。\n"
+                    + "关闭后停用这些 TST 专用适配；不会为尚未适配的机器自动增加功能。\n"
+                    + "需要 TST 和核心开关 enableAeMixins。默认开启；修改后重启，客户端与服务端保持一致。");
             tstPatternGuardEnabled = configuration.getBoolean(
                 ENABLE_TST_PATTERN_GUARD,
                 CATEGORY_TST_MIXINS,
                 true,
-                "Skip TST's conversion callback when an AE pattern encoding produces no output. Preserves successful conversions. Requires restart.");
+                "TST 样板编码保护：编码未得到有效样板时，跳过后续转换，避免报错。\n" + "正常编码与转换不受影响；关闭后恢复 TST 原有处理。需要 TST，不依赖核心开关。\n"
+                    + "默认开启；修改后重启，客户端与服务端保持一致。");
             infinityCellEnabled = configuration.getBoolean(
                 ENABLE_INFINITY_CELL,
                 CATEGORY_INFINITY_CELL_MIXINS,
                 true,
-                "Enable exact AE2 Infinity Cell transfers and inventory lists, including essentia and optional AppEU stacks. "
-                    + "Requires AE Mixins and a restart. Preserves Infinity Cell's existing UUID and external save format.");
+                "AE2 Infinity Cell 适配：使无限存储元件正确显示和存取大数物品、流体、源质等资源。\n" + "安装 AppEU 时也适配其资源；保留元件原有的存档身份与独立存储文件。\n"
+                    + "关闭后停用 Apeiron 对这些元件的数量适配，不会删除元件内的内容。\n"
+                    + "需要 AE2 Infinity Cell 和核心开关 enableAeMixins。默认开启；修改后重启，客户端与服务端保持一致。");
             lightweightWailaEnabled = configuration.getBoolean(
                 ENABLE_LIGHTWEIGHT_WAILA,
                 CATEGORY_WAILA,
                 true,
-                "Use operating snapshots instead of full GregTech disk saves for OmniOcular, and bound Waila packet "
-                    + "size for all tile entities. Inventories and recipes are previews; full contents remain in their GUIs. "
-                    + "Disable for custom OmniOcular scripts that require complete save data. Requires a restart.");
+                "精简 Waila／OmniOcular 悬浮提示数据，减少看向大量库存或样板时的卡顿与超大数据包。\n" + "保留运行状态；库存和配方只显示预览，完整内容请打开机器界面查看，不改变真实库存。\n"
+                    + "影响所有方块实体的 Waila 数据大小，并精简 GT 的 OmniOcular 数据。\n"
+                    + "自定义 OmniOcular 脚本若需要完整存档数据，可关闭此项；关闭后不再精简提示数据。\n"
+                    + "默认开启；修改后重启，客户端与服务端保持一致。");
             MixinFeature.load(configuration);
-            final String configuredStart = configuration.get(
-                CATEGORY_MACHINES,
-                "machineIdStart",
-                DEFAULT_MACHINE_ID_START,
-                "First GregTech machine ID reserved for Apeiron. Reserves 100 consecutive IDs. "
-                    + "Valid starting IDs: 2049..32666. Requires a restart; preserve this value for existing saves.")
+            final String configuredStart = configuration
+                .get(
+                    CATEGORY_MACHINES,
+                    "machineIdStart",
+                    DEFAULT_MACHINE_ID_START,
+                    "Apeiron 机器编号起点：从此编号起预留连续 100 个 GT 机器 ID。\n" + "默认 31300；可填 2049～32666。仅在与其他模组编号冲突时调整。\n"
+                        + "已有存档应保留原值，否则已放置的机器和物品可能对应错误。\n"
+                        + "修改后必须重启，客户端与服务端应使用相同编号。")
                 .getString();
             machineIdStart = Integer.parseInt(configuredStart.trim());
             if (machineIdStart < MIN_MACHINE_ID_START || machineIdStart > MAX_MACHINE_ID_START) {
                 throw new IllegalArgumentException("Apeiron machineIdStart must be in 2049..32666: " + machineIdStart);
             }
         } finally {
-            if (configuration.hasChanged()) {
-                configuration.save();
-            }
+            // Forge does not mark updated comments as changes. Refresh help text while retaining loaded values.
+            configuration.save();
         }
     }
 

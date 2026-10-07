@@ -34,20 +34,23 @@ public final class UnlimitedParallelConfig<M extends Enum<M> & ParallelMachine> 
                 ENABLE_UNLIMITED_PARALLEL,
                 CATEGORY_GENERAL,
                 false,
-                modName + " 无限并行总开关。需要重启和完整控制器适配；本文件记录适配选择。" + "实际并行仍受材料、输出空间、能源和手动并行限额限制。");
+                modName + " 原生无限并行扩展的预留选项，默认关闭。\n"
+                    + "当前版本仅保存所选机器，不会直接改变游戏中的并行；开启也不会自动解除限制。\n"
+                    + "Apeiron 能源仓已支持的并行设置请在机器电源面板调整，不受本文件控制。");
             final EnumSet<M> selected = EnumSet.noneOf(machineType);
             for (final M machine : machineType.getEnumConstants()) {
                 if (configuration.getBoolean(
                     machine.getKey(),
                     CATEGORY_MACHINES,
                     false,
-                    machine.getDescription() + " 需要完整的输入、处理、输出适配；涉及耗电时使用直接无线能源接口。")) {
+                    machine.getDescription() + "\n预留的单机选择，默认关闭；需与本文件总开关一起开启。当前版本仅保存选择，不改变机器运行。")) {
                     selected.add(machine);
                 }
             }
             settings = new Settings<>(enabled, selected);
         } finally {
-            if (configuration.hasChanged()) configuration.save();
+            // Also update descriptions in existing files; Forge does not track comment changes.
+            configuration.save();
         }
     }
 

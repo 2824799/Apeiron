@@ -22,7 +22,7 @@ public enum TstParallelMachine implements ParallelMachine {
     MEGA_STONE_BREAKER("TST_MegaStoneBreaker", "硅岩制造机", "需要总功率档位至少 29。"),
     MIRACLE_DOOR("TST_MiracleDoor", "奇迹之门", ""),
     SCAVENGER("TST_Scavenger", "拾荒者", ""),
-    THERMAL_ENERGY_DEVOURER("TST_ThermalEnergyDevourer", "热能饕餮", "原生模式并行必须为 INT_MAX。"),
+    THERMAL_ENERGY_DEVOURER("TST_ThermalEnergyDevourer", "热能饕餮", ""),
     VACUUM_FILTER_EXTRACTOR("TST_VacuumFilterExtractor", "真空抽滤器", "");
 
     private final String key;
@@ -30,7 +30,7 @@ public enum TstParallelMachine implements ParallelMachine {
 
     TstParallelMachine(final String key, final String name, final String condition) {
         this.key = key;
-        this.description = name + "。 " + condition + " 仅原生并行返回 INT_MAX 的模式。";
+        this.description = name + "。 " + condition + " 适用候选：原生并行上限为 2,147,483,647 的模式。";
     }
 
     public String getKey() {
