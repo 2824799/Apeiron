@@ -55,7 +55,8 @@ public abstract class PacketCraftingCompleteNotificationBigMixin {
         method = "clientPacketData",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/util/StatCollector;translateToLocalFormatted(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;"))
+            target = "Lnet/minecraft/util/StatCollector;translateToLocalFormatted(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;",
+            remap = true))
     private String apeiron$format(final String key, final Object[] args) {
         if (args != null && args.length > 0) {
             final Object[] copy = args.clone();

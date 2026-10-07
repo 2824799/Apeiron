@@ -26,3 +26,43 @@ tasks.withType(JavaExec).configureEach {
 tasks.named('compileVerificationJava', JavaCompile) {
     options.annotationProcessorPath = tasks.named('compileJava', JavaCompile).get().options.annotationProcessorPath
 }
+
+// A small, separate mod for testing the reobfuscated release in an installed Minecraft profile.
+// It deliberately avoids MCP Minecraft method references and is never bundled with Apeiron.
+sourceSets {
+    productionVerification {
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+}
+tasks.register('productionVerificationJar', Jar) {
+    dependsOn tasks.named('productionVerificationClasses')
+    archiveFileName = 'apeiron-production-verification.jar'
+    destinationDirectory = layout.buildDirectory.dir('verification')
+    from sourceSets.productionVerification.output
+}
+tasks.named('compileProductionVerificationJava', JavaCompile) {
+    options.annotationProcessorPath = tasks.named('compileJava', JavaCompile).get().options.annotationProcessorPath
+}
+
+// Validate the final distribution artifact, not just the development classes used by runtime matrices.
+def releaseMappings = tasks.register('releaseMappingCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify Minecraft injection anchor mappings in the reobfuscated distribution jar.'
+    dependsOn tasks.named('verificationClasses'), tasks.named('reobfJar'), tasks.named('generateForgeSrgMappings')
+    classpath = sourceSets.verification.runtimeClasspath
+    mainClass = 'com.silvia.apeiron.verification.ReleaseMappingCheck'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+    def projectDirectory = layout.projectDirectory.asFile
+    def artifact = providers.gradleProperty('releaseMappingArtifact').map {
+        def path = new File(it)
+        path.isAbsolute() ? path : new File(projectDirectory, it)
+    }
+        .orElse(tasks.named('reobfJar').flatMap { it.archiveFile }.map { it.asFile })
+    def mappings = tasks.named('generateForgeSrgMappings').flatMap { it.mcpToSrg }
+    def report = layout.buildDirectory.file('reports/mixins/release-mappings.tsv')
+    inputs.file(artifact)
+    inputs.file(mappings)
+    outputs.file(report)
+    argumentProviders.add({ [artifact.get().absolutePath, mappings.get().asFile.absolutePath, report.get().asFile.absolutePath] } as CommandLineArgumentProvider)
+}
+tasks.named('check') { dependsOn releaseMappings }

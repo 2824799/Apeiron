@@ -19,7 +19,9 @@ Apeiron 编译一次，运行时检测依赖类和方法，选择对应 Mixin �
 
 | 命令 | 静态检查 | Minecraft 启动 |
 | --- | --- | --- |
-| `./gradlew build` / `compatibilityCheck` | 四版所选 Mixin 的目标方法、调用／字段位置与配置归属 | 最新支持的核心服务端一次 |
+| `./gradlew build` | 四版 Mixin 契约及最终发布 JAR 的 Minecraft 调用映射 | 最新支持的核心服务端一次 |
+| `./gradlew compatibilityCheck` | 四版所选 Mixin 的目标方法、调用／字段位置与配置归属 | 最新支持的核心服务端一次 |
+| `./gradlew releaseMappingCheck` | 对照 MCP→SRG 映射检查发布 JAR 内的注入锚点与 refmap | 不启动游戏 |
 | `./gradlew compatibilityClientCheck` | — | 最新支持的核心客户端一次 |
 | `./gradlew compatibilityFullCheck` | 四版 | 四版服务端 + 四版客户端 |
 | `./gradlew compatibility_2_9_0_beta_1` | — | 指定版本服务端一次 |
@@ -40,3 +42,19 @@ Apeiron 编译一次，运行时检测依赖类和方法，选择对应 Mixin �
 真实加载环境中验证所选 Mixin，覆盖物品／流体大数存取与 NBT、创造元件、CPU 发现与取消、大数合成入口和树数据包、存储整理及取消回滚、输入总成和镜像、360 格存储输入、锅炉／涡轮的基础消耗接口、输出缓存及结构注册、普通／终极能源仓的电量预算与暂停恢复、诸神之锻模块。客户端另验证合成树节点布局、大数标签、物品渲染与电源配置面板。
 
 未安装的可选第三方集成不加入历史矩阵，当前开发环境可继续运行已有集成自检。所有测试使用独立库存、临时电网账户和测试目录；玩家世界内的任意机器组合仍需实测。
+
+## 发布 JAR 验证
+
+历史矩阵加载开发 JAR，不能替代正式安装环境验证。`alpha0.0.5` 首次发布曾遗漏合成完成通知的 Minecraft 方法映射：开发环境能命中 `translateToLocalFormatted`，正式环境使用 `func_74837_a`，因而启动失败。修复在该调用锚点启用映射，仍保留严格的注入命中要求。
+
+`build` 现在包含 `releaseMappingCheck`：直接读取 `reobfJar` 产物中的注册 Mixin、嵌套注入锚点和 refmap，对照构建所用 MCP→SRG 表核对 Minecraft 调用。它不启动游戏，不增加历史版本排列组合。可用 `-PreleaseMappingArtifact=/绝对路径/旧包.jar` 检查现成产物；原故障包应在此处失败。静态检查只证明映射条目一致，不替代实际的类转换或模组交互验证。
+
+发布前还需验证最终安装包：
+
+1. 执行 `./gradlew build compatibilityFullCheck productionVerificationJar`。
+2. 新建独立游戏实例，使用实际发布版 Forge、AE2、GT 及需要验证的可选模组；复制所需配置与脚本，不使用玩家存档。
+3. 在该实例中安装 `build/libs/apeiron-<版本>.jar`（不能用 `-dev.jar`），并加入 `build/verification/apeiron-production-verification.jar`。
+4. 用正常启动器启动客户端。验证模组会在所有模组加载完成后，强制加载当前启用的全部 Mixin 目标（包括延迟加载的界面类），到达客户端 Tick 后写入 `production-verification-passed.txt` 并退出。
+5. 确认进程成功退出且本轮生成成功文件，记录实际 JAR 的 SHA-256、依赖版本和日志。发布时上传相同文件；不能复用另一个包的成功凭据。
+
+正式安装验证需要已有的完整游戏环境，未默认加入每次日常构建。验证模组独立位于 `src/productionVerification`，不会打入发布 JAR 或源码包，验证完成后不应安装到玩家实例。
