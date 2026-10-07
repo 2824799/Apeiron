@@ -14,9 +14,15 @@
     "aeinfinitycell.nei.InfinityPreviewBigMixin"
   ],
   "mixins": [
+    "gtnl.GtnlProcessingLogicBigMixin",
+    "gtnl.GtnlWirelessMachineMixin",
+    "gtnl.GtnlWirelessBatchMixin",
+    "gtnl.GtnlWirelessStepMixin",
     "ae.terminal.core.PatternBufferQuickMoveMixin",
     "tst.compat.TstPatternEncodeGuardMixin",
     "tst.energy.WaterPurifierRecipeAccessor",
+    "gregtech.lanthanides.TargetChamberInputMixin",
+    "gregtech.lanthanides.SourceChamberInputMixin",
     "gregtech.input.BigDualInputProcessingMixin",
     "gregtech.input.BigInputHatchElementMixin",
     "gregtech.input.LegacyBigInputHatchElementMixin",

@@ -26,7 +26,8 @@ import gregtech.api.util.GTRecipe;
 import gregtech.api.util.ParallelHelper;
 
 /** One native overclock calculation, one exact input allocation, and one output ledger per recipe. */
-public final class BigRecipeParallelHelper extends ParallelHelper {
+public final class BigRecipeParallelHelper extends ParallelHelper
+    implements com.silvia.apeiron.api.machine.parallel.PreparedWirelessRecipe {
 
     private final MTEMultiBlockBase controller;
     private final MTEInfiniteEnergyHatch hatch;

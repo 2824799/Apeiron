@@ -271,6 +271,60 @@ public final class StockingInputsSmoke {
             "repeated recipe end charged ME twice");
     }
 
+    /** Verifies custom readers commit mutable stocking views once, including separately registered input roles. */
+    public static void verifyCustomItemInputs(MTEMultiBlockBase machine,
+        java.util.function.Consumer<MTEInfiniteStorageInputAssembly> register, ItemStack[] stacks) {
+        Network network = new Network();
+        Input input = new Input(network, StockingInputLogic.Kind.MIXED);
+        for (int i = 0; i < stacks.length; i++) {
+            IAEStack<?> type = AEItemStack.create(stacks[i]);
+            network.store(type, BigInteger.valueOf(stacks[i].stackSize));
+            input.setMark(i, type);
+        }
+        register.accept(new Assembly(input));
+        check(
+            ((com.silvia.apeiron.mixin.gregtech.output.MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(),
+            "custom reader rejected stocking assembly");
+        for (ItemStack stack : stacks) check(
+            network.count(AEItemStack.create(stack))
+                .signum() == 0,
+            "custom reader did not debit marked material");
+        machine.endRecipeProcessing();
+        for (ItemStack stack : stacks) check(
+            network.count(AEItemStack.create(stack))
+                .signum() == 0,
+            "custom reader duplicated stocking debit");
+    }
+
+    /** Two separately registered roles must roll back together if either real extraction fails. */
+    public static void verifySplitItemInputs(MTEMultiBlockBase machine,
+        java.util.function.BiConsumer<MTEInfiniteStorageInputAssembly, MTEInfiniteStorageInputAssembly> register,
+        boolean fail) {
+        Network network = new Network();
+        ItemStack[] stacks = { new ItemStack(net.minecraft.init.Items.diamond, 4),
+            new ItemStack(net.minecraft.init.Items.emerald, 2) };
+        Input rear = new Input(network, StockingInputLogic.Kind.MIXED);
+        Input front = new Input(network, StockingInputLogic.Kind.MIXED);
+        for (int i = 0; i < stacks.length; i++)
+            network.store(AEItemStack.create(stacks[i]), BigInteger.valueOf(stacks[i].stackSize));
+        rear.setMark(0, AEItemStack.create(stacks[0]));
+        front.setMark(0, AEItemStack.create(stacks[1]));
+        network.partialItem = fail;
+        register.accept(new Assembly(rear), new Assembly(front));
+        check(
+            ((com.silvia.apeiron.mixin.gregtech.output.MultiBlockProcessingAccessor) machine).apeiron$checkRecipe()
+                != fail,
+            "split stocking transaction result");
+        for (ItemStack stack : stacks) check(
+            network.count(AEItemStack.create(stack))
+                .equals(fail ? BigInteger.valueOf(stack.stackSize) : BigInteger.ZERO),
+            "split stocking transaction lost input");
+        if (fail) check(
+            !((com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine).getWirelessRecipeState()
+                .isRunning(),
+            "failed extraction retained prepared outputs");
+    }
+
     private static void verifyNativeExtraction() {
         BigInteger total = BigInteger.TEN.pow(50);
         for (boolean mixed : new boolean[] { false, true }) {
@@ -1040,7 +1094,7 @@ public final class StockingInputsSmoke {
     private static final class Network implements IMEInventory, BigMEInventory {
 
         private final List<IAEStack<?>> stored = new ArrayList<>();
-        private boolean partialFluid, rejectInsert;
+        private boolean partialFluid, partialItem, rejectInsert;
 
         private IAEStack<?> find(IAEStack<?> type) {
             for (IAEStack<?> stack : stored) if (StockingInputLogic.same(stack, type)) return stack;
@@ -1081,6 +1135,10 @@ public final class StockingInputsSmoke {
             boolean renewable = BigAEStackValues.isInfinite(stock);
             BigInteger moved = renewable ? BigAEStackValues.get(request)
                 : count(request).min(BigAEStackValues.get(request));
+            if (mode == Actionable.MODULATE && partialItem && request instanceof IAEItemStack) {
+                moved = moved.divide(BigInteger.valueOf(2));
+                partialItem = false;
+            }
             if (mode == Actionable.MODULATE && partialFluid
                 && request instanceof appeng.api.storage.data.IAEFluidStack) {
                 moved = moved.divide(BigInteger.valueOf(2));

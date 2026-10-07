@@ -35,6 +35,17 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(final String targetClassName, final String mixinClassName) {
+        if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gregtech.lanthanides."))
+            return ApeironConfig.areAeMixinsEnabled() && DependencyCapabilities
+                .hasMethod("gtnhlanth.common.tileentity.MTETargetChamber", "getMaskItemStack", null);
+        if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gtnl.")) {
+            if (!ApeironConfig.areAeMixinsEnabled() || !DependencyCapabilities.hasClass(targetClassName)) return false;
+            if (mixinClassName.endsWith(".GtnlWirelessBatchMixin"))
+                return DependencyCapabilities.hasMethod(targetClassName, "checkProcessing", null);
+            if (mixinClassName.endsWith(".GtnlWirelessStepMixin"))
+                return DependencyCapabilities.hasMethod(targetClassName, "wirelessModeProcessOnce", null);
+            return true;
+        }
         if (mixinClassName.startsWith("com.silvia.apeiron.mixin.gregtech.quantum."))
             return ApeironConfig.areAeMixinsEnabled() && DependencyCapabilities.hasClass(targetClassName);
         if (mixinClassName.endsWith(".TecTechMixedOutputRegistrationMixin")

@@ -41,6 +41,7 @@ dependencies {
     compileOnly("apeiron.development:TwistSpaceTechnology:0.8.0-RC2.1:dev")
     compileOnly("apeiron.development:aeinfinitycell:1.0.5:dev")
     compileOnly("apeiron.development:programmablehatches:0.2.0p26:dev")
+    compileOnly("apeiron.development:sciencenotleisure:0.2.7-rc1:dev")
     compileOnly("com.github.GTNewHorizons:ThaumicEnergistics:1.7.61-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:Avaritia:1.99:dev")
     testImplementation("junit:junit:4.13.2")

@@ -8,6 +8,10 @@ public final class CompatibilitySmoke {
     private CompatibilitySmoke() {}
 
     public static void verify() {
+        if (cpw.mods.fml.common.Loader.isModLoaded("sciencenotleisure"))
+            com.silvia.apeiron.common.integration.gtnl.parallel.GtnlIntegrationSmoke.verify();
+        if (DependencyCapabilities.hasMethod("gtnhlanth.common.tileentity.MTETargetChamber", "getMaskItemStack", null))
+            com.silvia.apeiron.common.integration.lanthanides.TargetChamberInputSmoke.verify();
         com.silvia.apeiron.ae.smoke.AEProductionEntrypointSmoke.verify();
         com.silvia.apeiron.ae.smoke.AEMixinTargetSmoke.verify();
         com.silvia.apeiron.ae.smoke.AEItemStackSmoke.verify();

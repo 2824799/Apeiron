@@ -25,7 +25,7 @@ public final class WirelessWailaDisplay {
     private static final String[] ACTIVE_RECIPE_KEYS = { "ApeironActualWirelessEUt", "ApeironActualWirelessEUtDisplay",
         "ApeironActualWirelessTotalEU", "ApeironActualWirelessTotalEUDisplay", "ApeironActualWirelessAmperageDisplay",
         "ApeironWirelessInputVoltage", "ApeironLosslessEnergy", "ApeironWirelessOutputRows",
-        "ApeironWirelessOutputTypes" };
+        "ApeironWirelessOutputTypes", "ApeironNativeRecipeEnergy" };
 
     public static String plainText(String text) {
         return FORMATTING.matcher(text)
@@ -40,6 +40,7 @@ public final class WirelessWailaDisplay {
             state.getParallelSettingBig()
                 .signum() == 0 ? "∞" : BigNumberFormatter.formatCompact(state.getParallelSettingBig()));
         tag.setBoolean("ApeironWirelessRunning", state.isRunning());
+        if (state.usesNativeEnergy()) tag.removeTag("ApeironParallelSetting");
         tag.setString(
             "ApeironRunningParallels",
             BigNumberFormatter.formatCompact(state.isRunning() ? state.getParallelsBig() : BigInteger.ZERO));
@@ -49,6 +50,7 @@ public final class WirelessWailaDisplay {
         // A provider may reuse its compound after completion; never leave active-recipe display keys behind.
         for (String key : ACTIVE_RECIPE_KEYS) tag.removeTag(key);
         if (!state.isRunning()) return;
+        if (state.usesNativeEnergy()) tag.setBoolean("ApeironNativeRecipeEnergy", true);
         final BigInteger actual = state.displayEUt(efficiency);
         tag.setString("ApeironActualWirelessEUt", actual.toString());
         tag.setString("ApeironActualWirelessEUtDisplay", BigNumberFormatter.formatCompact(actual));
@@ -112,7 +114,8 @@ public final class WirelessWailaDisplay {
         final String newLine = StatCollector.translateToLocalFormatted(
             "GT5U.waila.energy.use",
             tag.getString("ApeironActualWirelessEUtDisplay"),
-            StatCollector.translateToLocal("apeiron.machine.energy.wireless"));
+            tag.getBoolean("ApeironNativeRecipeEnergy") ? GTUtility.getColoredTierNameFromVoltage(legacy)
+                : StatCollector.translateToLocal("apeiron.machine.energy.wireless"));
         final int position = lines.indexOf(oldLine);
         if (position >= 0) lines.set(position, newLine);
         final NBTTagList outputs = tag.getTagList("ApeironWirelessOutputRows", 10);
@@ -163,14 +166,14 @@ public final class WirelessWailaDisplay {
                     + EnumChatFormatting.YELLOW
                     + tag.getString("ApeironActualWirelessEUtDisplay")
                     + " EU/t");
-            else if (plain.contains("MAX-Tier")) lines.set(
+            else if (plain.contains("MAX-Tier") && !tag.getBoolean("ApeironNativeRecipeEnergy")) lines.set(
                 index,
                 EnumChatFormatting.LIGHT_PURPLE + "MAX-Tier： "
                     + EnumChatFormatting.YELLOW
                     + tag.getString("ApeironActualWirelessAmperageDisplay")
                     + " A "
                     + GTUtility.getColoredTierNameFromVoltage(tag.getLong("ApeironWirelessInputVoltage")));
-            else if (plain.contains("运行电压")) lines.set(
+            else if (plain.contains("运行电压") && !tag.getBoolean("ApeironNativeRecipeEnergy")) lines.set(
                 index,
                 EnumChatFormatting.LIGHT_PURPLE + "运行电压： "
                     + GTUtility.getColoredTierNameFromVoltage(tag.getLong("ApeironWirelessInputVoltage")));

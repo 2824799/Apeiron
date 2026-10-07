@@ -43,6 +43,11 @@ public final class Apeiron {
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
+        if ("1".equals(System.getenv("APEIRON_VERIFY_GTNL"))) {
+            com.silvia.apeiron.common.integration.gtnl.parallel.GtnlIntegrationSmoke.verify();
+            if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()
+                .exitJava(0, false);
+        }
         if ("1".equals(System.getenv("APEIRON_VERIFY_COMPATIBILITY"))) {
             com.silvia.apeiron.compat.CompatibilitySmoke.verify();
             if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()

@@ -17,13 +17,14 @@ public final class WirelessRecipeState {
     private int targetDuration = 128;
     private boolean lossless;
     private boolean exactDebit;
+    private boolean nativeEnergy;
     private BigInteger totalEnergy = BigInteger.ZERO;
     private int paidTicks;
     private BigInteger parallels = BigInteger.ZERO;
     private BigInteger euPerTick = BigInteger.ZERO;
     private int duration;
     private boolean running;
-    private BigRecipeParallelHelper prepared;
+    private com.silvia.apeiron.api.machine.parallel.PreparedWirelessRecipe prepared;
     private int preparedDuration;
     private BigMachineOutputQueue recipeOutputs = new BigMachineOutputQueue();
     private java.util.List<appeng.api.storage.data.IAEStack<?>> hudOutputs;
@@ -74,6 +75,10 @@ public final class WirelessRecipeState {
 
     public boolean isLossless() {
         return lossless;
+    }
+
+    public boolean usesNativeEnergy() {
+        return nativeEnergy;
     }
 
     public BigInteger nextDebit(int efficiency) {
@@ -143,14 +148,14 @@ public final class WirelessRecipeState {
         prepared = null;
     }
 
-    public void prepare(BigRecipeParallelHelper helper, int duration) {
+    public void prepare(com.silvia.apeiron.api.machine.parallel.PreparedWirelessRecipe helper, int duration) {
         prepared = helper;
         preparedDuration = duration;
     }
 
     public void commitPreparedRecipe() {
         if (prepared == null) return;
-        BigRecipeParallelHelper helper = prepared;
+        com.silvia.apeiron.api.machine.parallel.PreparedWirelessRecipe helper = prepared;
         prepared = null;
         helper.commit(preparedDuration);
     }
@@ -165,6 +170,7 @@ public final class WirelessRecipeState {
         this.hudOutputs = null;
         this.lossless = false;
         this.exactDebit = false;
+        this.nativeEnergy = false;
         this.paidTicks = 0;
         this.totalEnergy = eut.multiply(BigInteger.valueOf(duration));
         running = true;
@@ -186,9 +192,17 @@ public final class WirelessRecipeState {
         this.hudOutputs = null;
         this.lossless = lossless;
         this.exactDebit = true;
+        this.nativeEnergy = false;
         this.paidTicks = 0;
         this.totalEnergy = total;
         this.running = true;
+    }
+
+    /** Native wired power or an already-paid wireless batch owns energy; this state owns only its exact outputs. */
+    public void startNativePowered(BigInteger parallels, BigInteger total, int duration,
+        BigMachineOutputQueue outputs) {
+        startExact(parallels, total, duration, outputs, false);
+        nativeEnergy = true;
     }
 
     public void complete() {
@@ -207,6 +221,7 @@ public final class WirelessRecipeState {
         paidTicks = 0;
         lossless = false;
         exactDebit = false;
+        nativeEnergy = false;
         totalEnergy = BigInteger.ZERO;
     }
 
@@ -222,6 +237,7 @@ public final class WirelessRecipeState {
         tag.setInteger("targetDuration", targetDuration);
         tag.setBoolean("lossless", lossless);
         tag.setBoolean("exactDebit", exactDebit);
+        if (nativeEnergy) tag.setBoolean("nativeEnergy", true);
         tag.setInteger("paidTicks", paidTicks);
         BigValueCodec.writeNBT(tag, "totalEnergy", "totalEnergyBig", new AdaptiveInteger(totalEnergy));
         NBTTagCompound recipe = new NBTTagCompound();
@@ -276,6 +292,7 @@ public final class WirelessRecipeState {
         running = tag.getBoolean("running") && duration > 0 && parallels.signum() > 0;
         lossless = tag.getBoolean("lossless");
         exactDebit = tag.getBoolean("exactDebit") || lossless;
+        nativeEnergy = tag.getBoolean("nativeEnergy");
         totalEnergy = BigValueCodec.readNBT(tag, "totalEnergy", "totalEnergyBig")
             .toBigInteger()
             .max(BigInteger.ZERO);

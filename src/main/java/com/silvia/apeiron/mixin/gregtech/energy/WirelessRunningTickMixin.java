@@ -27,7 +27,7 @@ public abstract class WirelessRunningTickMixin {
     @Inject(method = "onRunningTick", at = @At("HEAD"), cancellable = true, require = 1)
     private void apeiron$debit(ItemStack slot, CallbackInfoReturnable<Boolean> cir) {
         WirelessRecipeState state = ((BigWirelessController) this).getWirelessRecipeState();
-        if (!state.isRunning()) return;
+        if (!state.isRunning() || state.usesNativeEnergy()) return;
         MTEMultiBlockBase machine = (MTEMultiBlockBase) (Object) this;
         cir.setReturnValue(WirelessControllerEnergy.debitTick(machine));
     }
