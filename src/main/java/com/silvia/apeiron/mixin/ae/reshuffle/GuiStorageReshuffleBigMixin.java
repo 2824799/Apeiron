@@ -22,7 +22,7 @@ import appeng.api.config.HealthSortOrder;
 import appeng.api.storage.data.IAEStack;
 import appeng.client.gui.implementations.GuiStorageReshuffle;
 import appeng.container.implementations.ContainerStorageReshuffle;
-import appeng.core.localization.Localization;
+import appeng.core.localization.GuiText;
 import appeng.helpers.ReshuffleReport;
 import appeng.helpers.ReshuffleReport.ItemChange;
 import appeng.helpers.ScanTask.ScanRecord;
@@ -131,8 +131,8 @@ public abstract class GuiStorageReshuffleBigMixin {
         method = "drawScanContent",
         at = @At(
             value = "INVOKE",
-            target = "Lappeng/core/localization/Localization;getLocal([Ljava/lang/Object;)Ljava/lang/String;"))
-    private static String apeiron$formatScanTypes(final Localization text, final Object[] args) {
+            target = "Lappeng/core/localization/GuiText;getLocal([Ljava/lang/Object;)Ljava/lang/String;"))
+    private static String apeiron$formatScanTypes(final GuiText text, final Object[] args) {
         return text.getLocal(BigGuiNumberCapture.formatScanTypeArgs(args));
     }
 

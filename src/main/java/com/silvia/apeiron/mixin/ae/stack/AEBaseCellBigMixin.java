@@ -7,10 +7,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import com.silvia.apeiron.ae.storage.BigCellInventory;
 import com.silvia.apeiron.ae.terminal.BigCellTooltipNumbers;
 
-import appeng.api.storage.data.IAEStack;
 import appeng.items.AEBaseCell;
 import appeng.me.storage.CellInventory;
-import appeng.util.ReadableNumberConverter;
 
 /** Keeps storage-cell hover text exact for used bytes and contained item amounts. */
 @Mixin(value = AEBaseCell.class, remap = false)
@@ -43,19 +41,4 @@ public abstract class AEBaseCellBigMixin {
         return BigCellTooltipNumbers.formatNumber(formatter, value);
     }
 
-    @Redirect(
-        method = "addCheckedInformation",
-        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEStack;getStackSize()J"))
-    private long apeiron$captureStackAmount(final IAEStack<?> stack) {
-        return BigCellTooltipNumbers.captureStack(stack);
-    }
-
-    @Redirect(
-        method = "addCheckedInformation",
-        at = @At(
-            value = "INVOKE",
-            target = "Lappeng/util/ReadableNumberConverter;toWideReadableForm(J)Ljava/lang/String;"))
-    private String apeiron$formatStackAmount(final ReadableNumberConverter converter, final long value) {
-        return BigCellTooltipNumbers.formatStack(value);
-    }
 }

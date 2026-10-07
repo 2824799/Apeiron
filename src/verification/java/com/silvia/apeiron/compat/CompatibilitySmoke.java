@@ -36,8 +36,14 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
         com.silvia.apeiron.common.machine.quantum.verification.QuantumEnhancementSmoke.verify();
         com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyEnhancementSmoke.verify();
-        com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyWailaSmoke.verify();
-        com.silvia.apeiron.common.integration.waila.verification.MachineWailaCompatibilitySmoke.verify();
+        if (DependencyCapabilities.hasClass("gregtech.api.interfaces.IOutputHatch"))
+            com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyOutputSmoke.verify();
+        if (DependencyCapabilities.hasClass("me.exz.omniocular.waila.TileEntityHandler")) {
+            com.silvia.apeiron.common.integration.waila.verification.WailaSnapshotSmoke.verify();
+        } else {
+            com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyWailaSmoke.verify();
+            com.silvia.apeiron.common.integration.waila.verification.MachineWailaCompatibilitySmoke.verify();
+        }
         com.silvia.apeiron.common.machine.spaceelevator.verification.SpaceElevatorIntegrationSmoke.verify();
         if (cpw.mods.fml.common.FMLCommonHandler.instance()
             .getSide()

@@ -175,7 +175,7 @@ public final class AEInventorySmoke {
         network.addNewStorage(low);
         check(network instanceof BigIMEInventory, "network big inventory mixin was not applied");
 
-        Object flow = com.silvia.apeiron.compat.OptionalFlowStatistics.verificationCache();
+        Object flow = com.silvia.apeiron.verification.FlowStatisticsFixture.create();
         IGrid grid = (IGrid) Proxy
             .newProxyInstance(IGrid.class.getClassLoader(), new Class<?>[] { IGrid.class }, (proxy, method, args) -> {
                 if (method.getName()

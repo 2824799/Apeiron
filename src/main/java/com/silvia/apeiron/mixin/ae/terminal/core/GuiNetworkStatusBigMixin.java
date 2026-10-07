@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
 import com.silvia.apeiron.ae.terminal.BigNetworkStatus;
 
-import appeng.api.storage.data.IAEStack;
+import appeng.api.storage.data.IAEItemStack;
 import appeng.client.gui.implementations.GuiNetworkStatus;
 import appeng.container.implementations.ContainerNetworkStatus;
 
@@ -204,8 +204,8 @@ public abstract class GuiNetworkStatusBigMixin {
 
     @Redirect(
         method = "drawItemRepo",
-        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEStack;getStackSize()J"))
-    private long apeiron$captureStack(final IAEStack<?> stack) {
+        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEItemStack;getStackSize()J"))
+    private long apeiron$captureStack(final IAEItemStack stack) {
         return BigGuiNumberCapture.captureStack(stack);
     }
 
@@ -225,8 +225,8 @@ public abstract class GuiNetworkStatusBigMixin {
 
     @Redirect(
         method = "drawItemRepo",
-        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEStack;getCountRequestable()J"))
-    private long apeiron$captureRequestable(final IAEStack<?> stack) {
+        at = @At(value = "INVOKE", target = "Lappeng/api/storage/data/IAEItemStack;getCountRequestable()J"))
+    private long apeiron$captureRequestable(final IAEItemStack stack) {
         return BigGuiNumberCapture.captureRequestable(stack);
     }
 

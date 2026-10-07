@@ -295,7 +295,7 @@ public final class InfinityCellSmoke {
     private static void verifyNetworkMounts(final ItemStack cell, final InfinityCellRecord record,
         final List<IAEStack<?>> types, final BigInteger stored) {
         final BaseActionSource source = new BaseActionSource();
-        final Object flow = com.silvia.apeiron.compat.OptionalFlowStatistics.verificationCache();
+        final Object flow = com.silvia.apeiron.verification.FlowStatisticsFixture.create();
         final appeng.me.cache.SecurityCache security = new appeng.me.cache.SecurityCache(null);
         final IGrid grid = (IGrid) Proxy
             .newProxyInstance(IGrid.class.getClassLoader(), new Class<?>[] { IGrid.class }, (proxy, method, args) -> {

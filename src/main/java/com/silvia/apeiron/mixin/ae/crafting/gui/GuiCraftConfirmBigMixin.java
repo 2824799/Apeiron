@@ -15,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.silvia.apeiron.ae.crafting.core.BigCraftingConfirmation;
+import com.silvia.apeiron.ae.crafting.core.UnlimitedCraftingSelection;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
 import com.silvia.apeiron.math.BigNumberFormatter;
@@ -114,6 +115,7 @@ public abstract class GuiCraftConfirmBigMixin {
     @Inject(method = "drawListFG", at = @At("HEAD"))
     private void apeiron$clearDrawCapture(final CallbackInfo ci) {
         BigGuiNumberCapture.clear();
+        apeiron$formattingCpuCount = false;
     }
 
     @Redirect(
@@ -139,10 +141,35 @@ public abstract class GuiCraftConfirmBigMixin {
         return BigGuiNumberCapture.formatWideAny(value);
     }
 
+    @Unique
+    private boolean apeiron$formattingCpuCount;
+
+    @Redirect(
+        method = "drawListFG",
+        at = @At(value = "INVOKE", target = "Lappeng/util/Platform;formatByteDouble(D)Ljava/lang/String;"))
+    private String apeiron$selectedStorage(double bytes) {
+        return ((UnlimitedCraftingSelection) ccc).isSelectedStorageUnlimited() ? "∞"
+            : appeng.util.Platform.formatByteDouble(bytes);
+    }
+
+    @Redirect(
+        method = "drawListFG",
+        at = @At(
+            value = "INVOKE",
+            target = "Lappeng/container/implementations/ContainerCraftConfirm;getCpuCoProcessors()I"))
+    private int apeiron$selectedCores(ContainerCraftConfirm container) {
+        apeiron$formattingCpuCount = true;
+        return container.getCpuCoProcessors();
+    }
+
     @Redirect(
         method = "drawListFG",
         at = @At(value = "INVOKE", target = "Ljava/text/NumberFormat;format(J)Ljava/lang/String;"))
     private String apeiron$formatExact(final NumberFormat formatter, final long value) {
+        if (apeiron$formattingCpuCount) {
+            apeiron$formattingCpuCount = false;
+            return ((UnlimitedCraftingSelection) ccc).isSelectedParallelUnlimited() ? "∞" : formatter.format(value);
+        }
         return BigGuiNumberCapture.formatExactAny(value);
     }
 

@@ -1,0 +1,28 @@
+// Game-dependent regressions live in a development-only mod, outside production lifecycle and artifacts.
+sourceSets {
+    verification {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+def verificationJar = tasks.register('verificationJar', Jar) {
+    dependsOn tasks.named('verificationClasses')
+    archiveFileName = 'apeiron-verification.jar'
+    destinationDirectory = layout.buildDirectory.dir('verification')
+    from sourceSets.verification.output
+}
+// This also supports local, isolated acceptance launchers without adding tests to runClient/runServer.
+tasks.withType(JavaExec).configureEach {
+    if (name.startsWith('compatibility_') || name.startsWith('compatibilityClient_') || name.startsWith('verifyMerged')) {
+        dependsOn verificationJar
+        def runnerFile = verificationJar.get().archiveFile.get().asFile
+        doFirst {
+            def mods = new File(workingDir, 'mods')
+            mods.mkdirs()
+            new File(mods, 'apeiron-verification.jar').bytes = runnerFile.bytes
+        }
+    }
+}
+tasks.named('compileVerificationJava', JavaCompile) {
+    options.annotationProcessorPath = tasks.named('compileJava', JavaCompile).get().options.annotationProcessorPath
+}

@@ -38,10 +38,12 @@ public final class AEMixinTargetSmoke {
             final ApeironMixinConfigPlugin plugin = new ApeironMixinConfigPlugin();
             for (final String section : new String[] { "mixins", "client" }) {
                 if (!configuration.has(section)) continue;
+                if (section.equals("client") && cpw.mods.fml.common.FMLCommonHandler.instance()
+                    .getSide()
+                    .isServer()) continue;
                 for (final JsonElement entry : configuration.getAsJsonArray(section)) {
                     final String name = entry.getAsString();
-                    if (!name.startsWith("ae.") && !name.startsWith("gregtech.") && !name.startsWith("proghatches."))
-                        continue;
+
                     final String mixinName = mixinPackage + "." + name;
                     for (final String target : readTargets(loader, mixinName)) {
                         if (cpw.mods.fml.common.FMLCommonHandler.instance()
@@ -52,7 +54,7 @@ public final class AEMixinTargetSmoke {
                 }
             }
         } catch (IOException error) {
-            throw new IllegalStateException("AE Mixin target discovery failed", error);
+            throw new IllegalStateException("Configured Mixin target discovery failed", error);
         }
 
         final List<String> failures = new ArrayList<>();
@@ -68,14 +70,14 @@ public final class AEMixinTargetSmoke {
                 if (error instanceof VirtualMachineError) throw (VirtualMachineError) error;
                 if (error instanceof ThreadDeath) throw (ThreadDeath) error;
                 failures.add(target);
-                Apeiron.LOG.error("AE Mixin target could not load: " + target, error);
+                Apeiron.LOG.error("Configured Mixin target could not load: " + target, error);
             }
         }
         if (!failures.isEmpty()) {
-            throw new IllegalStateException("AE Mixin target loading failed: " + String.join(", ", failures));
+            throw new IllegalStateException("Configured Mixin target loading failed: " + String.join(", ", failures));
         }
         Apeiron.LOG.info(
-            "AE configured Mixin targets and reflective signatures verification passed: {} classes",
+            "All configured Mixin targets and reflective signatures verification passed: {} classes",
             targets.size());
     }
 

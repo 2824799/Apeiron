@@ -3,14 +3,11 @@ package com.silvia.apeiron.mixin.ae.stack;
 import java.io.IOException;
 import java.math.BigInteger;
 
-import net.minecraft.client.gui.FontRenderer;
-
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -20,16 +17,13 @@ import com.silvia.apeiron.ae.stack.BigAERequestableStack;
 import com.silvia.apeiron.ae.stack.BigAEStack;
 import com.silvia.apeiron.ae.stack.BigAEStackPackets;
 import com.silvia.apeiron.math.AdaptiveInteger;
-import com.silvia.apeiron.math.BigNumberFormatter;
 
-import appeng.api.config.TerminalFontSize;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
-import appeng.client.render.StackSizeRenderer;
 import appeng.util.item.AEStack;
 import io.netty.buffer.ByteBuf;
 
-/** Render exact item counts in AE terminal overlays. */
+/** Exact shared stack state, request counts and packet serialization. */
 @Mixin(value = AEStack.class, remap = false)
 public abstract class AEStackMixin
     implements BigAEStack, BigAERequestableStack, com.silvia.apeiron.ae.stack.InfiniteAEStack {
@@ -307,24 +301,6 @@ public abstract class AEStackMixin
         cir.setReturnValue((IAEStack<?>) (Object) this);
     }
 
-    @Inject(method = "incCountRequestableCrafts", at = @At("HEAD"), cancellable = true)
-    private void apeiron$incLegacyRequestableCrafts(final long amount, final CallbackInfo ci) {
-        if (this.apeiron$requestableCraftsBig != null) {
-            this.apeiron$requestableCraftsBig.add(amount);
-            this.countRequestableCrafts = this.apeiron$requestableCraftsBig.longValueSaturated();
-            ci.cancel();
-            return;
-        }
-        final long before = this.countRequestableCrafts;
-        final long after = before + amount;
-        if (((before ^ after) & (amount ^ after)) < 0) {
-            this.apeiron$requestableCraftsBig = new AdaptiveInteger(before);
-            this.apeiron$requestableCraftsBig.add(amount);
-            this.countRequestableCrafts = this.apeiron$requestableCraftsBig.longValueSaturated();
-            ci.cancel();
-        }
-    }
-
     @Inject(method = "writeToPacket", at = @At("TAIL"))
     private void apeiron$writeExactPacket(ByteBuf out, CallbackInfo ci) throws IOException {
         if (this instanceof BigAEItemStack) {
@@ -334,39 +310,4 @@ public abstract class AEStackMixin
         }
     }
 
-    @Inject(method = "drawOverlayInGui", at = @At("HEAD"), cancellable = true)
-    private void apeiron$infinityOverlay(net.minecraft.client.Minecraft mc, int x, int y, boolean amount,
-        boolean always, boolean craftText, boolean craftIcon, CallbackInfo ci) {
-        if (!apeiron$infinite) return;
-        if (amount) {
-            org.lwjgl.opengl.GL11.glPushMatrix();
-            org.lwjgl.opengl.GL11.glTranslatef(0, 0, 200);
-            org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_LIGHTING);
-            StackSizeRenderer
-                .drawStackSize(x, y, "∞", mc.fontRenderer, appeng.core.AEConfig.instance.getTerminalFontSize());
-            org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_LIGHTING);
-            org.lwjgl.opengl.GL11.glPopMatrix();
-        }
-        ci.cancel();
-    }
-
-    @Redirect(
-        method = "drawOverlayInGui",
-        at = @At(
-            value = "INVOKE",
-            target = "Lappeng/client/render/StackSizeRenderer;drawStackSize(IIJLnet/minecraft/client/gui/FontRenderer;Lappeng/api/config/TerminalFontSize;)V"))
-    private void apeiron$drawExactStackSize(int offsetX, int offsetY, long stackSize, FontRenderer font,
-        TerminalFontSize fontSize) {
-        Object target = this;
-        if (target instanceof BigAEStack exact && exact.isStackSizeBig()) {
-            StackSizeRenderer.drawStackSize(
-                offsetX,
-                offsetY,
-                BigNumberFormatter.formatCompact(exact.getStackSizeBig()),
-                font,
-                fontSize);
-        } else {
-            StackSizeRenderer.drawStackSize(offsetX, offsetY, stackSize, font, fontSize);
-        }
-    }
 }

@@ -4,6 +4,7 @@ import groovy.json.JsonSlurper
 def compatibilityProfiles = new JsonSlurper().parse(file("compatibility/gtnh-profiles.json")).profiles
 def compatibilityTasks = []
 def compatibilityClientTasks = []
+def compatibilityContractTasks = []
 repositories {
     exclusiveContent {
         forRepository {
@@ -43,13 +44,40 @@ afterEvaluate {
         dependencies.add(runtime.name, "thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
         [server: "runServer25", client: "runClient25"].each { side, runTask ->
             def launcher = tasks.named(runTask).get()
+            def verificationDirectory = layout.buildDirectory.dir("compatibility/${profile.pack}" + (side == "client" ? "/client" : "")).get().asFile
+            def configurationTree = fileTree(new File(verificationDirectory, "config"))
+            def configurationDigest = new File(verificationDirectory, "configuration-input.sha256")
+            def snapshot = tasks.register("compatibilityConfig_${suffix}_${side}") {
+                inputs.files(configurationTree)
+                outputs.file(configurationDigest)
+                doLast {
+                    def digest = java.security.MessageDigest.getInstance("SHA-256")
+                    configurationTree.files.sort { it.absolutePath }.each { config ->
+                        def relative = verificationDirectory.toPath().relativize(config.toPath()).toString()
+                        digest.update(relative.getBytes("UTF-8"))
+                        digest.update((byte) 0)
+                        // Java properties and IC2 INI write fresh timestamp comments on every launch.
+                        // Other files are hashed verbatim; actual properties and INI values remain inputs.
+                        def content = config.name.endsWith('.properties') || relative.replace('\\', '/') == 'config/IC2.ini'
+                            ? config.readLines('UTF-8').findAll {
+                                !it.trim().startsWith('#') && !it.trim().startsWith(';')
+                            }.join('\n').getBytes('UTF-8')
+                            : config.bytes
+                        digest.update(content)
+                        digest.update((byte) 0)
+                    }
+                    configurationDigest.parentFile.mkdirs()
+                    def hash = digest.digest().encodeHex().toString() + "\n"
+                    if (!configurationDigest.isFile() || configurationDigest.text != hash) configurationDigest.text = hash
+                }
+            }
             def verification = tasks.register(side == "server" ? "compatibility_${suffix}" : "compatibilityClient_${suffix}", JavaExec) {
                 group = "verification"
                 description = "Verify the common Apeiron artifact with GTNH ${profile.pack} dependencies."
-                dependsOn launcher.taskDependencies.getDependencies(launcher)
+                dependsOn launcher.taskDependencies.getDependencies(launcher), snapshot
                 mainClass.set(launcher.mainClass)
                 javaLauncher.set(launcher.javaLauncher)
-                workingDir = layout.buildDirectory.dir("compatibility/${profile.pack}" + (side == "client" ? "/client" : "")).get().asFile
+                workingDir = verificationDirectory
                 def desktopDataDirectory = new File(workingDir, "xdg-data")
                 if (side == "client") environment "XDG_DATA_HOME", desktopDataDirectory.absolutePath
                 environment "APEIRON_VERIFY_COMPATIBILITY", "1"
@@ -76,7 +104,7 @@ afterEvaluate {
                         }
                 })
                 classpath = files(launcher.classpath.files.findAll { !removed.contains(it) }) + runtime
-                systemProperties(launcher.systemProperties)
+                systemProperties(launcher.systemProperties.collectEntries { key, value -> [(key.toString()): value.toString()] })
                 args = launcher.args
                 def resolved = runtime.resolvedConfiguration.resolvedArtifacts
                 profile.modules.each { name, version ->
@@ -88,8 +116,14 @@ afterEvaluate {
                     it.moduleVersion.id.toString() + ":" + (it.classifier ?: "")
                 }.sort().join("\n") + "\n"
                 def artifact = tasks.named("jar").get().archiveFile.get().asFile
+                inputs.file(tasks.named("verificationJar").flatMap { it.archiveFile })
+                inputs.file(file("compatibility/gtnh-profiles.json"))
+                inputs.file(configurationDigest)
+                def receipt = new File(workingDir, "verification-passed.txt")
+                outputs.file(receipt)
                 doFirst {
                     workingDir.mkdirs()
+                    receipt.delete()
                     if (side == "client") java.nio.file.Files.createDirectories(desktopDataDirectory.toPath())
                     new File(workingDir, "eula.txt").text = "eula=true\n"
                     if (side == "server") new File(workingDir, "server.properties").text =
@@ -105,7 +139,22 @@ afterEvaluate {
                     def marker = "Apeiron compatibility verification passed: ${profile.pack}"
                     if (!log.isFile() || !log.text.contains(marker))
                         throw new GradleException("${profile.pack}: compatibility self-check did not complete; see ${workingDir}/logs")
+                    receipt.text = marker + " side=" + side + "\n" + new File(workingDir, "artifact.sha256").text
                 }
+            }
+            if (side == "server") {
+                compatibilityContractTasks.add(tasks.register("compatibilityContracts_${suffix}", JavaExec) {
+                    group = "verification"
+                    description = "Check all selected Mixin target methods against GTNH ${profile.pack} without starting Minecraft."
+                    dependsOn tasks.named("verificationClasses"), tasks.named("jar"), launcher.taskDependencies.getDependencies(launcher)
+                    classpath = sourceSets.verification.output + verification.get().classpath
+                    mainClass = "com.silvia.apeiron.verification.MixinContractCheck"
+                    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+                    def report = layout.buildDirectory.file("reports/mixins/${profile.pack}.tsv")
+                    args report.get().asFile.absolutePath
+                    inputs.file(file("compatibility/gtnh-profiles.json"))
+                    outputs.file(report)
+                })
             }
             def precedingChecks = (compatibilityTasks + compatibilityClientTasks).toList()
             verification.configure { mustRunAfter(precedingChecks) }
@@ -116,14 +165,21 @@ afterEvaluate {
 
 tasks.register("compatibilityCheck") {
     group = "verification"
-    description = "Verify one Apeiron artifact against every supported GTNH release profile."
-    dependsOn compatibilityTasks
+    description = "Check every historical target contract and run the newest supported server profile."
+    dependsOn compatibilityContractTasks
+    dependsOn provider { compatibilityTasks.takeRight(1) }
 }
 
 tasks.register("compatibilityClientCheck") {
     group = "verification"
-    description = "Verify the common artifact's client GUI and rendering hooks for every GTNH release profile."
-    dependsOn compatibilityClientTasks
+    description = "Run GUI and rendering regressions on the newest supported client profile."
+    dependsOn provider { compatibilityClientTasks.takeRight(1) }
+}
+
+tasks.register("compatibilityFullCheck") {
+    group = "verification"
+    description = "Release audit: run all historical server and client profiles, plus static contracts."
+    dependsOn compatibilityContractTasks, compatibilityTasks, compatibilityClientTasks
 }
 
 tasks.named("check") { dependsOn("compatibilityCheck") }

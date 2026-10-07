@@ -45,4 +45,26 @@ public final class DependencyCapabilities {
         }
         return false;
     }
+
+    /** Probe an optional upstream feature without defining the target class. */
+    public static boolean invokes(String owner, String methodName, String invokedOwner, String invokedName) {
+        try (InputStream stream = DependencyCapabilities.class.getClassLoader()
+            .getResourceAsStream(owner.replace('.', '/') + ".class")) {
+            if (stream == null) return false;
+            ClassNode node = new ClassNode();
+            new ClassReader(stream).accept(node, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+            for (MethodNode method : node.methods) {
+                if (!method.name.equals(methodName)) continue;
+                for (org.spongepowered.asm.lib.tree.AbstractInsnNode instruction : method.instructions.toArray()) {
+                    if (instruction instanceof org.spongepowered.asm.lib.tree.MethodInsnNode call
+                        && call.owner.equals(invokedOwner)
+                        && call.name.equals(invokedName)) return true;
+                }
+            }
+            return false;
+        } catch (IOException failure) {
+            throw new IllegalStateException("Cannot inspect dependency " + owner, failure);
+        }
+    }
+
 }

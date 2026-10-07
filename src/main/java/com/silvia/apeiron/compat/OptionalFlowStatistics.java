@@ -11,19 +11,11 @@ public final class OptionalFlowStatistics {
 
     private OptionalFlowStatistics() {}
 
-    public static Object verificationCache() {
-        return AVAILABLE ? ModernRecorder.verificationCache() : null;
-    }
-
     public static void record(IGrid grid, IAEStack<?> change, BaseActionSource source) {
         if (AVAILABLE) ModernRecorder.record(grid, change, source);
     }
 
     private static final class ModernRecorder {
-
-        static Object verificationCache() {
-            return new appeng.me.cache.ItemFlowGridCache(null);
-        }
 
         static void record(IGrid grid, IAEStack<?> change, BaseActionSource source) {
             if (grid == null) return;

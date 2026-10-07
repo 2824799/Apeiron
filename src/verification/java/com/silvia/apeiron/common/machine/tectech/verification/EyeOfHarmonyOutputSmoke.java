@@ -32,7 +32,6 @@ import gregtech.api.interfaces.IOutputBus;
 import gregtech.api.interfaces.IOutputBusTransaction;
 import gregtech.api.interfaces.IOutputHatch;
 import gregtech.api.interfaces.IOutputHatchTransaction;
-import gregtech.api.interfaces.IOutputTransaction;
 import gregtech.api.metatileentity.BaseMetaTileEntity;
 import gregtech.api.util.GTUtility;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
@@ -450,11 +449,23 @@ public final class EyeOfHarmonyOutputSmoke {
     }
 
     private static Object countedTransaction(final Object delegate, final Class<?> api, final int[] calls) {
+        List<Class<?>> interfaces = new java.util.ArrayList<>();
+        interfaces.add(api);
+        interfaces
+            .add(api == BigFluidOutputTransaction.class ? IOutputHatchTransaction.class : IOutputBusTransaction.class);
+        for (String name : new String[] { "IRecipeCheckAware", "IProtectOutputAware" }) {
+            String type = "gregtech.api.interfaces.IOutputTransaction$" + name;
+            if (com.silvia.apeiron.compat.DependencyCapabilities.hasClass(type)) {
+                try {
+                    interfaces.add(Class.forName(type));
+                } catch (ClassNotFoundException failure) {
+                    throw new IllegalStateException(failure);
+                }
+            }
+        }
         return Proxy.newProxyInstance(
             EyeOfHarmonyOutputSmoke.class.getClassLoader(),
-            new Class<?>[] { api,
-                api == BigFluidOutputTransaction.class ? IOutputHatchTransaction.class : IOutputBusTransaction.class,
-                IOutputTransaction.IRecipeCheckAware.class, IOutputTransaction.IProtectOutputAware.class },
+            interfaces.toArray(new Class<?>[0]),
             (proxy, method, args) -> {
                 if (method.getName()
                     .equals("storePartialBig")) calls[0]++;

@@ -32,6 +32,7 @@ public abstract class NativeMachineWailaMixin {
             target = "Lgregtech/api/metatileentity/implementations/MTEMultiBlockBase;mOutputItems:[Lnet/minecraft/item/ItemStack;"),
         require = 1)
     private ItemStack[] apeiron$boundedItems(MTEMultiBlockBase machine) {
+        if (!com.silvia.apeiron.config.ApeironConfig.isLightweightWailaEnabled()) return machine.mOutputItems;
         if (machine.mOutputItems == null || machine.mOutputItems.length <= 3) return machine.mOutputItems;
         return Arrays.stream(machine.mOutputItems)
             .filter(Objects::nonNull)
@@ -46,6 +47,7 @@ public abstract class NativeMachineWailaMixin {
             target = "Lgregtech/api/metatileentity/implementations/MTEMultiBlockBase;mOutputFluids:[Lnet/minecraftforge/fluids/FluidStack;"),
         require = 1)
     private FluidStack[] apeiron$boundedFluids(MTEMultiBlockBase machine) {
+        if (!com.silvia.apeiron.config.ApeironConfig.isLightweightWailaEnabled()) return machine.mOutputFluids;
         if (machine.mOutputFluids == null || machine.mOutputFluids.length <= 3) return machine.mOutputFluids;
         return Arrays.stream(machine.mOutputFluids)
             .filter(Objects::nonNull)

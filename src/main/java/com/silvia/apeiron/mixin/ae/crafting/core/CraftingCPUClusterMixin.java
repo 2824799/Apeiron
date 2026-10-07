@@ -8,7 +8,6 @@ import java.util.Objects;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 
-import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -23,7 +22,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingCPU;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingCPUStorage;
 import com.silvia.apeiron.ae.crafting.core.BigCraftingJob;
-import com.silvia.apeiron.ae.crafting.core.BigFinalOutput;
 import com.silvia.apeiron.ae.crafting.core.BigTaskProgress;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCompletedDiagnosticRecord;
 import com.silvia.apeiron.ae.crafting.diagnostics.BigCraftingGridDiagnostics;
@@ -63,15 +61,24 @@ public abstract class CraftingCPUClusterMixin
             : BigInteger.valueOf(job.getByteTotal());
     }
 
+    @Shadow
+    private CraftingCPUCluster.finalOutput finalOutput;
+
     @Redirect(
         method = "completeJob",
-        at = @At(
-            value = "INVOKE",
-            target = "Lappeng/me/cluster/implementations/CraftingCPUCluster$finalOutput;getOriginalCount()J"))
-    private long apeiron$captureCompletionCount(final CraftingCPUCluster.finalOutput output) {
-        final BigInteger exact = ((BigFinalOutput) (Object) output).getOriginalCountBig();
-        BigCraftNotificationValues.capture(exact);
-        return BigAEStackValues.saturatedLong(exact);
+        at = @At(value = "INVOKE", target = "Ljava/util/List;forEach(Ljava/util/function/Consumer;)V"))
+    private void apeiron$exactCompletion(java.util.List<appeng.api.util.CraftCompleteListener> listeners,
+        java.util.function.Consumer<appeng.api.util.CraftCompleteListener> action) {
+        listeners.forEach(listener -> {
+            BigCraftNotificationValues.capture(
+                ((com.silvia.apeiron.ae.crafting.core.BigFinalOutput) (Object) finalOutput).getOriginalCountBig());
+            try {
+                action.accept(listener);
+            } finally {
+                // A third-party listener may not construct a notification (or may throw).
+                BigCraftNotificationValues.take(0);
+            }
+        });
     }
 
     @Redirect(
@@ -194,33 +201,6 @@ public abstract class CraftingCPUClusterMixin
                 apeiron$unlimitedParallel = true;
             this.accelerator = apeiron$unlimitedParallel ? Integer.MAX_VALUE
                 : (int) Math.min(Integer.MAX_VALUE - 1L, (long) this.accelerator + tile.acceleratorValue());
-        }
-    }
-
-    @Redirect(
-        method = { "executeCrafting", "mergeJob", "writeToNBT", "readFromNBT" },
-        at = @At(
-            value = "FIELD",
-            target = "Lappeng/me/cluster/implementations/CraftingCPUCluster$TaskProgress;value:J",
-            opcode = Opcodes.GETFIELD))
-    private long apeiron$getTaskProgress(final CraftingCPUCluster.TaskProgress progress) {
-        return ((BigTaskProgress) progress).getValueLong();
-    }
-
-    @Redirect(
-        method = { "executeCrafting", "mergeJob", "writeToNBT", "readFromNBT" },
-        at = @At(
-            value = "FIELD",
-            target = "Lappeng/me/cluster/implementations/CraftingCPUCluster$TaskProgress;value:J",
-            opcode = Opcodes.PUTFIELD))
-    private void apeiron$setTaskProgress(final CraftingCPUCluster.TaskProgress progress, final long value) {
-        final BigTaskProgress exact = (BigTaskProgress) progress;
-        if (exact.isValueBig() && value == Long.MAX_VALUE - 1L) {
-            exact.decrementValueBig();
-        } else if (exact.isValueBig() && value == Long.MAX_VALUE) {
-            // A legacy assignment copied the saturated view. Keep the exact sidecar.
-        } else {
-            exact.setValueBig(BigInteger.valueOf(value));
         }
     }
 

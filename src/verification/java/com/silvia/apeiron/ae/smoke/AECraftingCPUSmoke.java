@@ -28,6 +28,21 @@ public final class AECraftingCPUSmoke {
 
     public static void verify() {
         try {
+            verifyCompletion();
+            if (com.silvia.apeiron.compat.DependencyCapabilities
+                .hasMethod("appeng.me.cluster.implementations.CraftingCPUCluster$TaskProgress", "access$200", null)) {
+                CraftingCPUCluster.TaskProgress task = new CraftingCPUCluster.TaskProgress();
+                com.silvia.apeiron.ae.crafting.core.BigTaskProgress exact = (com.silvia.apeiron.ae.crafting.core.BigTaskProgress) task;
+                exact.setValueBig(HUGE);
+                java.lang.reflect.Method decrement = task.getClass()
+                    .getDeclaredMethod("access$210", task.getClass());
+                decrement.setAccessible(true);
+                decrement.invoke(null, task);
+                check(
+                    exact.getValueBig()
+                        .equals(HUGE.subtract(BigInteger.ONE)),
+                    "legacy native progress failed exact decrement");
+            }
             final CraftingCPUCluster cpu = newCPU();
             final BigCraftingCPUStorage storage = (BigCraftingCPUStorage) (Object) cpu;
             final Field insideSubmit = CraftingCPUCluster.class.getDeclaredField("apeiron$insideSubmitJob");
@@ -94,6 +109,43 @@ public final class AECraftingCPUSmoke {
         }
         Apeiron.LOG.info(
             "AE crafting CPU construction, rejected submissions, exact storage persistence and cancellation verification passed");
+    }
+
+    private static void verifyCompletion() throws ReflectiveOperationException {
+        CraftingCPUCluster cpu = newCPU();
+        Field outputs = CraftingCPUCluster.class.getDeclaredField("finalOutput");
+        outputs.setAccessible(true);
+        Object finalOutput = outputs.get(cpu);
+        Field original = finalOutput.getClass()
+            .getDeclaredField("originalOutput");
+        original.setAccessible(true);
+        appeng.api.storage.data.IAEItemStack stack = appeng.util.item.AEItemStack
+            .create(new net.minecraft.item.ItemStack(net.minecraft.init.Items.diamond));
+        com.silvia.apeiron.ae.stack.BigAEStackValues.set(stack, HUGE);
+        original.set(finalOutput, stack);
+        Field listeners = CraftingCPUCluster.class.getDeclaredField("craftCompleteListeners");
+        listeners.setAccessible(true);
+        java.util.List<appeng.api.util.CraftCompleteListener> callbacks = new java.util.ArrayList<>();
+        callbacks.add((output, count, ticks) -> {
+            CraftingCPUCluster.CraftNotification notification = new CraftingCPUCluster.CraftNotification(
+                output,
+                count,
+                ticks);
+            check(
+                ((com.silvia.apeiron.ae.crafting.packets.BigCraftNotification) notification).getOutputsCountBig()
+                    .equals(HUGE),
+                "native completion callback truncated exact count");
+        });
+        // The last callback intentionally does not consume the sidecar.
+        callbacks.add((output, count, ticks) -> {});
+        listeners.set(cpu, callbacks);
+        java.lang.reflect.Method complete = CraftingCPUCluster.class.getDeclaredMethod("completeJob");
+        complete.setAccessible(true);
+        complete.invoke(cpu);
+        check(
+            com.silvia.apeiron.ae.crafting.packets.BigCraftNotificationValues.take(7)
+                .equals(BigInteger.valueOf(7)),
+            "completion count leaked to an unrelated notification");
     }
 
     private static CraftingCPUCluster newCPU() throws ReflectiveOperationException {

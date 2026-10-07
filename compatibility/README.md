@@ -17,12 +17,21 @@ Apeiron 编译一次，运行时检测依赖类和方法，选择对应 Mixin �
 
 ## 运行
 
-- `./gradlew build`：编译、单元测试、格式检查及四版服务端自检；`check` 自动依赖 `compatibilityCheck`。
-- `./gradlew compatibilityCheck`：单独运行全部核心服务端检查。
-- `./gradlew compatibilityClientCheck`：运行全部客户端检查，需要可用的图形环境；Linux CI 可使用 `xvfb-run -a ./gradlew compatibilityClientCheck`。
-- `./gradlew compatibility_2_9_0_beta_1` 或 `compatibilityClient_2_9_0_beta_1`：运行单个版本。
+| 命令 | 静态检查 | Minecraft 启动 |
+| --- | --- | --- |
+| `./gradlew build` / `compatibilityCheck` | 四版所选 Mixin 的目标方法、调用／字段位置与配置归属 | 最新支持的核心服务端一次 |
+| `./gradlew compatibilityClientCheck` | — | 最新支持的核心客户端一次 |
+| `./gradlew compatibilityFullCheck` | 四版 | 四版服务端 + 四版客户端 |
+| `./gradlew compatibility_2_9_0_beta_1` | — | 指定版本服务端一次 |
+| `./gradlew compatibilityClient_2_9_0_beta_1` | — | 指定版本客户端一次 |
 
-测试目录在 `build/compatibility/<版本>/`，客户端在其 `client/` 子目录。检查串行运行，服务端使用临时端口。每个目录保存实际依赖清单、被测开发 JAR 的 SHA-256 和启动日志。所有版本加载同一个开发 JAR；正常构建另产出发布 JAR和源码 JAR。任一版本解析失败、实际依赖版本不符、运行失败或缺少完成标记，检查即失败。不能仅凭 Minecraft 返回码为 0 判定通过。
+日常 CI 执行代表服务端和客户端；`alpha*` 标签或手动选择 `full_compatibility` 时执行完整构建与历史运行矩阵。Linux 无桌面环境使用 `xvfb-run -a` 启动客户端检查。
+
+这里验证的是四套已知整合包依赖组合，不是各依赖版本的排列组合。静态检查不能证明回调指令命中、运行结果或第三方模组交互安全，因此不能用其结果替代完整历史运行结论。依赖升级、修改注入位置或发布版本前运行 `compatibilityFullCheck`。
+
+检查任务记录成功凭据，并将实际运行类路径、测试 JAR、版本清单及环境配置纳入输入；输入未变时 Gradle 可跳过已通过任务。配置先生成内容摘要，Java properties 和 IC2 INI 的时间戳注释不参与摘要，实际配置值仍参与；其他配置文件按原始内容检查。修改代码或依赖后重新验证；要强制启动，使用 `--rerun-tasks`。静态报告在 `build/reports/mixins/`，逐项记录功能开关、目标类、注入方法及能力选择结果。
+
+测试目录在 `build/compatibility/<版本>/`，客户端在其 `client/` 子目录。检查串行运行，服务端使用临时端口。每个目录保存实际依赖清单、被测开发 JAR 的 SHA-256 和启动日志。所有版本加载同一个开发 JAR；测试方法独立编译为 `build/verification/apeiron-verification.jar`，仅复制到隔离测试目录。正常发布 JAR 和源码 JAR 不包含验证模组或测试类。任一版本解析失败、实际依赖版本不符、运行失败或缺少完成标记，检查即失败。不能仅凭 Minecraft 返回码为 0 判定通过。
 
 客户端检查在 `client/xdg-data/` 创建独立桌面数据目录，并传入 `XDG_DATA_HOME`，供 Linux 启动器写入桌面入口文件；无桌面用户目录的 CI 也可正常启动。
 

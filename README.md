@@ -52,6 +52,8 @@ AE2 存储按同一物理元件的通道去重，避免多个集成重复挂载�
 
 配置文件为 `config/apeiron/apeiron.cfg`，可按模组开关适配。GregTech 机器 ID 默认从 `31300` 开始，需避免与其他模组冲突。
 
+注入按相互依赖的功能组开关，修改后需重启，客户端与服务端应保持一致。配置范围、审查发现及限制见 [注入审查报告](docs/PROJECT_REVIEW.md)，全部注册项见 [注入清单](docs/MIXIN_INVENTORY.md)。日常构建检查四版接口并运行代表服务端；完整历史验证使用 `compatibilityFullCheck`，详见 [兼容检查说明](compatibility/README.md)。
+
 悬浮提示只展示库存和配方预览，完整内容在方块 UI 中查看。依赖完整存档数据的自定义 OmniOcular 脚本，可关闭 `mixins.waila.enableLightweightSnapshots` 并重启。
 
 ## 许可证

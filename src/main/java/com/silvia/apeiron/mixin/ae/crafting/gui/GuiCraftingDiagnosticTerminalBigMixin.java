@@ -9,14 +9,15 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 import com.silvia.apeiron.ae.crafting.diagnostics.BigDiagnosticGuiRow;
-import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
+import com.silvia.apeiron.math.BigNumberFormatter;
 
 import appeng.api.config.DiagnosticSortMode;
 import appeng.client.gui.implementations.GuiCraftingDiagnosticTerminal;
 import appeng.container.implementations.ContainerCraftingDiagnosticTerminal;
+import appeng.core.localization.GuiText;
 
 /** Uses exact row values for diagnostic sorting and tooltip output. */
 @Mixin(value = GuiCraftingDiagnosticTerminal.class, remap = false)
@@ -29,6 +30,9 @@ public abstract class GuiCraftingDiagnosticTerminalBigMixin {
     @Shadow
     @Final
     private List<?> rows;
+
+    @Shadow
+    private int hoveredRow;
 
     @Overwrite
     private void applyClientSort() {
@@ -51,23 +55,29 @@ public abstract class GuiCraftingDiagnosticTerminalBigMixin {
         values.sort(comparator);
     }
 
-    @Redirect(
+    // Modify the finished tooltip rather than private Row fields: older compilers use synthetic accessors.
+    @ModifyArg(
         method = "drawFG",
         at = @At(
-            value = "FIELD",
-            target = "Lappeng/client/gui/implementations/GuiCraftingDiagnosticTerminal$Row;totalProduced:J"))
-    private long apeiron$captureTooltipTotal(final Object row) {
-        if ((Object) row instanceof BigDiagnosticGuiRow exact) {
-            return BigGuiNumberCapture.captureAmount(exact.getTotalProducedBig());
-        }
-        return 0L;
+            value = "INVOKE",
+            target = "Lappeng/client/gui/implementations/GuiCraftingDiagnosticTerminal;drawTooltip(II[Ljava/lang/String;)V"),
+        index = 2)
+    private String[] apeiron$exactTooltip(String[] lines) {
+        if (hoveredRow < 0 || hoveredRow >= rows.size()) return lines;
+        BigDiagnosticGuiRow row = (BigDiagnosticGuiRow) rows.get(hoveredRow);
+        apeiron$replaceCount(lines, GuiText.Crafted.getLocal() + ": ", row.getTotalProducedBig());
+        apeiron$replaceCount(lines, GuiText.Samples.getLocal() + ": ", row.getSampleCountBig());
+        return lines;
     }
 
-    @Redirect(
-        method = "drawFG",
-        at = @At(value = "INVOKE", target = "Ljava/lang/StringBuilder;append(J)Ljava/lang/StringBuilder;"))
-    private StringBuilder apeiron$formatTooltipLong(final StringBuilder builder, final long value) {
-        return builder.append(BigGuiNumberCapture.formatExactAmount(value));
+    @org.spongepowered.asm.mixin.Unique
+    private static void apeiron$replaceCount(String[] lines, String prefix, BigInteger value) {
+        for (int i = lines.length - 1; i >= 0; i--) {
+            if (lines[i].startsWith(prefix)) {
+                lines[i] = prefix + BigNumberFormatter.formatExact(value);
+                return;
+            }
+        }
     }
 
     private static BigInteger exact(final Object row) {

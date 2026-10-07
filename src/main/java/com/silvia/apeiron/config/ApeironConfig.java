@@ -66,7 +66,7 @@ public final class ApeironConfig {
                 ENABLE_AE_MIXINS,
                 CATEGORY_AE_MIXINS,
                 true,
-                "Enable Apeiron's Applied Energistics 2 large-number Mixins. Requires a restart.");
+                "Enable the cooperating AE large-number and GT input/output/energy core. Disable as one unit; requires a restart and matching client/server settings.");
             configuration.getCategory(CATEGORY_MIXINS)
                 .remove(ENABLE_AE_MIXINS);
             if (configuration.hasKey("mixins.gregtech", ENABLE_EYE_OUTPUT)) {
@@ -116,6 +116,7 @@ public final class ApeironConfig {
                 "Use operating snapshots instead of full GregTech disk saves for OmniOcular, and bound Waila packet "
                     + "size for all tile entities. Inventories and recipes are previews; full contents remain in their GUIs. "
                     + "Disable for custom OmniOcular scripts that require complete save data. Requires a restart.");
+            MixinFeature.load(configuration);
             final String configuredStart = configuration.get(
                 CATEGORY_MACHINES,
                 "machineIdStart",

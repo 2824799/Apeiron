@@ -182,7 +182,7 @@ public final class AEBackendSmoke {
             new appeng.me.cache.SecurityCache(null));
         network.addNewStorage(high);
         network.addNewStorage(low);
-        final Object flow = com.silvia.apeiron.compat.OptionalFlowStatistics.verificationCache();
+        final Object flow = com.silvia.apeiron.verification.FlowStatisticsFixture.create();
         final IGrid grid = (IGrid) Proxy.newProxyInstance(
             IGrid.class.getClassLoader(),
             new Class<?>[] { IGrid.class },

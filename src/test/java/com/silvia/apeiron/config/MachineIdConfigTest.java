@@ -174,4 +174,59 @@ public class MachineIdConfigTest {
                 "cn.dancingsnow.aeinfinitycell.storage.CellCount",
                 "com.silvia.apeiron.mixin.aeinfinitycell.storage.CellCountBigMixin"));
     }
+
+    @Test
+    public void disablingCoreAlsoDisablesPreviouslyUngatedGtInputsAndOutputs() throws Exception {
+        final File config = folder.newFile();
+        Files.write(
+            config.toPath(),
+            "mixins {\n appliedenergistics2 {\n B:enableAeMixins=false\n }\n}\n".getBytes(StandardCharsets.UTF_8));
+        ApeironConfig.load(config);
+        ApeironMixinConfigPlugin plugin = new ApeironMixinConfigPlugin();
+        for (String name : new String[] { "gregtech.input.BigDualInputProcessingMixin",
+            "gregtech.input.BigInputRegistrationMixin", "gregtech.output.MixedOutputRegistrationMixin",
+            "gregtech.output.PendingBigOutputTickMixin" })
+            assertFalse(
+                plugin.shouldApplyMixin(
+                    "gregtech.api.metatileentity.implementations.MTEMultiBlockBase",
+                    "com.silvia.apeiron.mixin." + name));
+    }
+
+    @Test
+    public void everyRegisteredMixinHasAnExplicitFeatureOwner() throws Exception {
+        try (java.io.Reader reader = new java.io.InputStreamReader(
+            getClass().getClassLoader()
+                .getResourceAsStream("mixins.apeiron.json"),
+            StandardCharsets.UTF_8)) {
+            com.google.gson.JsonObject config = new com.google.gson.JsonParser().parse(reader)
+                .getAsJsonObject();
+            assertEquals(
+                1,
+                config.getAsJsonObject("injectors")
+                    .get("defaultRequire")
+                    .getAsInt());
+            for (String section : new String[] { "mixins", "client" })
+                for (com.google.gson.JsonElement entry : config.getAsJsonArray(section))
+                    org.junit.Assert.assertNotNull(MixinFeature.of(entry.getAsString()));
+        }
+        assertThrows(IllegalArgumentException.class, () -> MixinFeature.of("unregistered.SomeMixin"));
+    }
+
+    @Test
+    public void optionalIntegrationSwitchesAreIndependent() throws Exception {
+        for (MixinFeature selected : MixinFeature.values()) {
+            if (selected.key == null) continue;
+            File file = folder.newFile();
+            Configuration config = new Configuration(file);
+            config.get(selected.category, selected.key, true)
+                .set(false);
+            config.save();
+            ApeironConfig.load(file);
+            assertFalse(selected.name(), selected.isEnabled());
+            assertTrue(MixinFeature.CORE.isEnabled());
+            for (MixinFeature other : MixinFeature.values())
+                if (other.key != null && other != selected) assertTrue(other.name(), other.isEnabled());
+        }
+    }
+
 }
