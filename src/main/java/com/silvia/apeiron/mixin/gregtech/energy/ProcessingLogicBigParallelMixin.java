@@ -66,9 +66,9 @@ public abstract class ProcessingLogicBigParallelMixin {
             target = "Lgregtech/api/logic/ProcessingLogic;createOverclockCalculator(Lgregtech/api/util/GTRecipe;)Lgregtech/api/util/OverclockCalculator;"),
         require = 1)
     private OverclockCalculator apeiron$calculator(ProcessingLogic logic, GTRecipe recipe) {
-        if (machine instanceof MTEMultiBlockBase && InfiniteEnergyHatches.isUltimate((MTEMultiBlockBase) machine))
-            return OverclockCalculator.ofNoOverclock(recipe);
         OverclockCalculator calculator = ((ProcessingLogicAccessor) logic).apeiron$nativeCalculator(recipe);
+        if (machine instanceof MTEMultiBlockBase && InfiniteEnergyHatches.isUltimate((MTEMultiBlockBase) machine))
+            calculator.setNoOverclock(true);
         if (machine instanceof MTEMultiBlockBase && InfiniteEnergyHatches.find((MTEMultiBlockBase) machine) != null)
             calculator.setEUt(InfiniteEnergyHatches.processingVoltage((MTEMultiBlockBase) machine));
         return calculator;
@@ -100,7 +100,7 @@ public abstract class ProcessingLogicBigParallelMixin {
         return new BigRecipeParallelHelper(
             controller,
             hatch,
-            ((BigWirelessController) machine).getWirelessRecipeState())
+            ((BigWirelessController) machine).getWirelessRecipeState()).preserveNativeModifiers(nativeHelper)
                 .setExactOutputCalculator(
                     provider == null ? null : count -> provider.calculateRecipeOutputsBig(recipe, count))
                 .setRecipe(recipe)

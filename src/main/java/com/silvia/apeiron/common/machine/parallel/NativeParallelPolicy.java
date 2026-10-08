@@ -4,10 +4,12 @@ import java.lang.reflect.Field;
 
 import gregtech.api.util.ParallelHelper;
 
-/** Only replace an unchanged standard helper; specialized consumer/output callbacks retain native semantics. */
+/** Preserve standard recipe modifiers; specialized consumer/output callbacks retain native semantics. */
 public final class NativeParallelPolicy {
 
     private static final String TST_HELPER = "com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.processingLogics.GTCM_ParallelHelper";
+    private static final Field CHANCE = modifier("chanceMultiplier");
+    private static final Field EU = modifier("eutModifier");
     private static final ClassValue<Object> DEFAULTS = new ClassValue<Object>() {
 
         @Override
@@ -44,7 +46,9 @@ public final class NativeParallelPolicy {
                             break;
                         case "chanceMultiplier":
                             field.setAccessible(true);
-                            if (field.getDouble(helper) != 1.0) return false;
+                            double multiplier = field.getDouble(helper);
+                            if (!Double.isFinite(multiplier) || multiplier < 0
+                                || exactOutputProvider && multiplier != 1.0) return false;
                             break;
                         case "isRecipeLocked":
                             field.setAccessible(true);
@@ -63,6 +67,25 @@ public final class NativeParallelPolicy {
             return true;
         } catch (IllegalAccessException error) {
             return false;
+        }
+    }
+
+    public static void copyModifiers(ParallelHelper source, ParallelHelper target) {
+        try {
+            target.setChanceMultiplier(CHANCE.getDouble(source));
+            target.setEUtModifier(EU.getDouble(source));
+        } catch (IllegalAccessException failure) {
+            throw new IllegalStateException("Cannot preserve native recipe modifiers", failure);
+        }
+    }
+
+    private static Field modifier(String name) {
+        try {
+            Field field = ParallelHelper.class.getDeclaredField(name);
+            field.setAccessible(true);
+            return field;
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException("Unsupported GregTech parallel modifier: " + name, failure);
         }
     }
 }

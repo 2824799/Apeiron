@@ -93,6 +93,19 @@ public final class InfiniteEnergySmoke {
             GlobalEnergyWorldSavedData.INSTANCE = new GlobalEnergyWorldSavedData();
             check(NativeParallelPolicy.supports(new ParallelHelper()), "standard helper rejected");
             check(
+                NativeParallelPolicy.supports(new ParallelHelper().setChanceMultiplier(0.5)),
+                "standard fractional output multiplier rejected");
+            check(
+                NativeParallelPolicy.supports(new ParallelHelper().setChanceMultiplier(2)),
+                "standard guaranteed extra output multiplier rejected");
+            check(
+                !NativeParallelPolicy.supports(new ParallelHelper().setChanceMultiplier(Double.NaN))
+                    && !NativeParallelPolicy.supports(new ParallelHelper().setChanceMultiplier(-1)),
+                "invalid output multiplier accepted");
+            check(
+                !NativeParallelPolicy.supports(new ParallelHelper().setChanceMultiplier(2), true),
+                "specialized output provider silently discarded an output modifier");
+            check(
                 !NativeParallelPolicy
                     .supports(new ParallelHelper().setCustomItemOutputCalculation(count -> new ItemStack[0])),
                 "custom output callback was replaced");

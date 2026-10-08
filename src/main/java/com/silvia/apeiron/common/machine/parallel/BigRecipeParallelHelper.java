@@ -37,6 +37,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper
     private BigInteger euPerParallel;
     private BigInteger totalPerParallel;
     private BigInteger totalEnergy;
+    private int baseRecipeDuration;
     private java.util.function.Function<BigInteger, List<IAEStack<?>>> outputCalculator;
 
     public BigRecipeParallelHelper(MTEMultiBlockBase controller, MTEInfiniteEnergyHatch hatch,
@@ -66,6 +67,11 @@ public final class BigRecipeParallelHelper extends ParallelHelper
         return this;
     }
 
+    public BigRecipeParallelHelper preserveNativeModifiers(ParallelHelper nativeHelper) {
+        NativeParallelPolicy.copyModifiers(nativeHelper, this);
+        return this;
+    }
+
     @Override
     protected void determineParallel() {
         calculator.setEUt(com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches.processingVoltage(controller));
@@ -83,14 +89,16 @@ public final class BigRecipeParallelHelper extends ParallelHelper
             return;
         }
         euPerParallel = BigInteger.valueOf(calculator.getConsumption());
+        baseRecipeDuration = Math.max(1, calculator.getDuration());
         inputs = new BigRecipeInputs(controller, recipe, itemInputs, fluidInputs);
         plan(hatch.isUltimate() ? state.getTargetDuration() : Math.max(1, calculator.getDuration()));
     }
 
     public boolean plan(int duration) {
         int efficiency = 10000 - (controller.getIdealStatus() - controller.getRepairStatus()) * 1000;
-        totalPerParallel = hatch.isUltimate() ? BigInteger.valueOf(recipe.mEUt)
-            .multiply(BigInteger.valueOf(recipe.mDuration)) : euPerParallel.multiply(BigInteger.valueOf(duration));
+        // Ultimate time changes redistribute the native, unoverclocked cost across the configured work ticks.
+        totalPerParallel = euPerParallel
+            .multiply(BigInteger.valueOf(hatch.isUltimate() ? baseRecipeDuration : duration));
         ParallelLimit cap = state.getLimit();
         if (totalPerParallel.signum() > 0) {
             BigInteger affordable = hatch.isUltimate()
@@ -135,18 +143,23 @@ public final class BigRecipeParallelHelper extends ParallelHelper
         if (outputCalculator != null) return outputCalculator.apply(count);
         List<IAEStack<?>> values = new ArrayList<>();
         for (int i = 0; i < Math.min(recipe.mOutputs.length, controller.getItemOutputLimit()); i++)
-            if (recipe.mOutputs[i] != null && recipe.getOutputChance(i) > 0) values.add(
+            if (recipe.mOutputs[i] != null && outputChance(recipe.getOutputChance(i)) > 0) values.add(
                 BigAEStackValues.copyWithSize(
                     AEItemStack.create(recipe.mOutputs[i]),
-                    outputCount(count, recipe.getOutputChance(i), capacity)
+                    outputCount(count, outputChance(recipe.getOutputChance(i)), capacity)
                         .multiply(BigInteger.valueOf(recipe.mOutputs[i].stackSize))));
         for (int i = 0; i < Math.min(recipe.mFluidOutputs.length, controller.getFluidOutputLimit()); i++)
-            if (recipe.mFluidOutputs[i] != null && recipe.getFluidOutputChance(i) > 0) values.add(
+            if (recipe.mFluidOutputs[i] != null && outputChance(recipe.getFluidOutputChance(i)) > 0) values.add(
                 BigAEStackValues.copyWithSize(
                     AEFluidStack.create(recipe.mFluidOutputs[i]),
-                    outputCount(count, recipe.getFluidOutputChance(i), capacity)
+                    outputCount(count, outputChance(recipe.getFluidOutputChance(i)), capacity)
                         .multiply(BigInteger.valueOf(recipe.mFluidOutputs[i].amount))));
         return values;
+    }
+
+    private int outputChance(int chance) {
+        // Use the same multiplication and int conversion as native ParallelHelper, including >100% output.
+        return (int) (chance * chanceMultiplier);
     }
 
     private static BigInteger outputCount(BigInteger count, int chance, boolean capacity) {
@@ -180,6 +193,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper
     }
 
     public int recipeDuration(int nativeDuration) {
+        baseRecipeDuration = Math.max(1, nativeDuration);
         return hatch.isUltimate() ? state.getTargetDuration() : Math.max(1, nativeDuration);
     }
 
