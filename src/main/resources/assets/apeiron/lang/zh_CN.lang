@@ -29,6 +29,7 @@ apeiron.machine.infinite_pattern_mirror.desc=§b让多台机器共享同一个�
 apeiron.machine.pattern_input.switch_view=切换样板视图／倍增视图
 apeiron.machine.pattern_input.pattern_slot=样板槽 %s / 360
 apeiron.machine.pattern_input.pattern_catalysts=中键：设置此样板的不消耗材料／电路
+apeiron.machine.pattern_input.duplicate_rule=配方与设置相同的样板不可重复放入；编码者等记录不影响判重
 apeiron.machine.pattern_input.catalysts=不消耗的配方材料／电路
 apeiron.machine.pattern_input.multiplier=样板倍数（大于 0 的整数）
 apeiron.machine.pattern_input.multiply_all=左键：全部倍数 ×2；右键：÷2；Shift：重置为 1

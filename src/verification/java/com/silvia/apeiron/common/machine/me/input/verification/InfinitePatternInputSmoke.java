@@ -1,5 +1,6 @@
 package com.silvia.apeiron.common.machine.me.input.verification;
 
+import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
@@ -26,12 +27,14 @@ import appeng.api.implementations.ICraftingPatternItem;
 import appeng.api.networking.crafting.ICraftingPatternDetails;
 import appeng.api.storage.data.IAEStack;
 import appeng.container.ContainerNull;
+import appeng.core.sync.packets.PacketInterfaceTerminalUpdate;
 import appeng.util.inv.MEInventoryCrafting;
 import appeng.util.item.AEFluidStack;
 import appeng.util.item.AEItemStack;
 import gregtech.api.GregTechAPI;
 import gregtech.api.metatileentity.BaseMetaTileEntity;
 import gregtech.common.tileentities.machines.multi.MTEElectricBlastFurnace;
+import io.netty.buffer.ByteBuf;
 
 /** Uses transformed AE and GT classes, detached inventories and one authoritative source for both mirrors. */
 public final class InfinitePatternInputSmoke {
@@ -118,7 +121,9 @@ public final class InfinitePatternInputSmoke {
             "terminal registration missing");
         verifyOptimization();
         verifyBatchDispatch();
+        verifyDuplicatePatterns();
         Assembly source = new Assembly();
+        verifyTerminalRepresentation(source);
         check(
             source.getPatterns()
                 .getSizeInventory() == 360 && source.rowSize() == 9
@@ -130,6 +135,7 @@ public final class InfinitePatternInputSmoke {
         final String ownName = source.getName();
         source.addWatcherCompat(attached);
         source.addWatcherCompat(attached);
+        verifyTerminalRepresentation(source);
         check(
             source.getName()
                 .equals(attached.getLocalName()),
@@ -140,6 +146,7 @@ public final class InfinitePatternInputSmoke {
                 .equals(attached.getLocalName()),
             "partial watcher removal lost machine name");
         source.setCustomName("Apeiron named input");
+        verifyTerminalRepresentation(source);
         check(
             source.getName()
                 .equals("Apeiron named input"),
@@ -217,6 +224,7 @@ public final class InfinitePatternInputSmoke {
             "catalysts are consumable materials");
         Mirror first = new Mirror(source);
         Mirror second = new Mirror(source);
+        verifyTerminalRepresentation(first.getInputSource());
         check(
             first.inventories()
                 .next() == buffer
@@ -595,6 +603,178 @@ public final class InfinitePatternInputSmoke {
             "type overflow partially committed fluid input");
         buffer.removeBig(types.get(0), HUGE);
         check(buffer.add(input(HUGE), BigInteger.ONE), "refunded type did not release its buffer slot");
+    }
+
+    private static void verifyDuplicatePatterns() {
+        Assembly source = new Assembly();
+        ItemStack original = pattern();
+        original.getTagCompound()
+            .setString("author", "First encoder");
+        source.getPatterns()
+            .setInventorySlotContents(0, original);
+        ItemStack duplicate = pattern();
+        duplicate.getTagCompound()
+            .setString("author", "Second encoder");
+        duplicate.getTagCompound()
+            .setLong("createdAt", 123456789L);
+        duplicate.setStackDisplayName("Different label, same recipe");
+        NBTTagCompound untouched = duplicate.writeToNBT(new NBTTagCompound());
+        check(!source.isItemValidForSlot(359, duplicate), "duplicate with different bookkeeping accepted");
+        check(
+            !source.getPatterns()
+                .isItemValidForSlot(359, duplicate),
+            "AE terminal accepted duplicate");
+        com.cleanroommc.modularui.widgets.slot.ModularSlot guiSlot = new com.cleanroommc.modularui.widgets.slot.ModularSlot(
+            source.inventoryHandler,
+            359);
+        check(!guiSlot.isItemValid(duplicate), "GUI slot accepted a duplicate pattern");
+        check(
+            duplicate.stackSize == 1 && source.mInventory[359] == null
+                && untouched.equals(duplicate.writeToNBT(new NBTTagCompound())),
+            "GUI duplicate rejection modified or consumed a pattern");
+        check(source.isItemValidForSlot(0, duplicate), "replacement compared against its own slot");
+        Mirror mirror = new Mirror(source);
+        check(
+            !mirror.getInputSource()
+                .isItemValidForSlot(1, duplicate),
+            "mirror bypassed source duplicate validation");
+
+        ItemStack split = processingPattern(
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.diamond)),
+                AEItemStack.create(new ItemStack(Items.diamond)) },
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.emerald)) });
+        check(!source.isItemValidForSlot(1, split), "equivalent split inputs were not recognized");
+        ItemStack amount = processingPattern(
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.diamond, 3)) },
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.emerald)) });
+        check(source.isItemValidForSlot(1, amount), "different input amount was rejected");
+        ItemStack output = processingPattern(
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.diamond, 2)) },
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.emerald, 2)) });
+        check(source.isItemValidForSlot(1, output), "different output amount was rejected");
+        ItemStack taggedDiamond = new ItemStack(Items.diamond, 2);
+        taggedDiamond.setTagCompound(new NBTTagCompound());
+        taggedDiamond.getTagCompound()
+            .setString("recipeVariant", "different ingredient");
+        ItemStack tagged = processingPattern(
+            new IAEStack<?>[] { AEItemStack.create(taggedDiamond) },
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.emerald)) });
+        check(source.isItemValidForSlot(1, tagged), "ingredient NBT was ignored");
+        for (String setting : new String[] { "substitute", "beSubstitute" }) {
+            ItemStack variant = duplicate.copy();
+            variant.getTagCompound()
+                .setBoolean(setting, true);
+            check(source.isItemValidForSlot(1, variant), "different substitution setting was rejected");
+        }
+        source.setMultiplierBig(1, BigInteger.valueOf(2));
+        check(source.isItemValidForSlot(1, duplicate), "different effective multiplier was rejected");
+        source.setMultiplierBig(1, BigInteger.ONE);
+        source.mInventory[source.catalystSlotStart(1)] = new ItemStack(Items.gold_ingot);
+        check(source.isItemValidForSlot(1, duplicate), "different per-pattern catalyst was rejected");
+        source.mInventory[source.catalystSlotStart(1)] = null;
+
+        source.getPatterns()
+            .setInventorySlotContents(0, amount);
+        check(source.isItemValidForSlot(1, duplicate), "replacing a recipe retained stale duplicate data");
+        source.getPatterns()
+            .setInventorySlotContents(0, null);
+        check(source.isItemValidForSlot(1, duplicate), "removing a recipe retained stale duplicate data");
+        ItemStack broken = pattern();
+        broken.getTagCompound()
+            .removeTag("out");
+        NBTTagCompound brokenBefore = broken.writeToNBT(new NBTTagCompound());
+        check(!source.isItemValidForSlot(1, broken), "broken recipe accepted");
+        check(brokenBefore.equals(broken.writeToNBT(new NBTTagCompound())), "validation mutated broken pattern NBT");
+
+        ItemStack exact = processingPattern(
+            input(HUGE).toArray(new IAEStack<?>[0]),
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.emerald)) });
+        source.getPatterns()
+            .setInventorySlotContents(0, exact);
+        ItemStack reordered = processingPattern(
+            new IAEStack<?>[] { input(HUGE).get(1), input(HUGE).get(0) },
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.emerald)) });
+        check(!source.isItemValidForSlot(1, reordered), "same mixed recipe in different input order accepted");
+        ItemStack changed = processingPattern(
+            input(HUGE.add(BigInteger.ONE)).toArray(new IAEStack<?>[0]),
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.emerald)) });
+        check(source.isItemValidForSlot(1, changed), "exact quantities were compared using saturated counts");
+        List<IAEStack<?>> changedFluid = input(HUGE);
+        changedFluid.set(1, AEFluidStack.create(new FluidStack(FluidRegistry.LAVA, 1)));
+        ItemStack lava = processingPattern(
+            changedFluid.toArray(new IAEStack<?>[0]),
+            new IAEStack<?>[] { AEItemStack.create(new ItemStack(Items.emerald)) });
+        check(source.isItemValidForSlot(1, lava), "different fluid ingredient was rejected");
+        NBTTagCompound saved = new NBTTagCompound();
+        source.saveNBTData(saved);
+        Assembly restored = new Assembly();
+        restored.loadNBTData(saved);
+        check(!restored.isItemValidForSlot(1, reordered), "duplicate validation did not survive reload");
+        Apeiron.LOG.info(
+            "Pattern duplicate verification passed: AE/GUI/mirror insertion, bookkeeping ignored, exact mixed recipes, amounts, ingredient NBT, settings, multipliers, catalysts and reload");
+    }
+
+    private static ItemStack processingPattern(IAEStack<?>[] inputs, IAEStack<?>[] outputs) {
+        ItemStack result = AEApi.instance()
+            .definitions()
+            .items()
+            .encodedUltimatePattern()
+            .maybeStack(1)
+            .get();
+        NBTTagCompound tag = new NBTTagCompound();
+        NBTTagList in = new NBTTagList(), out = new NBTTagList();
+        for (IAEStack<?> stack : inputs) in.appendTag(stack.toNBTGeneric());
+        for (IAEStack<?> stack : outputs) out.appendTag(stack.toNBTGeneric());
+        tag.setTag("in", in);
+        tag.setTag("out", out);
+        result.setTagCompound(tag);
+        return result;
+    }
+
+    private static void verifyTerminalRepresentation(MTEInfinitePatternInputAssembly source) {
+        ItemStack self = source.getSelfRep();
+        check(
+            self != null && ItemStack.areItemStacksEqual(self, source.getStackForm(1)),
+            "terminal self representation must identify the pattern assembly");
+        PacketInterfaceTerminalUpdate packet = new PacketInterfaceTerminalUpdate();
+        NBTTagList patterns = new NBTTagList();
+        for (int slot = 0; slot < MTEInfinitePatternInputAssembly.PATTERN_COUNT; slot++)
+            patterns.appendTag(new NBTTagCompound());
+        packet.addNewEntry(1L, source.getName(), true)
+            .setLoc(10, 20, 30, 0, net.minecraftforge.common.util.ForgeDirection.UNKNOWN.ordinal())
+            .setItems(source.rows(), source.rowSize(), MTEInfinitePatternInputAssembly.PATTERN_COUNT, patterns)
+            .setReps(self, source.getDisplayRep())
+            .setSupportedStackTypes(source.getSupportedStackTypes())
+            .setTerminalVisible(source.shouldDisplay());
+        packet.encode();
+        ByteBuf payload = packet.getProxy()
+            .payload();
+        try {
+            ByteBuf reader = payload.duplicate();
+            reader.readInt();
+            PacketInterfaceTerminalUpdate received = new PacketInterfaceTerminalUpdate(reader);
+            check(!reader.isReadable(), "terminal packet left unread bytes");
+            Field commandsField = PacketInterfaceTerminalUpdate.class.getDeclaredField("commands");
+            commandsField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            List<PacketInterfaceTerminalUpdate.PacketEntry> commands = (List<PacketInterfaceTerminalUpdate.PacketEntry>) commandsField
+                .get(received);
+            check(commands.size() == 1, "terminal entry was lost in transit");
+            PacketInterfaceTerminalUpdate.PacketAdd entry = (PacketInterfaceTerminalUpdate.PacketAdd) commands.get(0);
+            check(
+                ItemStack.areItemStacksEqual(entry.selfRep, self) && !entry.selfRep.getDisplayName()
+                    .isEmpty(),
+                "highlight device name was lost in transit");
+            check(entry.name.equals(source.getName()), "terminal machine/custom name changed in transit");
+            check(entry.x == 10 && entry.y == 20 && entry.z == 30 && entry.dim == 0, "highlight location changed");
+            if (cpw.mods.fml.common.FMLCommonHandler.instance()
+                .getSide()
+                .isClient()) InterfaceTerminalRepresentationSmoke.verify(commands);
+        } catch (ReflectiveOperationException | java.io.IOException error) {
+            throw new IllegalStateException("Interface terminal representation verification failed", error);
+        } finally {
+            payload.release();
+        }
     }
 
     private static void check(boolean condition, String message) {

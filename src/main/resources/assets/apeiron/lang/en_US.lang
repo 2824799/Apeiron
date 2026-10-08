@@ -29,6 +29,7 @@ apeiron.machine.infinite_pattern_mirror.desc=§bShares one pattern input assembl
 apeiron.machine.pattern_input.switch_view=Switch pattern / multiplier view
 apeiron.machine.pattern_input.pattern_slot=Pattern slot %s / 360
 apeiron.machine.pattern_input.pattern_catalysts=Middle-click: set this pattern's non-consumed ingredients / circuits
+apeiron.machine.pattern_input.duplicate_rule=Duplicate recipes with the same settings are rejected; encoder records do not affect matching
 apeiron.machine.pattern_input.catalysts=Non-consumed recipe ingredients / circuits
 apeiron.machine.pattern_input.multiplier=Pattern multiplier (integer greater than 0)
 apeiron.machine.pattern_input.multiply_all=Left: double all; right: halve all; Shift: reset to 1

@@ -36,6 +36,7 @@ import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.api.machine.me.input.BigDualInputHatch;
 import com.silvia.apeiron.client.gui.machine.me.input.InfinitePatternInputGui;
 import com.silvia.apeiron.common.machine.me.input.pattern.MultipliedPatternDetails;
+import com.silvia.apeiron.common.machine.me.input.pattern.PatternRecipeComparison;
 import com.silvia.apeiron.common.machine.me.input.storage.BigPatternBuffer;
 import com.silvia.apeiron.common.machine.registration.ApeironMachines;
 import com.silvia.apeiron.math.AdaptiveInteger;
@@ -675,6 +676,11 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     }
 
     @Override
+    public ItemStack getSelfRep() {
+        return getStackForm(1);
+    }
+
+    @Override
     public IAEStackType<?>[] getSupportedStackTypes() {
         return new IAEStackType<?>[] { AEItemStackType.ITEM_STACK_TYPE, AEFluidStackType.FLUID_STACK_TYPE };
     }
@@ -717,9 +723,30 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
 
     @Override
     public boolean isItemValidForSlot(int slot, ItemStack stack) {
-        return stack != null && slot >= 0
-            && slot < INVENTORY_SIZE
-            && (slot >= PATTERN_COUNT || stack.getItem() instanceof ICraftingPatternItem);
+        if (stack == null || slot < 0 || slot >= INVENTORY_SIZE) return false;
+        if (slot >= PATTERN_COUNT) return true;
+        if (!(stack.getItem() instanceof ICraftingPatternItem item)) return false;
+        World world = getBaseMetaTileEntity() == null ? null : getBaseMetaTileEntity().getWorld();
+        // Some decoders mark a broken item in NBT. Validation must not mutate the player's stack.
+        ICraftingPatternDetails candidate = item.getPatternForItem(stack.copy(), world);
+        if (candidate == null) return false;
+        if (!multipliers[slot].equals(BigInteger.ONE))
+            candidate = new MultipliedPatternDetails(candidate, multipliers[slot]);
+        for (int other = 0; other < PATTERN_COUNT; other++) {
+            if (other == slot || mInventory[other] == null) continue;
+            if (PatternRecipeComparison.sameRecipe(candidate, getPatternDetails(other))
+                && sameManualSelectors(slot, other)) return false;
+        }
+        return true;
+    }
+
+    private boolean sameManualSelectors(int first, int second) {
+        List<ItemStack> firstSelectors = manualSelectors(first), secondSelectors = manualSelectors(second);
+        if (firstSelectors.size() != secondSelectors.size()) return false;
+        for (int index = 0; index < firstSelectors.size(); index++)
+            if (!gregtech.api.util.GTUtility.areStacksEqual(firstSelectors.get(index), secondSelectors.get(index)))
+                return false;
+        return true;
     }
 
     @Override

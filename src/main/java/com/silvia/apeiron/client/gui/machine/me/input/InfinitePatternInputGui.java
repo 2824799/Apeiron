@@ -180,7 +180,8 @@ public final class InfinitePatternInputGui extends MTEHatchBaseGui<MTEInfinitePa
         slot.setEnabledIf(widget -> !multiplierView.getBoolValue());
         slot.tooltip(
             t -> t.addLine(IKey.lang("apeiron.machine.pattern_input.pattern_slot", index + 1))
-                .addLine(IKey.lang("apeiron.machine.pattern_input.pattern_catalysts")));
+                .addLine(IKey.lang("apeiron.machine.pattern_input.pattern_catalysts"))
+                .addLine(IKey.lang("apeiron.machine.pattern_input.duplicate_rule")));
         ButtonWidget<?> factor = new ButtonWidget<>().background(GTGuiTextures.BUTTON_STANDARD)
             .overlay(
                 IKey.dynamic(
