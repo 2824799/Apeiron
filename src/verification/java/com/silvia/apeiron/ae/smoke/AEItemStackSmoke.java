@@ -10,6 +10,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import com.silvia.apeiron.Apeiron;
 import com.silvia.apeiron.ae.stack.BigAEItemStack;
 import com.silvia.apeiron.ae.stack.BigAEItemStacks;
+import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.storage.BigIMEInventory;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
 
@@ -37,6 +38,18 @@ public final class AEItemStackSmoke {
     private AEItemStackSmoke() {}
 
     public static void verify() {
+        check(
+            BigAEStackValues.get(null)
+                .equals(BigInteger.ZERO),
+            "absent stack has a stored count");
+        check(
+            BigAEStackValues.getCountRequestable(null)
+                .equals(BigInteger.ZERO),
+            "absent stack has requestable items");
+        check(
+            BigAEStackValues.getCountRequestableCrafts(null)
+                .equals(BigInteger.ZERO),
+            "absent stack has requestable crafts");
         IAEItemStack original = AEItemStack.create(new ItemStack(Items.diamond));
         check(original instanceof BigAEItemStack, "AEItemStack mixin was not applied");
 

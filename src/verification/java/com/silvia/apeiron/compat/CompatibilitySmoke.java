@@ -21,6 +21,9 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.ae.smoke.AECraftingCPUSmoke.verify();
         com.silvia.apeiron.ae.smoke.AECraftingPlanningSmoke.verify();
         com.silvia.apeiron.ae.smoke.AECraftingTreeSmoke.verify();
+        if (cpw.mods.fml.common.FMLCommonHandler.instance()
+            .getSide()
+            .isClient()) com.silvia.apeiron.ae.smoke.AECraftingConfirmationSortSmoke.verify();
         com.silvia.apeiron.ae.smoke.AEBackendSmoke.verify();
         if (cpw.mods.fml.common.Loader.isModLoaded("aeinfinitycell"))
             com.silvia.apeiron.common.integration.aeinfinitycell.verification.InfinityCellSmoke.verify();

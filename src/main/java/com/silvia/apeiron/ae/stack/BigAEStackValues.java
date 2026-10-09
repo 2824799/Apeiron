@@ -25,6 +25,7 @@ public final class BigAEStackValues {
     }
 
     public static BigInteger getCountRequestable(final IAEStack<?> stack) {
+        if (stack == null) return BigInteger.ZERO;
         if (stack instanceof BigAERequestableStack) {
             return ((BigAERequestableStack) stack).getCountRequestableBig();
         }
@@ -32,6 +33,7 @@ public final class BigAEStackValues {
     }
 
     public static BigInteger getCountRequestableCrafts(final IAEStack<?> stack) {
+        if (stack == null) return BigInteger.ZERO;
         if (stack instanceof BigAERequestableStack) {
             return ((BigAERequestableStack) stack).getCountRequestableCraftsBig();
         }
