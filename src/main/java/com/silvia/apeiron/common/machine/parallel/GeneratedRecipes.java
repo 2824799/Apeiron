@@ -129,7 +129,8 @@ public final class GeneratedRecipes {
                 else upper = middle.subtract(BigInteger.ONE);
             }
             parallels = lower;
-            if (parallels.signum() == 0) return BigRecipeOutputCapacity.check(machine, rolled.snapshotOutputs());
+            if (parallels.signum() == 0)
+                return BigRecipeOutputCapacity.check(machine, rolled.snapshotOutputsUnsorted());
         }
         BigInteger total = RecipeDisplayNumbers.effectiveEUt(
             perEUt.multiply(parallels)
@@ -153,12 +154,12 @@ public final class GeneratedRecipes {
     }
 
     private static boolean fits(MTEMultiBlockBase machine, BigMachineOutputQueue rolled, BigInteger count) {
-        return BigRecipeOutputCapacity.fits(machine, scale(rolled, count).snapshotOutputs());
+        return BigRecipeOutputCapacity.fits(machine, scale(rolled, count).snapshotOutputsUnsorted());
     }
 
     private static BigMachineOutputQueue scale(BigMachineOutputQueue rolled, BigInteger count) {
         BigMachineOutputQueue result = new BigMachineOutputQueue();
-        for (IAEStack<?> stack : rolled.snapshotOutputs()) {
+        for (IAEStack<?> stack : rolled.snapshotOutputsUnsorted()) {
             BigInteger amount = BigAEStackValues.get(stack)
                 .multiply(count);
             if (stack instanceof IAEItemStack) result.addItem(((IAEItemStack) stack).getItemStack(), amount);

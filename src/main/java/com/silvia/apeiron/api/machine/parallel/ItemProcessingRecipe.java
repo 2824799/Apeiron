@@ -19,7 +19,7 @@ public final class ItemProcessingRecipe {
         this.totalEU = Objects.requireNonNull(totalEU, "totalEU");
         if (totalEU.signum() < 0) throw new IllegalArgumentException("Negative recipe cost");
         this.outputs = Objects.requireNonNull(outputs, "outputs")
-            .snapshotOutputs();
+            .snapshotOutputsUnsorted();
     }
 
     public BigInteger getTotalEU() {

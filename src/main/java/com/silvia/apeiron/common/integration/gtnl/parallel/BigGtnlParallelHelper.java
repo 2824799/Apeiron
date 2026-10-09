@@ -260,7 +260,7 @@ public final class BigGtnlParallelHelper extends GTNLParallelHelper implements P
         List<IAEStack<?>> expected = new ArrayList<>();
         if (batch != null) expected.addAll(
             batch.outputs()
-                .snapshotOutputs());
+                .snapshotOutputsUnsorted());
         expected.addAll(outputs(count, true));
         return BigRecipeOutputCapacity.check(controller, expected);
     }

@@ -21,6 +21,15 @@ public final class ItemProcessingPlan {
 
     public static ItemProcessingPlan calculate(BigInteger[] available, boolean[] renewable, BigInteger[] costs,
         ParallelLimit limit, BigInteger availableEU, Predicate<BigInteger[]> outputsFit) {
+        // Check the affordable batch once before falling back to per-input capacity searches.
+        // Rebuilding every growing prefix makes large mixed inventories quadratic even with free output space.
+        ItemProcessingPlan candidate = plan(available, renewable, costs, limit, availableEU, null);
+        if (candidate.parallels.signum() == 0 || outputsFit.test(candidate.getDebits())) return candidate;
+        return plan(available, renewable, costs, limit, availableEU, outputsFit);
+    }
+
+    private static ItemProcessingPlan plan(BigInteger[] available, boolean[] renewable, BigInteger[] costs,
+        ParallelLimit limit, BigInteger availableEU, Predicate<BigInteger[]> outputsFit) {
         if (available.length != renewable.length || available.length != costs.length || availableEU.signum() < 0)
             throw new IllegalArgumentException("Invalid item processing inventory");
         BigInteger[] debits = new BigInteger[available.length];
@@ -45,7 +54,7 @@ public final class ItemProcessingPlan {
             }
             if (maximum == null) throw new IllegalArgumentException("Renewable free input needs a finite parallel cap");
             debits[i] = maximum;
-            if (!outputsFit.test(debits.clone())) {
+            if (maximum.signum() > 0 && outputsFit != null && !outputsFit.test(debits.clone())) {
                 BigInteger lower = BigInteger.ZERO, upper = maximum;
                 while (lower.compareTo(upper) < 0) {
                     BigInteger middle = lower.add(upper)

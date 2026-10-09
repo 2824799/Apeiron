@@ -75,15 +75,21 @@ public final class BigMachineOutputQueue {
 
     /** Display consumers receive detached exact stacks and cannot consume this output ledger. */
     public List<IAEStack<?>> snapshotOutputs() {
-        final List<IAEStack<?>> result = new ArrayList<>();
-        items.iterateAllBig((type, amount) -> result.add(BigAEStackValues.copyWithSize(type, amount)));
-        fluids.iterateAllBig((type, amount) -> result.add(BigAEStackValues.copyWithSize(type, amount)));
+        final List<IAEStack<?>> result = snapshotOutputsUnsorted();
         result.sort((left, right) -> {
             final int quantity = BigAEStackValues.get(right)
                 .compareTo(BigAEStackValues.get(left));
             return quantity == 0 ? left.getDisplayName()
                 .compareTo(right.getDisplayName()) : quantity;
         });
+        return result;
+    }
+
+    /** Transaction and capacity consumers do not need the display order. */
+    public List<IAEStack<?>> snapshotOutputsUnsorted() {
+        final List<IAEStack<?>> result = new ArrayList<>();
+        items.iterateAllBig((type, amount) -> result.add(BigAEStackValues.copyWithSize(type, amount)));
+        fluids.iterateAllBig((type, amount) -> result.add(BigAEStackValues.copyWithSize(type, amount)));
         return result;
     }
 

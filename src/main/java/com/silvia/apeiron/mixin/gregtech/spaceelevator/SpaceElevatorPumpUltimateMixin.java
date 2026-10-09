@@ -100,7 +100,7 @@ public abstract class SpaceElevatorPumpUltimateMixin {
     private static boolean fits(MTEMultiBlockBase module, BigMachineOutputQueue current, FluidStack fluid,
         BigInteger perParallel, BigInteger count) {
         BigMachineOutputQueue candidate = new BigMachineOutputQueue();
-        for (appeng.api.storage.data.IAEStack<?> output : current.snapshotOutputs()) {
+        for (appeng.api.storage.data.IAEStack<?> output : current.snapshotOutputsUnsorted()) {
             if (output instanceof appeng.api.storage.data.IAEFluidStack) candidate.addFluid(
                 ((appeng.api.storage.data.IAEFluidStack) output).getFluidStack(),
                 BigAEStackValues.get(output));
@@ -108,6 +108,6 @@ public abstract class SpaceElevatorPumpUltimateMixin {
                 .addItem(((appeng.api.storage.data.IAEItemStack) output).getItemStack(), BigAEStackValues.get(output));
         }
         candidate.addFluid(fluid, perParallel.multiply(count));
-        return BigRecipeOutputCapacity.fits(module, candidate.snapshotOutputs());
+        return BigRecipeOutputCapacity.fits(module, candidate.snapshotOutputsUnsorted());
     }
 }

@@ -122,7 +122,7 @@ public final class ItemProcessingRecipes {
         ItemProcessingPlan plan = ItemProcessingPlan
             .calculate(available, renewable, costs, parallelLimit, hatch.getAvailableEUBig(), debit -> {
                 CheckRecipeResult result = BigRecipeOutputCapacity
-                    .check(machine, outputs(recipes, debit).snapshotOutputs());
+                    .check(machine, outputs(recipes, debit).snapshotOutputsUnsorted());
                 if (!result.wasSuccessful()) outputFailure[0] = result;
                 return result.wasSuccessful();
             });

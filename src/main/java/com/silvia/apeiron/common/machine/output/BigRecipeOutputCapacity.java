@@ -131,14 +131,18 @@ public final class BigRecipeOutputCapacity {
         List<IAEStack<?>> all = new ArrayList<>(
             ((com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine).getWirelessRecipeState()
                 .pending()
-                .snapshotOutputs());
+                .snapshotOutputsUnsorted());
         all.addAll(outputs);
         for (IAEStack<?> stack : all) {
             if (stack instanceof IAEItemStack)
                 merged.addItem(((IAEItemStack) stack).getItemStack(), BigAEStackValues.get(stack));
             else merged.addFluid(((IAEFluidStack) stack).getFluidStack(), BigAEStackValues.get(stack));
         }
-        all = merged.snapshotOutputs();
+        all = merged.snapshotOutputsUnsorted();
+        // Preserve largest-first allocation for finite receivers without resolving localized display names.
+        all.sort(
+            (left, right) -> BigAEStackValues.get(right)
+                .compareTo(BigAEStackValues.get(left)));
         for (IAEStack<?> output : all) {
             if (output instanceof IAEItemStack)
                 for (Consumer<IAEItemStack> target : items) target.accept((IAEItemStack) output);

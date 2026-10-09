@@ -191,7 +191,7 @@ public abstract class SpaceElevatorMinerUltimateMixin extends TTMultiblockBase {
         BigInteger worstRolls = parallels.multiply(BigInteger.valueOf(data.maxSize));
         for (ItemStack output : recipe.mOutputs) if (apeiron$accept(output))
             worstOutputs.addItem(output, worstRolls.multiply(BigInteger.valueOf(output.stackSize)));
-        if (!BigRecipeOutputCapacity.fits(module, worstOutputs.snapshotOutputs())) {
+        if (!BigRecipeOutputCapacity.fits(module, worstOutputs.snapshotOutputsUnsorted())) {
             BigInteger lower = BigInteger.ZERO;
             BigInteger upper = parallels;
             while (lower.compareTo(upper) < 0) {
@@ -202,7 +202,7 @@ public abstract class SpaceElevatorMinerUltimateMixin extends TTMultiblockBase {
                 BigInteger rolls = middle.multiply(BigInteger.valueOf(data.maxSize));
                 for (ItemStack output : recipe.mOutputs) if (apeiron$accept(output))
                     candidate.addItem(output, rolls.multiply(BigInteger.valueOf(output.stackSize)));
-                if (BigRecipeOutputCapacity.fits(module, candidate.snapshotOutputs())) lower = middle;
+                if (BigRecipeOutputCapacity.fits(module, candidate.snapshotOutputsUnsorted())) lower = middle;
                 else upper = middle.subtract(BigInteger.ONE);
             }
             parallels = lower;

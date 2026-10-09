@@ -12,6 +12,44 @@ import com.silvia.apeiron.api.machine.parallel.ParallelLimit;
 public class ItemProcessingPlanTest {
 
     @Test
+    public void largeMixedInventoryChecksTheAffordableBatchOnlyOnce() {
+        BigInteger[] available = new BigInteger[1024], costs = new BigInteger[1024];
+        Arrays.fill(available, BigInteger.TEN.pow(60));
+        Arrays.fill(costs, BigInteger.ONE);
+        int[] checks = { 0 };
+        ItemProcessingPlan plan = ItemProcessingPlan.calculate(
+            available,
+            new boolean[available.length],
+            costs,
+            ParallelLimit.unlimited(),
+            BigInteger.TEN.pow(70),
+            debit -> {
+                checks[0]++;
+                assertArrayEquals(available, debit);
+                return true;
+            });
+        assertEquals(1, checks[0]);
+        assertArrayEquals(available, plan.getDebits());
+        assertEquals(
+            BigInteger.TEN.pow(60)
+                .multiply(BigInteger.valueOf(1024)),
+            plan.getTotalEUBig());
+    }
+
+    @Test
+    public void capacityFallbackReusesEnergyAndParallelRoomFreedByEarlierInputs() {
+        ItemProcessingPlan plan = ItemProcessingPlan.calculate(
+            values(10, 10),
+            new boolean[2],
+            values(2, 1),
+            ParallelLimit.bounded(10),
+            BigInteger.valueOf(20),
+            debit -> debit[0].compareTo(BigInteger.valueOf(3)) <= 0);
+        assertArrayEquals(values(3, 7), plan.getDebits());
+        assertEquals(BigInteger.valueOf(13), plan.getTotalEUBig());
+    }
+
+    @Test
     public void mixedRecipesShareEnergyAndParallelBudget() {
         ItemProcessingPlan plan = ItemProcessingPlan.calculate(
             values(7, 9, 100),

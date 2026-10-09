@@ -36,7 +36,7 @@ public abstract class SpaceElevatorOutputBigMixin {
             for (FluidStack output : outputs.apeiron$getOutputFluids()) if (output != null && output.amount > 0)
                 queue.addFluid(output, java.math.BigInteger.valueOf(output.amount));
         if (queue.isEmpty()) return;
-        if (!BigRecipeOutputCapacity.fits(machine, queue.snapshotOutputs())) return;
+        if (!BigRecipeOutputCapacity.fits(machine, queue.snapshotOutputsUnsorted())) return;
         queue.flush(
             machine.getOutputBusses(),
             OutputTransactions.hatches(machine),

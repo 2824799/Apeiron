@@ -65,14 +65,15 @@ public final class TargetChamberEnhancement {
             recipe.maxParallelCalculatedByInputs(MAX_PARALLEL, GTValues.emptyFluidStackArray, items));
         if (parallels <= 0) return CheckRecipeResultRegistry.NO_RECIPE;
         BigMachineOutputQueue outputs = outputs(recipe, parallels);
-        if (!BigRecipeOutputCapacity.fits(machine, outputs.snapshotOutputs())) {
+        if (!BigRecipeOutputCapacity.fits(machine, outputs.snapshotOutputsUnsorted())) {
             int low = 0, high = parallels;
             while (low < high) {
                 int middle = low + (high - low + 1) / 2;
-                if (BigRecipeOutputCapacity.fits(machine, outputs(recipe, middle).snapshotOutputs())) low = middle;
+                if (BigRecipeOutputCapacity.fits(machine, outputs(recipe, middle).snapshotOutputsUnsorted()))
+                    low = middle;
                 else high = middle - 1;
             }
-            if (low == 0) return BigRecipeOutputCapacity.check(machine, outputs(recipe, 1).snapshotOutputs());
+            if (low == 0) return BigRecipeOutputCapacity.check(machine, outputs(recipe, 1).snapshotOutputsUnsorted());
             parallels = low;
             outputs = outputs(recipe, parallels);
         }
