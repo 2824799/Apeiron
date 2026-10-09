@@ -18,11 +18,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.silvia.apeiron.api.machine.me.input.BigDualInputHatch;
 import com.silvia.apeiron.common.integration.lanthanides.TargetChamberEnhancement;
 import com.silvia.apeiron.common.machine.input.IsolatedRecipeInputs;
+import com.silvia.apeiron.common.machine.lanthanides.MTEAutoLaserBeamlineInput;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gtnhlanth.common.item.ItemPhotolithographicMask;
 import gtnhlanth.common.tileentity.MTETargetChamber;
 
 @Mixin(value = MTETargetChamber.class, remap = false)
@@ -44,10 +46,12 @@ public abstract class TargetChamberInputMixin {
         if (apeiron$items != null) return;
         MTETargetChamber machine = (MTETargetChamber) (Object) this;
         boolean enhanced = TargetChamberEnhancement.isEnabled();
+        boolean automaticLaser = machine.mInputBeamline.stream()
+            .anyMatch(hatch -> hatch instanceof MTEAutoLaserBeamlineInput && hatch.isValid());
         List<List<ItemStack>> inputs = IsolatedRecipeInputs.patterns(machine.mDualInputHatches);
         boolean hasSpecialPatterns = mMaskInputBusses.stream()
             .anyMatch(bus -> bus instanceof BigDualInputHatch);
-        if (!enhanced && inputs.isEmpty() && !hasSpecialPatterns) return;
+        if (!enhanced && !automaticLaser && inputs.isEmpty() && !hasSpecialPatterns) return;
         inputs.add(machine.getStoredInputs());
         List<List<ItemStack>> masks = IsolatedRecipeInputs.specialBusses(mMaskInputBusses);
         CheckRecipeResult result = CheckRecipeResultRegistry.NO_RECIPE;
@@ -56,10 +60,17 @@ public abstract class TargetChamberInputMixin {
                 apeiron$items = input;
                 apeiron$masks = mask;
                 CheckRecipeResult found;
-                if (enhanced) {
+                if (enhanced || automaticLaser) {
+                    if (automaticLaser && (mask.stream()
+                        .anyMatch(stack -> !(stack.getItem() instanceof ItemPhotolithographicMask))
+                        || input.stream()
+                            .anyMatch(stack -> stack.getItem() instanceof ItemPhotolithographicMask)))
+                        continue;
                     List<ItemStack> all = new ArrayList<>(mask);
                     all.addAll(input);
-                    found = TargetChamberEnhancement.process(machine, all.toArray(new ItemStack[0]));
+                    found = automaticLaser
+                        ? TargetChamberEnhancement.processAutomaticLaser(machine, all.toArray(new ItemStack[0]))
+                        : TargetChamberEnhancement.process(machine, all.toArray(new ItemStack[0]));
                     if (found.wasSuccessful()) lastTCRecipeInputParticle = -1;
                 } else {
                     // Native particle checks, mask position, consumption and progression are retained.

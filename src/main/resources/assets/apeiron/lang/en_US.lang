@@ -46,8 +46,15 @@ apeiron.machine.pattern_input.link_required=Link an infinite input assembly with
 item.apeiron.multiplied_pattern.name=Internal multiplied pattern
 gt.blockmachines.apeiron.infinite_energy_hatch.name=Infinite Energy Hatch
 gt.blockmachines.apeiron.ultimate_infinite_energy_hatch.name=Ultimate Infinite Energy Hatch
+gt.blockmachines.apeiron.auto_laser_beamline_input.name=Automatic Laser Beamline Input
+gt.blockmachines.apeiron.me_beamline_output_hatch.name=ME Beamline Output Hatch
+apeiron.machine.me_beamline_output_hatch.desc=§bConverts beamline outputs into particle items for ME storage§r\n§7Replaces ordinary or advanced beamline output hatches§r\n§7One ME connection with an unlimited particle buffer§r\n§7Keeps particles while disconnected; sends them after reconnecting§r\n§7Optional item cell provides partition filtering and cache mode§r\n§7Rejected particles wait until filtering allows them§r\n§eWire cutter changes ME sides; screwdriver toggles cache mode§r
+apeiron.machine.me_beamline_output_hatch.pending=Particles waiting for output: %s
 apeiron.machine.infinite_energy.desc=§bWireless GT power with configurable large parallel counts§r\n§eSettings: set parallel and voltage in the machine power panel§r\n§7Default parallel limit: 2,147,483,647§r\n§7Set parallel to 0 for no fixed limit§r\n§7Parallel and voltage accept scientific notation, e.g. 1E10§r\n§7Follows the machine's own overclock rules§r\n§6Note: higher voltage may cause lossy overclocking§r\n§7Inputs, wireless balance and output space still limit parallel§r\n§7Pauses on insufficient energy; resumes when power is available§r
 apeiron.machine.ultimate_energy.desc=§bWireless GT power with adjustable parallel and completion time§r\n§eSettings: use the machine power panel§r\n§7Default parallel limit: 2,147,483,647; 0 removes the limit§r\n§7Parallel accepts scientific notation, e.g. 1E20§r\n§7Default time: 128 ticks (6.4 seconds at normal tick rate)§r\n§7Minimum: 1 tick; shorter time does not raise total energy use§r\n§7Charges the recipe base total energy to the wireless network§r\n§6Note: inputs, energy and output space still limit parallel§r
+apeiron.machine.auto_laser_beamline_input.desc.1=§bAutomatic photon beamline input for target chambers§r
+apeiron.machine.auto_laser_beamline_input.desc.2=§7Install it in the target chamber beamline input position; photon, energy and focus conditions are automatic§r
+apeiron.machine.auto_laser_beamline_input.desc.3=§7Unlimited photon flux; 1 tick per batch, limited by ingredients and output space§r
 apeiron.machine.energy.parallel_hint=Parallel limit; 0 = no fixed limit. Accepts scientific notation, e.g. 1E20
 apeiron.machine.energy.voltage_label=Running voltage
 apeiron.machine.energy.voltage_hint=Enter positive voltage, e.g. 1E10. Higher voltage may cause lossy overclocking

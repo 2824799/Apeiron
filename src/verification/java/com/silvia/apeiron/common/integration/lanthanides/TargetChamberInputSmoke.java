@@ -11,11 +11,15 @@ import net.minecraft.item.ItemStack;
 
 import com.silvia.apeiron.Apeiron;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
+import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
+import com.silvia.apeiron.common.machine.lanthanides.MTEAutoLaserBeamlineInput;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 import com.silvia.apeiron.common.machine.me.input.storage.BigPatternBuffer;
 import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
 import com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke;
 import com.silvia.apeiron.common.machine.parallel.WirelessRecipeState;
+import com.silvia.apeiron.common.machine.registration.ApeironMachines;
+import com.silvia.apeiron.config.ApeironConfig;
 import com.silvia.apeiron.mixin.gregtech.output.MultiBlockProcessingAccessor;
 
 import appeng.util.item.AEItemStack;
@@ -168,6 +172,7 @@ public final class TargetChamberInputSmoke {
             check(
                 !((MultiBlockProcessingAccessor) disabled).apeiron$checkRecipe(),
                 "disabled enhancement bypassed particle checks");
+            verifyAutomaticLaser();
             enhanced = true;
             verifyInputs();
             verifyLimits();
@@ -191,6 +196,229 @@ public final class TargetChamberInputSmoke {
         }
         Apeiron.LOG.info(
             "Custom input verification passed: target chamber native/enhanced, separate mask bus, isolated buffers, exact outputs, beam checks, black hole mode selectors");
+    }
+
+    private static ApeironMachineTile laserTile() {
+        ApeironMachineTile tile = new ApeironMachineTile();
+        tile.setInitialValuesAsNBT(
+            null,
+            (short) ApeironConfig.getMachineId(ApeironMachines.AUTO_LASER_BEAMLINE_INPUT_OFFSET));
+        check(tile.getMetaTileEntity() instanceof MTEAutoLaserBeamlineInput, "automatic laser placement type");
+        check(
+            tile.getMetaTileEntity()
+                .getStackForm(1)
+                .getItem() == net.minecraft.item.Item.getItemFromBlock(ApeironMachines.block),
+            "automatic laser item registry");
+        return tile;
+    }
+
+    private static void verifyAutomaticLaser() throws ReflectiveOperationException {
+        for (int mode = 0; mode < 3; mode++) {
+            Chamber machine = new Chamber();
+            ApeironMachineTile laser = laserTile();
+            check(machine.addBeamLineInputHatch(laser, 0), "automatic laser structure registration");
+            check(machine.addBeamLineInputHatch(laser, 0), "automatic laser repeated registration");
+            check(machine.mInputBeamline.size() == 1, "automatic laser registered twice");
+            Source source = null;
+            if (mode == 0)
+                machine.mInputBusses.add(bus(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2)));
+            else {
+                source = source(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2));
+                if (mode == 2) {
+                    source = source(new ItemStack(Items.diamond, 2));
+                    add(source, 1, new ItemStack(Items.emerald));
+                }
+                machine.addInputBusToMachineList(source.getBaseMetaTileEntity(), 0);
+            }
+            MTEInfiniteMEOutputAssembly output = InfiniteMEOutputAssemblySmoke.assembly();
+            machine.mOutputBusses.add(output);
+            boolean started = ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe();
+            check(started == (mode != 2), "automatic laser mixed isolated patterns");
+            if (mode == 2) continue;
+            check(machine.mMaxProgresstime == 1 && machine.lEUt == -1920, "automatic laser duration or native energy");
+            WirelessRecipeState state = ((BigWirelessController) machine).getWirelessRecipeState();
+            check(
+                state.usesNativeEnergy() && state.getParallelsBig()
+                    .equals(BigInteger.valueOf(2)),
+                "automatic laser batch");
+            net.minecraft.nbt.NBTTagCompound saved = new net.minecraft.nbt.NBTTagCompound();
+            machine.saveNBTData(saved);
+            Chamber restored = new Chamber();
+            restored.loadNBTData(saved);
+            restored.mOutputBusses.add(output);
+            restored.advance();
+            check(restored.mProgresstime == 1, "automatic laser saved recipe waited for a packet");
+            restored.complete();
+            BigInteger expected = BigInteger.valueOf(Integer.MAX_VALUE)
+                .multiply(BigInteger.valueOf(2));
+            check(
+                output.getProvider()
+                    .getCachedAmountBig()
+                    .equals(expected),
+                "automatic laser output truncated");
+            restored.complete();
+            check(
+                output.getProvider()
+                    .getCachedAmountBig()
+                    .equals(expected),
+                "automatic laser duplicate completion");
+            if (source != null) check(
+                source.getBuffers()
+                    .get(0)
+                    .getItemAmountBig()
+                    .signum() == 0,
+                "automatic laser debit");
+            machine.clearHatches();
+            check(machine.mInputBeamline.isEmpty(), "automatic laser scan cleanup");
+        }
+        Chamber full = new Chamber();
+        full.addBeamLineInputHatch(laserTile(), 0);
+        Source ingredients = source(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2));
+        full.addInputBusToMachineList(ingredients.getBaseMetaTileEntity(), 0);
+        check(!((MultiBlockProcessingAccessor) full).apeiron$checkRecipe(), "automatic laser accepted missing output");
+        check(
+            ingredients.getBuffers()
+                .get(0)
+                .getItemAmountBig()
+                .equals(BigInteger.valueOf(6)),
+            "automatic laser lost inputs");
+
+        gregtech.common.tileentities.machines.multi.beamcrafting.MTEBeamCrafter crafter = new gregtech.common.tileentities.machines.multi.beamcrafting.MTEBeamCrafter(
+            "apeiron.verify.laser_wrong_machine");
+        check(!crafter.addBeamLineInputHatch(laserTile(), 0), "automatic laser accepted by beam crafter");
+        check(crafter.mInputBeamline.isEmpty(), "automatic laser leaked into another machine");
+        verifyAutomaticLaserMask();
+        verifyAutomaticLaserCapacity();
+        Apeiron.LOG.info(
+            "Automatic laser verification passed: placement, target-only registration, 1 tick, native EU, isolated inputs, mask roles, photon-only recipes, output protection, reload and exact outputs");
+    }
+
+    private static void verifyAutomaticLaserMask() throws ReflectiveOperationException {
+        ItemStack mask = new ItemStack(LanthItemList.maskMap.get(MaskList.ASOC));
+        GTRecipe recipe = GTRecipeBuilder.builder()
+            .itemInputs(mask, new ItemStack(Items.ender_pearl))
+            .itemOutputs(new ItemStack(Items.apple))
+            .metadata(
+                LanthanidesRecipeMaps.TARGET_CHAMBER_METADATA,
+                TargetChamberMetadata.builder(mask)
+                    .particleID(0)
+                    .amount(Integer.MAX_VALUE)
+                    .energy(5, 6, 1)
+                    .minFocus(99)
+                    .build())
+            .eut(1920)
+            .duration(1)
+            .build()
+            .get();
+        LanthanidesRecipeMaps.targetChamberRecipes.addRecipe(recipe);
+        try {
+            for (int mode = 0; mode < 4; mode++) {
+                Chamber machine = new Chamber();
+                machine.addBeamLineInputHatch(laserTile(), 0);
+                machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
+                if (mode == 0) {
+                    machine.mask(bus(mask.copy()));
+                    machine.mInputBusses.add(bus(new ItemStack(Items.ender_pearl)));
+                } else if (mode == 1) {
+                    machine.mask(source(mask.copy()));
+                    machine
+                        .addInputBusToMachineList(source(new ItemStack(Items.ender_pearl)).getBaseMetaTileEntity(), 0);
+                } else if (mode == 2) {
+                    machine.mask(bus(new ItemStack(Items.ender_pearl)));
+                    machine.mInputBusses.add(bus(mask.copy()));
+                } else machine.mInputBusses.add(bus(new ItemStack(Items.ender_pearl)));
+                check(
+                    ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe() == (mode < 2),
+                    "automatic laser mask role " + mode);
+                if (mode < 2) check(machine.mMaxProgresstime == 1, "automatic laser large photon count was not 1 tick");
+            }
+        } finally {
+            LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
+                .removeRecipe(recipe);
+        }
+        GTRecipe nonPhoton = GTRecipeBuilder.builder()
+            .itemInputs(new ItemStack(Items.blaze_rod))
+            .itemOutputs(new ItemStack(Items.apple))
+            .metadata(
+                LanthanidesRecipeMaps.TARGET_CHAMBER_METADATA,
+                TargetChamberMetadata.builder(null)
+                    .particleID(gtnhlanth.common.beamline.Particle.ELECTRON.getId())
+                    .amount(1)
+                    .energy(100, 200, 1)
+                    .minFocus(50)
+                    .build())
+            .eut(1920)
+            .duration(1)
+            .build()
+            .get();
+        LanthanidesRecipeMaps.targetChamberRecipes.addRecipe(nonPhoton);
+        try {
+            Chamber machine = new Chamber();
+            machine.addBeamLineInputHatch(laserTile(), 0);
+            machine.mInputBusses.add(bus(new ItemStack(Items.blaze_rod)));
+            machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
+            check(
+                !((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(),
+                "automatic laser provided non-photons");
+        } finally {
+            LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
+                .removeRecipe(nonPhoton);
+        }
+    }
+
+    private static void verifyAutomaticLaserCapacity() {
+        GTRecipe recipe = GTRecipeBuilder.builder()
+            .itemInputs(new ItemStack(Items.stick))
+            .itemOutputs(new ItemStack(Items.apple))
+            .metadata(
+                LanthanidesRecipeMaps.TARGET_CHAMBER_METADATA,
+                TargetChamberMetadata.builder(null)
+                    .particleID(0)
+                    .amount(1)
+                    .energy(100, 200, 1)
+                    .minFocus(50)
+                    .build())
+            .eut(1920)
+            .duration(1)
+            .build()
+            .get();
+        LanthanidesRecipeMaps.targetChamberRecipes.addRecipe(recipe);
+        try {
+            Chamber machine = new Chamber();
+            machine.addBeamLineInputHatch(laserTile(), 0);
+            ItemStack sticks = new ItemStack(Items.stick, Integer.MAX_VALUE);
+            machine.mInputBusses.add(bus(sticks));
+            gregtech.api.metatileentity.implementations.MTEHatchOutputBus output = new gregtech.api.metatileentity.implementations.MTEHatchOutputBus(
+                "apeiron.verify.laser_capacity",
+                4,
+                new String[0],
+                null);
+            output.setBaseMetaTileEntity(new BaseMetaTileEntity());
+            machine.mOutputBusses.add(output);
+            check(
+                ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(),
+                "automatic laser capacity search failed");
+            BigInteger parallels = ((BigWirelessController) machine).getWirelessRecipeState()
+                .getParallelsBig();
+            check(
+                parallels.signum() > 0 && parallels.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) < 0,
+                "automatic laser did not limit batch to finite output");
+            check(sticks.stackSize == Integer.MAX_VALUE - parallels.intValueExact(), "automatic laser capacity debit");
+            machine.advance();
+            machine.complete();
+            long total = 0;
+            for (int slot = 0; slot < output.getSizeInventory(); slot++) {
+                ItemStack stack = output.getStackInSlot(slot);
+                if (stack != null) total += stack.stackSize;
+            }
+            check(
+                BigInteger.valueOf(total)
+                    .equals(parallels),
+                "automatic laser finite output lost items");
+        } finally {
+            LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
+                .removeRecipe(recipe);
+        }
     }
 
     private static void verifyInputs() throws ReflectiveOperationException {

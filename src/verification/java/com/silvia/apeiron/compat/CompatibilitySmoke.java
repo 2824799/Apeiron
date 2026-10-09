@@ -28,6 +28,7 @@ public final class CompatibilitySmoke {
         if (cpw.mods.fml.common.Loader.isModLoaded("aeinfinitycell"))
             com.silvia.apeiron.common.integration.aeinfinitycell.verification.InfinityCellSmoke.verify();
         com.silvia.apeiron.common.machine.me.output.verification.BoundlessMEOutputSmoke.verify();
+        com.silvia.apeiron.common.machine.me.output.verification.MEBeamlineOutputSmoke.verify();
         com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke.verify();
         OutputCompatibilitySmoke.verify();
         if (cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology")) {

@@ -9,9 +9,11 @@ import com.silvia.apeiron.Apeiron;
 import com.silvia.apeiron.common.machine.block.ApeironMachineBlock;
 import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
 import com.silvia.apeiron.common.machine.energy.MTEInfiniteEnergyHatch;
+import com.silvia.apeiron.common.machine.lanthanides.MTEAutoLaserBeamlineInput;
 import com.silvia.apeiron.common.machine.me.circuit.MTEInfiniteProgrammingCircuitProvider;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputMirror;
+import com.silvia.apeiron.common.machine.me.output.MTEBeamlineMEOutputHatch;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch;
 import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
@@ -44,7 +46,11 @@ public final class ApeironMachines {
     public static final int STORAGE_INPUT_ASSEMBLY_OFFSET = 9;
     public static final int EYE_OF_HARMONY_ENHANCEMENT_OFFSET = 11;
     public static final int QUANTUM_ENHANCEMENT_OFFSET = 12;
+    public static final int AUTO_LASER_BEAMLINE_INPUT_OFFSET = 13;
+    public static final int ME_BEAMLINE_OUTPUT_OFFSET = 14;
+    public static MTEBeamlineMEOutputHatch meBeamlineOutputHatch;
     public static MTEQuantumEnhancementModule quantumEnhancementModule;
+    public static MTEAutoLaserBeamlineInput autoLaserBeamlineInput;
     public static MTEInfiniteProgrammingCircuitProvider circuitProvider;
     public static MTEInfiniteStorageInputBus storageInputBus;
     public static MTEInfiniteStorageInputHatch storageInputHatch;
@@ -133,6 +139,15 @@ public final class ApeironMachines {
             ApeironConfig.getMachineId(QUANTUM_ENHANCEMENT_OFFSET),
             "apeiron.quantum_enhancement_module",
             "Quantum Force Transformer Enhancement Block");
+        autoLaserBeamlineInput = new MTEAutoLaserBeamlineInput(
+            ApeironConfig.getMachineId(AUTO_LASER_BEAMLINE_INPUT_OFFSET),
+            "apeiron.auto_laser_beamline_input",
+            "Automatic Laser Beamline Input",
+            4);
+        meBeamlineOutputHatch = new MTEBeamlineMEOutputHatch(
+            ApeironConfig.getMachineId(ME_BEAMLINE_OUTPUT_OFFSET),
+            "apeiron.me_beamline_output_hatch",
+            "ME Beamline Output Hatch");
         Apeiron.LOG.info(
             "Apeiron machine ID reservation: {}..{} ({} IDs); ME outputs: {}, {}, {}",
             ApeironConfig.getMachineIdStart(),
@@ -168,7 +183,9 @@ public final class ApeironMachines {
                 || existing == storageInputHatch
                 || existing == storageInputAssembly
                 || existing == eyeOfHarmonyEnhancementModule
-                || existing == quantumEnhancementModule)) continue;
+                || existing == quantumEnhancementModule
+                || existing == autoLaserBeamlineInput
+                || existing == meBeamlineOutputHatch)) continue;
             if (existing != null) {
                 throw new IllegalStateException(
                     "Apeiron's configured 100-ID reservation conflicts at ID " + id

@@ -36,6 +36,14 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
         if (!DependencyCapabilities.hasClass(targetClassName)) return false;
         String name = mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1);
         switch (name) {
+            case "BeamCrafterParticleLogicMixin":
+                return DependencyCapabilities.hasMethod(targetClassName, "createParallelHelper", null)
+                    && DependencyCapabilities.hasMethod(targetClassName, "applyRecipe", null);
+            case "BeamCrafterParticleStateMixin":
+                return DependencyCapabilities.hasMethod(
+                    "gregtech.common.tileentities.machines.multi.beamcrafting.MTEBeamCrafter$1",
+                    "applyRecipe",
+                    null);
             case "AEBaseCellContentsMixin":
                 return DependencyCapabilities.invokes(
                     "appeng.items.AEBaseCell",
@@ -49,6 +57,7 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
                     == name.startsWith("Legacy");
             case "TargetChamberInputMixin":
             case "SourceChamberInputMixin":
+            case "AutoLaserRegistrationMixin":
                 return DependencyCapabilities
                     .hasMethod("gtnhlanth.common.tileentity.MTETargetChamber", "getMaskItemStack", null);
             case "GtnlWirelessBatchMixin":

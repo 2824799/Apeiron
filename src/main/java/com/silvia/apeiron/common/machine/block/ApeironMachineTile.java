@@ -27,6 +27,9 @@ public final class ApeironMachineTile extends BaseMetaTileEntity {
         if (machine instanceof com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus)
             items = ((com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus) machine).getProvider()
                 .getCachedAmountBig();
+        if (machine instanceof com.silvia.apeiron.common.machine.me.output.MTEBeamlineMEOutputHatch)
+            items = ((com.silvia.apeiron.common.machine.me.output.MTEBeamlineMEOutputHatch) machine)
+                .getStoredParticleAmount();
         if (machine instanceof com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch)
             fluids = ((com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch) machine).getProvider()
                 .getCachedAmountBig();

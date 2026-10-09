@@ -9,6 +9,7 @@ import net.minecraftforge.oredict.OreDictionary;
 import com.silvia.apeiron.common.machine.me.circuit.MTEInfiniteProgrammingCircuitProvider;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputMirror;
+import com.silvia.apeiron.common.machine.me.output.MTEBeamlineMEOutputHatch;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch;
 import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
@@ -39,6 +40,11 @@ public final class MachineItemNbt {
                 if (fluids.hasNoTags()) tag.removeTag("ApeironAssemblyFluids");
             }
             contents = tag.hasKey("cache") || tag.hasKey("ApeironAssemblyFluids");
+            if (machine instanceof MTEBeamlineMEOutputHatch) {
+                NBTTagCompound beams = tag.getCompoundTag(MTEBeamlineMEOutputHatch.PENDING_TAG);
+                if (beams.hasNoTags()) tag.removeTag(MTEBeamlineMEOutputHatch.PENDING_TAG);
+                contents |= tag.hasKey(MTEBeamlineMEOutputHatch.PENDING_TAG);
+            }
         } else if (machine instanceof MTEInfinitePatternInputAssembly) {
             NBTTagCompound state = tag.getCompoundTag("ApeironPatternInput");
             normalizePatternState(state);

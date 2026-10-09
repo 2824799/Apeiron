@@ -105,6 +105,12 @@ Apeiron 是 **GT New Horizons（Minecraft 1.7.10）** 的扩展模组，适合�
 
 仍需满足配方等级、材料、电量及输出空间要求；保留流体模式，无需额外聚焦等离子体。未安装增强方块时，使用机器原有的催化剂和概率机制。
 
+## 自动激光发生束流输入仓
+
+将它安装到靶室原有的束流输入仓位置，即可自动满足光子配方的粒子、能量与聚焦条件，无需外接激光束流或配送光子物品。
+
+光子通量视为无限，每批固定 **1 Tick**。材料和光刻面罩仍按配方消耗，批次数量受当前输入与输出空间限制；面罩仍需放在专用输入位置，也支持该位置上的样板总成。仓室仅适用于靶室的光子配方，靶室仍需正常供电并满足结构要求。
+
 ## 其他 ME 设备
 
 | 设备／功能 | 用法 |
@@ -125,7 +131,7 @@ Apeiron 是 **GT New Horizons（Minecraft 1.7.10）** 的扩展模组，适合�
 | --- | --- |
 | `mixins.appliedenergistics2.enableAeMixins` | 核心开关：AE2 大数存储与合成、GT 输入输出与能源适配。关闭也会停用依赖它的可选集成。 |
 | `mixins.sciencenotleisure.enableWirelessIntegration` | GTNL 无线机器的大数输出、耗电、跨配方与 Apeiron 能源仓适配。 |
-| `mixins.gregtech.enableBeamlineInputs` | 束流源室和靶室读取样板总成的适配；粒子检测的开关属于 EyeOfHarmonyBuffer 模组。 |
+| `mixins.gregtech.enableBeamlineInputs` | 束流源室与靶室的样板输入适配，以及靶室自动激光仓的 1 Tick 加工；EyeOfHarmonyBuffer 增强选项独立管理。 |
 | `mixins.gregtech.enableQuantumEnhancement` | 量子操纵者增强方块的结构识别和增强效果。 |
 | `mixins.gregtech.enableSpaceElevatorIntegration` | 太空电梯子模块的无线能源、并行与输出适配。 |
 | `mixins.tectech.enableEyeOfHarmonyEnhancement` | 鸿蒙之眼增强模块的结构识别、时间、成功率与输入适配。 |

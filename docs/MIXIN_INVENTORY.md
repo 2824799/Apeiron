@@ -12,6 +12,7 @@
 | `tst.compat.TstPatternEncodeGuardMixin` | 公共 | Inject:1 |
 | `tst.energy.WaterPurifierRecipeAccessor` | 公共 | Accessor:1 |
 | `gregtech.lanthanides.TargetChamberInputMixin` | 公共 | Inject:4, Redirect:1 |
+| `gregtech.lanthanides.AutoLaserRegistrationMixin` | 公共 | Inject:1 |
 | `gregtech.lanthanides.SourceChamberInputMixin` | 公共 | Inject:1, Redirect:2 |
 | `gregtech.input.BigDualInputProcessingMixin` | 公共 | Inject:3 |
 | `gregtech.input.BigInputHatchElementMixin` | 公共 | Inject:1 |

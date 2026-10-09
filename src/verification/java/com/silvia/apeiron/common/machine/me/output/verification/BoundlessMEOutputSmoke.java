@@ -308,7 +308,8 @@ public final class BoundlessMEOutputSmoke {
             ApeironMachines.PATTERN_INPUT_MIRROR_OFFSET, ApeironMachines.CIRCUIT_PROVIDER_OFFSET,
             ApeironMachines.STORAGE_INPUT_BUS_OFFSET, ApeironMachines.STORAGE_INPUT_HATCH_OFFSET,
             ApeironMachines.STORAGE_INPUT_ASSEMBLY_OFFSET, ApeironMachines.ULTIMATE_ENERGY_HATCH_OFFSET,
-            ApeironMachines.EYE_OF_HARMONY_ENHANCEMENT_OFFSET, ApeironMachines.QUANTUM_ENHANCEMENT_OFFSET };
+            ApeironMachines.EYE_OF_HARMONY_ENHANCEMENT_OFFSET, ApeironMachines.QUANTUM_ENHANCEMENT_OFFSET,
+            ApeironMachines.AUTO_LASER_BEAMLINE_INPUT_OFFSET, ApeironMachines.ME_BEAMLINE_OUTPUT_OFFSET };
         check(
             entries.size() == expectedOffsets.length,
             "creative and NEI enumeration has missing or duplicate machines");

@@ -15,6 +15,8 @@ import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTRecipe;
 import gtnhlanth.api.recipe.LanthanidesRecipeMaps;
+import gtnhlanth.common.beamline.Particle;
+import gtnhlanth.common.tileentity.recipe.beamline.TargetChamberMetadata;
 
 /** Compatibility replacement for the obsolete optional EyeOfHarmonyBuffer target-chamber processor. */
 public final class TargetChamberEnhancement {
@@ -43,6 +45,15 @@ public final class TargetChamberEnhancement {
     }
 
     public static CheckRecipeResult process(MTEExtendedPowerMultiBlockBase machine, ItemStack[] items) {
+        return process(machine, items, false);
+    }
+
+    public static CheckRecipeResult processAutomaticLaser(MTEExtendedPowerMultiBlockBase machine, ItemStack[] items) {
+        return process(machine, items, true);
+    }
+
+    private static CheckRecipeResult process(MTEExtendedPowerMultiBlockBase machine, ItemStack[] items,
+        boolean automaticLaser) {
         if (((BigWirelessController) machine).getWirelessRecipeState()
             .isRunning()) return CheckRecipeResultRegistry.NO_RECIPE;
         // Mirrors may expose the same mutable slot through both input roles.
@@ -55,20 +66,24 @@ public final class TargetChamberEnhancement {
         GTRecipe recipe = LanthanidesRecipeMaps.targetChamberRecipes.findRecipeQuery()
             .items(items)
             .voltage(voltage)
-            .filter(r -> r.getMetadata(LanthanidesRecipeMaps.TARGET_CHAMBER_METADATA) != null)
+            .filter(r -> {
+                TargetChamberMetadata metadata = r.getMetadata(LanthanidesRecipeMaps.TARGET_CHAMBER_METADATA);
+                return metadata != null && (!automaticLaser || metadata.particleID == Particle.PHOTON.getId());
+            })
             .find();
         if (recipe == null) return CheckRecipeResultRegistry.NO_RECIPE;
         // All entries are the mutable native views, including masks in the dedicated front bus.
         // Bounding by those views keeps native consumeInput safe and preserves each input session.
-        int parallels = (int) Math.min(
-            MAX_PARALLEL,
-            recipe.maxParallelCalculatedByInputs(MAX_PARALLEL, GTValues.emptyFluidStackArray, items));
+        int maxParallel = automaticLaser ? Integer.MAX_VALUE : MAX_PARALLEL;
+        int duration = automaticLaser ? 1 : DURATION;
+        int parallels = (int) Math
+            .min(maxParallel, recipe.maxParallelCalculatedByInputs(maxParallel, GTValues.emptyFluidStackArray, items));
         if (parallels <= 0) return CheckRecipeResultRegistry.NO_RECIPE;
         BigMachineOutputQueue outputs = outputs(recipe, parallels);
         if (!BigRecipeOutputCapacity.fits(machine, outputs.snapshotOutputsUnsorted())) {
             int low = 0, high = parallels;
             while (low < high) {
-                int middle = low + (high - low + 1) / 2;
+                int middle = low + (int) (((long) high - low + 1) / 2);
                 if (BigRecipeOutputCapacity.fits(machine, outputs(recipe, middle).snapshotOutputsUnsorted()))
                     low = middle;
                 else high = middle - 1;
@@ -78,8 +93,10 @@ public final class TargetChamberEnhancement {
             outputs = outputs(recipe, parallels);
         }
         recipe.consumeInput(parallels, GTValues.emptyFluidStackArray, items);
-        machine.mEfficiency = machine.mEfficiencyIncrease = 10000;
-        machine.mMaxProgresstime = DURATION;
+        machine.mEfficiency = automaticLaser ? 10000 - (machine.getIdealStatus() - machine.getRepairStatus()) * 1000
+            : 10000;
+        machine.mEfficiencyIncrease = 10000;
+        machine.mMaxProgresstime = duration;
         machine.lEUt = -voltage;
         machine.mOutputItems = null;
         machine.mOutputFluids = null;
@@ -87,8 +104,8 @@ public final class TargetChamberEnhancement {
             .startNativePowered(
                 BigInteger.valueOf(parallels),
                 BigInteger.valueOf(voltage)
-                    .multiply(BigInteger.valueOf(DURATION)),
-                DURATION,
+                    .multiply(BigInteger.valueOf(duration)),
+                duration,
                 outputs);
         machine.updateSlots();
         machine.markDirty();
