@@ -12,6 +12,7 @@ import com.silvia.apeiron.ae.crafting.core.BigCraftingCPU;
 import com.silvia.apeiron.ae.crafting.core.BigFinalOutput;
 import com.silvia.apeiron.ae.crafting.core.BigTaskProgress;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.crafting.CraftingPatternMath;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.crafting.ICraftingPatternDetails;
@@ -46,6 +47,7 @@ public abstract class CraftingCPUFinalOutputMixin implements BigFinalOutput {
     protected void addOutputs(final IAEStack<?> output) {
         ICraftingPatternDetails details = null;
         BigInteger multiplier = BigInteger.ZERO;
+        boolean selfRecursive = false;
         final BigCraftingCPU cpu = (BigCraftingCPU) this.this$0;
 
         outer: for (final Map.Entry<ICraftingPatternDetails, CraftingCPUCluster.TaskProgress> entry : cpu
@@ -55,7 +57,9 @@ public abstract class CraftingCPUFinalOutputMixin implements BigFinalOutput {
                 .getCondensedAEOutputs()) {
                 if (candidate.equals(output)) {
                     details = entry.getKey();
-                    final BigInteger denominator = BigAEStackValues.get(candidate);
+                    selfRecursive = CraftingPatternMath.isPositiveSelfRecursive(details, output);
+                    final BigInteger denominator = selfRecursive ? CraftingPatternMath.netOutputAmount(details, output)
+                        : BigAEStackValues.get(candidate);
                     final BigInteger numerator = BigAEStackValues.get(output);
                     multiplier = denominator.signum() <= 0 ? BigInteger.ZERO
                         : numerator.add(denominator)
@@ -78,10 +82,12 @@ public abstract class CraftingCPUFinalOutputMixin implements BigFinalOutput {
             .clone();
         for (final IAEStack<?> stack : this.patternOutputs) {
             final IAEStack<?> copy = stack.copy();
-            BigAEStackValues.set(
-                copy,
-                BigAEStackValues.get(copy)
-                    .multiply(multiplier));
+            // Match the planner's whole-round net yield. Recycled inputs are not deliveries; returning the original
+            // seed through the normal CPU/network inventory path must not add another completion obligation.
+            final BigInteger perCraft = selfRecursive && stack.equals(output)
+                ? CraftingPatternMath.netOutputAmount(details, output)
+                : BigAEStackValues.get(copy);
+            BigAEStackValues.set(copy, perCraft.multiply(multiplier));
             this.outputs.add(copy);
         }
     }

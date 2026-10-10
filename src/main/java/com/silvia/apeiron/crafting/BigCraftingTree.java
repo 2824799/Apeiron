@@ -97,12 +97,19 @@ public final class BigCraftingTree extends CraftingJobV2 {
                 current.incomplete = true;
                 continue;
             }
-            BigInteger remaining = BigAEStackValues.get(current.stack);
-            remaining = extract(current, stored, remaining, false);
-            remaining = extract(current, byproducts, remaining, true);
             final ICraftingPatternDetails pattern = patterns.get(current.stack);
+            final boolean selfRecursive = pattern != null
+                && CraftingPatternMath.isPositiveSelfRecursive(pattern, current.stack);
+            BigInteger remaining = BigAEStackValues.get(current.stack);
+            if (selfRecursive) {
+                extract(current, stored, CraftingPatternMath.recursiveInputAmount(pattern, current.stack), false);
+            } else {
+                remaining = extract(current, stored, remaining, false);
+            }
+            remaining = extract(current, byproducts, remaining, true);
             if (remaining.signum() > 0 && pattern != null) {
-                final BigInteger perCraft = outputAmount(pattern, current.stack);
+                final BigInteger perCraft = selfRecursive ? CraftingPatternMath.netOutputAmount(pattern, current.stack)
+                    : outputAmount(pattern, current.stack);
                 final BigInteger count = remaining.add(perCraft)
                     .subtract(BigInteger.ONE)
                     .divide(perCraft)
@@ -126,7 +133,7 @@ public final class BigCraftingTree extends CraftingJobV2 {
                     remaining = remaining.subtract(resolved);
                     final Set<IAEStack<?>> parents = new HashSet<>(branch.parents);
                     parents.add(current.stack);
-                    final IAEStack<?>[] inputs = pattern.getCondensedAEInputs();
+                    final IAEStack<?>[] inputs = CraftingPatternMath.externalInputs(pattern, current.stack);
                     for (int i = inputs.length - 1; i >= 0; i--) {
                         final IAEStack<?> input = inputs[i];
                         final CraftingRequest child = request(

@@ -30,7 +30,8 @@ public abstract class LegacyCraftingEntrypointMixin {
         require = 1)
     private void apeiron$beginExactJob(World world, IGrid grid, BaseActionSource source, IAEStack<?> stack,
         CraftingMode mode, ICraftingCallback callback, CallbackInfoReturnable<Future<ICraftingJob>> cir) {
-        if (stack == null || !BigAEStackValues.isBig(stack)) return;
+        if (stack == null
+            || !BigAEStackValues.isBig(stack) && !BigCraftingJobFast.requiresSelfRecursivePlanner(grid, stack)) return;
         BigCraftingJobFast<?> job = new BigCraftingJobFast(world, grid, source, (IAEStack) stack, mode, callback);
         cir.setReturnValue((Future) job.schedule());
     }

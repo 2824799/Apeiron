@@ -197,16 +197,15 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
                             BigAEStackValues.set(
                                 finalOutput,
                                 BigAEStackValues.get(finalOutput)
-                                    .subtract(BigAEStackValues.get(outputToSend)));
+                                    .subtract(BigAEStackValues.get(outputToSend))
+                                    .max(BigInteger.ZERO));
                         }
 
                         if (outputToSend != null && this.myLastLink != null) {
                             leftover = ((CraftingLink) this.myLastLink).injectItems(outputToSend, type);
                         }
 
-                        if (this.finalOutput.isEmpty()) {
-                            this.completeJob();
-                        }
+                        this.apeiron$completeIfFinished();
 
                         this.updateCPU();
 
@@ -215,6 +214,7 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
 
                     // 2000
                     this.inventory.injectItems(what, type);
+                    this.apeiron$completeIfFinished();
                     return null;
                 }
 
@@ -242,7 +242,8 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
                         BigAEStackValues.set(
                             finalOutput,
                             BigAEStackValues.get(finalOutput)
-                                .subtract(BigAEStackValues.get(outputToSend)));
+                                .subtract(BigAEStackValues.get(outputToSend))
+                                .max(BigInteger.ZERO));
                     }
 
                     if (outputToSend != null) {
@@ -257,9 +258,7 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
                         }
                     }
 
-                    if (this.finalOutput.isEmpty()) {
-                        this.completeJob();
-                    }
+                    this.apeiron$completeIfFinished();
 
                     this.updateCPU();
                     this.markDirty();
@@ -268,6 +267,7 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
                 }
 
                 this.inventory.injectItems(insert, type);
+                this.apeiron$completeIfFinished();
                 this.markDirty();
 
                 return what;
@@ -275,6 +275,13 @@ public abstract class CraftingCPUTransferMixin implements BigCraftingCPUState {
         }
 
         return input;
+    }
+
+    @Unique
+    private void apeiron$completeIfFinished() {
+        // A final output can arrive in several packets and meet the delivery count before the seed or other outputs
+        // return. Keep the requester link alive until every dispatched output has been received.
+        if (this.finalOutput.isEmpty() && this.waitingFor.isEmpty()) this.completeJob();
     }
 
     @Override

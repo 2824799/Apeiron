@@ -2,6 +2,8 @@ package com.silvia.apeiron.ae.smoke;
 
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.List;
 
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -15,6 +17,7 @@ import com.silvia.apeiron.ae.crafting.core.BigCraftRequest;
 import com.silvia.apeiron.ae.crafting.core.BigMECraftingInventory;
 import com.silvia.apeiron.ae.crafting.packets.BigCraftPackets;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.ae.stack.InfiniteAEStack;
 import com.silvia.apeiron.ae.terminal.BigAmountGui;
 import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
 import com.silvia.apeiron.crafting.BigCraftingJobFast;
@@ -68,6 +71,7 @@ public final class AECraftingPlanningSmoke {
         IGrid grid = grid(pattern, input, BigInteger.TEN.pow(60));
         verifyRequestEntry(grid, output);
         verifyPlanningEntrypoint(grid, output);
+        verifySelfRecursivePlanning();
         CraftingJobV2<IAEItemStack> nativeJob = new CraftingJobV2<>(
             null,
             grid,
@@ -135,6 +139,74 @@ public final class AECraftingPlanningSmoke {
         }
         Apeiron.LOG.info(
             "AE one-to-one pattern, native plan, 10^19/10^60 exact plans and crafting request packet verification passed");
+    }
+
+    private static void verifySelfRecursivePlanning() {
+        IAEItemStack seed = AEItemStack.create(new ItemStack(Items.diamond));
+        IAEItemStack sand = AEItemStack.create(new ItemStack(Items.stick));
+        IAEItemStack output = seed.copy();
+        output.setStackSize(2);
+        ICraftingPatternDetails pattern = pattern(
+            new IAEItemStack[] { seed.copy(), sand.copy() },
+            new IAEItemStack[] { output });
+        IAEItemStack storedSeed = seed.copy();
+        storedSeed.setStackSize(1);
+        IAEItemStack infiniteSand = sand.copy();
+        ((InfiniteAEStack) infiniteSand).setInfinite(true);
+        IGrid grid = grid(pattern, Arrays.asList(storedSeed, infiniteSand));
+        check(
+            BigCraftingJobFast.requiresSelfRecursivePlanner(grid, seed),
+            "self-recursive request did not select planner");
+        IAEItemStack request = seed.copy();
+        request.setStackSize(Long.MAX_VALUE);
+        BigAEStackValues.set(request, BigInteger.TEN.pow(19));
+        BigCraftingJobFast<IAEItemStack> job = new BigCraftingJobFast<>(
+            null,
+            grid,
+            new BaseActionSource(),
+            request,
+            CraftingMode.STANDARD,
+            null);
+        job.schedule();
+        check(
+            job.getErrorMessage()
+                .isEmpty(),
+            "self-recursive exact planning failed: " + job.getErrorMessage());
+        check(!job.isSimulation(), "self-recursive plan reported missing seed or renewable input");
+        final BigInteger[] planned = { BigInteger.ZERO };
+        job.forEachPatternBig((ignored, crafts) -> planned[0] = planned[0].add(crafts));
+        check(planned[0].equals(BigInteger.TEN.pow(19)), "self-recursive plan used raw output instead of net output");
+        IAEStackList plan = new IAEStackList();
+        job.populatePlan(plan);
+        check(
+            BigAEStackValues.get(plan.findPrecise(seed))
+                .equals(BigInteger.ONE),
+            "self-recursive plan did not reserve one initial seed");
+        check(
+            BigAEStackValues.get(plan.findPrecise(sand))
+                .equals(BigInteger.TEN.pow(19)),
+            "self-recursive plan lost external input count");
+    }
+
+    private static ICraftingPatternDetails pattern(IAEItemStack[] inputs, IAEItemStack[] outputs) {
+        ItemStack encoded = new ItemStack(Items.paper);
+        NBTTagCompound tag = new NBTTagCompound();
+        NBTTagList in = new NBTTagList();
+        for (IAEItemStack input : inputs) {
+            NBTTagCompound value = new NBTTagCompound();
+            input.writeToNBT(value);
+            in.appendTag(value);
+        }
+        NBTTagList out = new NBTTagList();
+        for (IAEItemStack output : outputs) {
+            NBTTagCompound value = new NBTTagCompound();
+            output.writeToNBT(value);
+            out.appendTag(value);
+        }
+        tag.setTag("in", in);
+        tag.setTag("out", out);
+        encoded.setTagCompound(tag);
+        return new UltimatePatternHelper(encoded);
     }
 
     private static void verifyRequestEntry(IGrid grid, IAEItemStack output) {
@@ -347,6 +419,10 @@ public final class AECraftingPlanningSmoke {
     }
 
     private static IGrid grid(ICraftingPatternDetails pattern, IAEItemStack input, BigInteger amount) {
+        return grid(pattern, Arrays.asList(BigAEStackValues.copyWithSize(input, amount)));
+    }
+
+    private static IGrid grid(ICraftingPatternDetails pattern, List<IAEItemStack> stored) {
         ImmutableMap<IAEStack<?>, ImmutableList<ICraftingPatternDetails>> patterns = ImmutableMap
             .of(pattern.getCondensedAEOutputs()[0], ImmutableList.of(pattern));
         ICraftingGrid crafting = (ICraftingGrid) Proxy.newProxyInstance(
@@ -366,7 +442,8 @@ public final class AECraftingPlanningSmoke {
                     .equals("getMEMonitor")) {
                     IAEStackType<?> type = (IAEStackType<?>) args[0];
                     IItemList list = type.createList();
-                    if (type == input.getStackType()) list.add(BigAEStackValues.copyWithSize(input, amount));
+                    for (IAEItemStack candidate : stored)
+                        if (type == candidate.getStackType()) list.add(candidate.copy());
                     return Proxy.newProxyInstance(
                         IMEMonitor.class.getClassLoader(),
                         new Class<?>[] { IMEMonitor.class },

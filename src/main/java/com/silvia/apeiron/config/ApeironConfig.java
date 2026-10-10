@@ -10,6 +10,7 @@ public final class ApeironConfig {
     public static final String FILE_NAME = "apeiron.cfg";
     public static final String CATEGORY_MIXINS = "mixins";
     public static final String ENABLE_AE_MIXINS = "enableAeMixins";
+    public static final String ENABLE_AE_SELF_RECURSIVE_CRAFTING = "enableAeSelfRecursiveCrafting";
     public static final String CATEGORY_AE_MIXINS = "mixins.appliedenergistics2";
     public static final String CATEGORY_TECTECH_MIXINS = "mixins.tectech";
     public static final String ENABLE_EYE_OUTPUT = "enableEyeOfHarmonyBigOutput";
@@ -27,6 +28,7 @@ public final class ApeironConfig {
     public static final int MAX_MACHINE_ID_START = 32666;
 
     private static volatile boolean aeMixinsEnabled = true;
+    private static volatile boolean aeSelfRecursiveCraftingEnabled = true;
     private static volatile boolean eyeOutputEnabled = true;
     private static volatile boolean tstOutputEnabled = true;
     private static volatile boolean tstPatternGuardEnabled = true;
@@ -70,6 +72,11 @@ public final class ApeironConfig {
                     + "默认开启。修改后必须重启游戏／服务端，客户端与服务端应保持一致。");
             configuration.getCategory(CATEGORY_MIXINS)
                 .remove(ENABLE_AE_MIXINS);
+            aeSelfRecursiveCraftingEnabled = configuration.getBoolean(
+                ENABLE_AE_SELF_RECURSIVE_CRAFTING,
+                CATEGORY_AE_MIXINS,
+                true,
+                "AE 自循环样板增强：允许同一张样板用产物补回同类输入，并按每轮净增量规划合成。默认开启；修改后重启，客户端与服务端保持一致。");
             if (configuration.hasKey("mixins.gregtech", ENABLE_EYE_OUTPUT)) {
                 final boolean oldValue = configuration.get("mixins.gregtech", ENABLE_EYE_OUTPUT, true)
                     .getBoolean(true);
@@ -144,6 +151,10 @@ public final class ApeironConfig {
 
     public static boolean areAeMixinsEnabled() {
         return aeMixinsEnabled;
+    }
+
+    public static boolean isAeSelfRecursiveCraftingEnabled() {
+        return aeSelfRecursiveCraftingEnabled;
     }
 
     public static boolean isLightweightWailaEnabled() {
