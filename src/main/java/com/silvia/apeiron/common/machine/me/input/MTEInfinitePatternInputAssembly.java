@@ -29,6 +29,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import com.cleanroommc.modularui.factory.PosGuiData;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.UISettings;
+import com.cleanroommc.modularui.utils.item.IItemHandlerModifiable;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.glodblock.github.common.item.ItemFluidPacket;
 import com.silvia.apeiron.ae.automation.BigPoweredTransfers;
@@ -80,6 +81,7 @@ import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTSplit;
+import gregtech.common.gui.modularui.util.MTEItemStackHandler;
 import gregtech.common.tileentities.machines.IDualInputInventory;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
@@ -104,6 +106,14 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     private final List<BigPatternBuffer> buffers = new ArrayList<>();
     private final Map<Object, Integer> watcherReferences = new java.util.IdentityHashMap<>();
     private final IInventory patternInventory = new PatternInventory();
+    // Older GT handlers do not delegate item validation to their machine. Keep every GUI insertion guarded.
+    private final IItemHandlerModifiable validatedInventoryHandler = new MTEItemStackHandler(mInventory, this) {
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return MTEInfinitePatternInputAssembly.this.isItemValidForSlot(slot, stack);
+        }
+    };
     private AENetworkProxy proxy;
     private boolean patternDirty = true;
     private boolean additionalConnection;
@@ -129,6 +139,11 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
         disableSort = true;
         Arrays.fill(multipliers, BigInteger.ONE);
         for (int i = 0; i < BUFFER_COUNT; i++) buffers.add(new BigPatternBuffer());
+    }
+
+    @Override
+    public IItemHandlerModifiable getInventoryHandler() {
+        return validatedInventoryHandler;
     }
 
     @Override

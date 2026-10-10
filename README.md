@@ -105,11 +105,13 @@ Apeiron 是 **GT New Horizons（Minecraft 1.7.10）** 的扩展模组，适合�
 
 仍需满足配方等级、材料、电量及输出空间要求；保留流体模式，无需额外聚焦等离子体。未安装增强方块时，使用机器原有的催化剂和概率机制。
 
-## 自动激光发生束流输入仓
+## ME 束流输出与粒子供料
 
-将它安装到靶室原有的束流输入仓位置，即可自动满足光子配方的粒子、能量与聚焦条件，无需外接激光束流或配送光子物品。
+**ME 束流输出仓**安装在普通或高级束流输出仓位置，将束流转换为对应粒子物品并送入 ME 网络。断网或分区过滤暂不允许输出时，粒子保留在缓存中，恢复条件后继续输出。
 
-光子通量视为无限，每批固定 **1 Tick**。材料和光刻面罩仍按配方消耗，批次数量受当前输入与输出空间限制；面罩仍需放在专用输入位置，也支持该位置上的样板总成。仓室仅适用于靶室的光子配方，靶室仍需正常供电并满足结构要求。
+靶室与束流合成器接入无限样板输入总成或有效绑定的镜像后，可按配方提供对应种类和数量的粒子物品，光子也需实际提供。靶室忽略束流电子伏特与聚焦条件；原材料、掩膜、供电和输出空间仍需满足。未接入样板总成时，使用原生束流输入。
+
+束流合成器的大数并行由无限能源仓设置，保留 GTNL 电压带来的产物概率加成。旧版 GT 束流合成器使用不同的配方处理入口，粒子物品增强仅在具备对应处理接口的版本启用。
 
 ## 其他 ME 设备
 
@@ -130,8 +132,9 @@ Apeiron 是 **GT New Horizons（Minecraft 1.7.10）** 的扩展模组，适合�
 | 分类与选项 | 影响范围 |
 | --- | --- |
 | `mixins.appliedenergistics2.enableAeMixins` | 核心开关：AE2 大数存储与合成、GT 输入输出与能源适配。关闭也会停用依赖它的可选集成。 |
+| `mixins.appliedenergistics2.enableAeSelfRecursiveCrafting` | 默认开启：同一张样板用产物补回同类输入，按每轮净增量规划合成，仍需启动材料与其他原料。 |
 | `mixins.sciencenotleisure.enableWirelessIntegration` | GTNL 无线机器的大数输出、耗电、跨配方与 Apeiron 能源仓适配。 |
-| `mixins.gregtech.enableBeamlineInputs` | 束流源室与靶室的样板输入适配，以及靶室自动激光仓的 1 Tick 加工；EyeOfHarmonyBuffer 增强选项独立管理。 |
+| `mixins.gregtech.enableBeamlineInputs` | 束流源室的样板输入适配、靶室与支持版本束流合成器的粒子物品输入，以及 ME 束流输出仓结构识别；EyeOfHarmonyBuffer 增强选项独立管理。 |
 | `mixins.gregtech.enableQuantumEnhancement` | 量子操纵者增强方块的结构识别和增强效果。 |
 | `mixins.gregtech.enableSpaceElevatorIntegration` | 太空电梯子模块的无线能源、并行与输出适配。 |
 | `mixins.tectech.enableEyeOfHarmonyEnhancement` | 鸿蒙之眼增强模块的结构识别、时间、成功率与输入适配。 |

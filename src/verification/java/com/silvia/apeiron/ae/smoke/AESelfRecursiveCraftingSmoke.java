@@ -1,5 +1,6 @@
 package com.silvia.apeiron.ae.smoke;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
@@ -24,6 +25,7 @@ import appeng.api.AEApi;
 import appeng.api.config.Actionable;
 import appeng.api.config.CraftingMode;
 import appeng.api.networking.IGrid;
+import appeng.api.networking.IGridNode;
 import appeng.api.networking.IMachineSet;
 import appeng.api.networking.crafting.ICraftingGrid;
 import appeng.api.networking.crafting.ICraftingLink;
@@ -76,9 +78,9 @@ public final class AESelfRecursiveCraftingSmoke {
         int rounds = (requested + produced - seed - 1) / (produced - seed);
         fixture.execute(rounds);
         fixture.tick();
-        check(fixture.cpu.completed(), "self-recursive CPU did not complete after all outputs arrived");
+        check(completed(fixture.cpu), "self-recursive CPU did not complete after all outputs arrived");
         check(!fixture.cpu.isBusy(), "completed self-recursive CPU remained busy");
-        check(fixture.cpu.outputEmpty(), "completed CPU retained a final-output balance");
+        check(outputs(fixture.cpu).isEmpty(), "completed CPU retained a final-output balance");
         check(fixture.cpu.getUsedStorage() == 0, "completed CPU retained used storage");
         if (automatic) {
             check(link.isDone() && fixture.notifications == 1, "requester never received job completion");
@@ -112,7 +114,7 @@ public final class AESelfRecursiveCraftingSmoke {
         fixture.execute(1);
         fixture.tick();
         check(
-            fixture.cpu.completed() && fixture.cpu.getInventory()
+            completed(fixture.cpu) && fixture.cpu.getInventory()
                 .isEmpty(),
             "second job failed to release CPU");
     }
@@ -124,7 +126,7 @@ public final class AESelfRecursiveCraftingSmoke {
         fixture.submit(7, null);
         fixture.execute(11);
         fixture.tick();
-        check(fixture.cpu.completed(), "merged self-recursive requests failed to complete");
+        check(completed(fixture.cpu), "merged self-recursive requests failed to complete");
         check(
             fixture.cpu.getInventory()
                 .isEmpty(),
@@ -139,11 +141,11 @@ public final class AESelfRecursiveCraftingSmoke {
         fixture.execute(1);
         NBTTagCompound saved = new NBTTagCompound();
         fixture.cpu.writeToNBT(saved);
-        fixture.cpu = new TestCPU(fixture.grid);
+        fixture.cpu = newCPU(fixture.grid);
         fixture.cpu.readFromNBT(saved);
         fixture.execute(3);
         fixture.tick();
-        check(fixture.cpu.completed() && link.isDone(), "reloaded recursive CPU or requester did not complete");
+        check(completed(fixture.cpu) && link.isDone(), "reloaded recursive CPU or requester did not complete");
         check(
             fixture.delivered == 10 && fixture.notifications == 1,
             "reloaded request delivered or notified incorrectly");
@@ -161,19 +163,14 @@ public final class AESelfRecursiveCraftingSmoke {
             .divide(BigInteger.valueOf(3));
         ((BigCraftingCPU) (Object) fixture.cpu).addCraftingBig(fixture.pattern, rounds);
         IAEItemStack output = BigAEStackValues.copyWithSize(stack(Items.diamond, 1), requested);
-        fixture.cpu.initOutput(output);
+        outputs(fixture.cpu).init(output);
         check(
-            fixture.cpu.balance(Items.diamond)
-                .equals(rounds.multiply(BigInteger.valueOf(3))),
+            balance(fixture.cpu, Items.diamond).equals(rounds.multiply(BigInteger.valueOf(3))),
             "exact recursive completion balance used gross output or truncated count");
+        check(balance(fixture.cpu, Items.emerald).equals(rounds), "exact byproduct completion balance was truncated");
+        reloadOutput(fixture.cpu);
         check(
-            fixture.cpu.balance(Items.emerald)
-                .equals(rounds),
-            "exact byproduct completion balance was truncated");
-        fixture.cpu.reloadOutput();
-        check(
-            fixture.cpu.balance(Items.diamond)
-                .equals(rounds.multiply(BigInteger.valueOf(3))),
+            balance(fixture.cpu, Items.diamond).equals(rounds.multiply(BigInteger.valueOf(3))),
             "saved final-output balance lost its exact quantity");
     }
 
@@ -184,7 +181,7 @@ public final class AESelfRecursiveCraftingSmoke {
         ICraftingLink link = fixture.submit(10, fixture.requester(10));
         fixture.execute(4);
         fixture.tick();
-        check(fixture.cpu.completed() && link.isDone(), "oversized return prevented job completion");
+        check(completed(fixture.cpu) && link.isDone(), "oversized return prevented job completion");
         check(
             fixture.delivered == 10 && fixture.count(Items.diamond) == 8,
             "oversized return lost seed or excess items");
@@ -237,7 +234,7 @@ public final class AESelfRecursiveCraftingSmoke {
         final IGrid grid;
         CraftingGridCache crafting;
         final IEnergyGrid energy;
-        TestCPU cpu;
+        CraftingCPUCluster cpu;
         boolean split = true;
         int extra;
         boolean rejectStorage;
@@ -354,7 +351,7 @@ public final class AESelfRecursiveCraftingSmoke {
                 new Class<?>[] { IEnergyGrid.class },
                 (proxy, method, args) -> method.getName()
                     .equals("extractAEPower") ? args[0] : null);
-            cpu = new TestCPU(grid);
+            cpu = newCPU(grid);
         }
 
         ICraftingRequester requester(int amount) {
@@ -414,8 +411,7 @@ public final class AESelfRecursiveCraftingSmoke {
                 IAEStack<?> simulated = cpu.injectItems(incoming, Actionable.SIMULATE, new BaseActionSource());
                 long before = delivered;
                 IAEStack<?> excess = cpu.injectItems(incoming, Actionable.MODULATE, new BaseActionSource());
-                if (!returned.isEmpty())
-                    check(!cpu.completed(), "CPU completed before all dispatched outputs returned");
+                if (!returned.isEmpty()) check(!completed(cpu), "CPU completed before all dispatched outputs returned");
                 check(
                     (simulated == null ? 0 : simulated.getStackSize()) == (excess == null ? 0 : excess.getStackSize()),
                     "output simulation disagreed with insertion");
@@ -430,10 +426,19 @@ public final class AESelfRecursiveCraftingSmoke {
         }
     }
 
-    private static final class TestCPU extends CraftingCPUCluster {
-
-        private final IGrid grid;
-        private final TileCraftingTile core = new TileCraftingTile() {
+    /** Build the actual cluster: older AE releases make it final and keep its fields private. */
+    private static CraftingCPUCluster newCPU(IGrid grid) {
+        IGridNode node = (IGridNode) Proxy.newProxyInstance(
+            IGridNode.class.getClassLoader(),
+            new Class<?>[] { IGridNode.class },
+            (proxy, method, args) -> {
+                if (method.getName()
+                    .equals("getGrid")) return grid;
+                if (method.getName()
+                    .equals("isActive")) return true;
+                return null;
+            });
+        TileCraftingTile core = new TileCraftingTile() {
 
             @Override
             public boolean isActive() {
@@ -441,60 +446,63 @@ public final class AESelfRecursiveCraftingSmoke {
             }
 
             @Override
+            public IGridNode getActionableNode() {
+                return node;
+            }
+
+            @Override
+            public void markDirty() {}
+
+            @Override
             protected ItemStack getItemFromTile(Object tile) {
                 return new ItemStack(Items.paper);
             }
         };
 
-        TestCPU(IGrid grid) {
-            super(new appeng.api.util.WorldCoord(0, 0, 0), new appeng.api.util.WorldCoord(0, 0, 0));
-            this.grid = grid;
-            this.machineSrc = new MachineSource(core);
-            this.availableStorage = 100000;
+        CraftingCPUCluster cpu = new CraftingCPUCluster(
+            new appeng.api.util.WorldCoord(0, 0, 0),
+            new appeng.api.util.WorldCoord(0, 0, 0));
+        try {
+            field("machineSrc").set(cpu, new MachineSource(core));
+            field("availableStorage").setLong(cpu, 100000);
+            ((List<TileCraftingTile>) field("tiles").get(cpu)).add(core);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Self-recursive CPU fixture", error);
         }
+        return cpu;
+    }
 
-        @Override
-        public IGrid getGrid() {
-            return grid;
+    private static Field field(String name) throws NoSuchFieldException {
+        Field field = CraftingCPUCluster.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return field;
+    }
+
+    private static boolean completed(CraftingCPUCluster cpu) {
+        try {
+            return field("isComplete").getBoolean(cpu);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Self-recursive CPU completion fixture", error);
         }
+    }
 
-        @Override
-        protected TileCraftingTile getCore() {
-            return core;
+    private static CraftingCPUCluster.finalOutput outputs(CraftingCPUCluster cpu) {
+        try {
+            return (CraftingCPUCluster.finalOutput) field("finalOutput").get(cpu);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Self-recursive CPU output fixture", error);
         }
+    }
 
-        @Override
-        public boolean isActive() {
-            return true;
-        }
+    private static BigInteger balance(CraftingCPUCluster cpu, Item item) {
+        return BigAEStackValues.get(outputs(cpu).findPrecise(stack(item, 1)));
+    }
 
-        @Override
-        public void markDirty() {}
-
-        @Override
-        protected void postCraftingStatusChange(IAEStack<?> output) {}
-
-        boolean completed() {
-            return isComplete;
-        }
-
-        boolean outputEmpty() {
-            return finalOutput.isEmpty();
-        }
-
-        void initOutput(IAEStack<?> output) {
-            finalOutput.init(output);
-        }
-
-        BigInteger balance(Item item) {
-            return BigAEStackValues.get(finalOutput.findPrecise(stack(item, 1)));
-        }
-
-        void reloadOutput() {
-            NBTTagCompound saved = finalOutput.writeNbt();
-            finalOutput.reset();
-            finalOutput.readFromNBT(saved);
-        }
+    private static void reloadOutput(CraftingCPUCluster cpu) {
+        CraftingCPUCluster.finalOutput output = outputs(cpu);
+        NBTTagCompound saved = output.writeNbt();
+        output.reset();
+        output.readFromNBT(saved);
     }
 
     private static void check(boolean value, String message) {

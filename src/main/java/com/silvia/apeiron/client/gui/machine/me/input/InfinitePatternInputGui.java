@@ -504,7 +504,7 @@ public final class InfinitePatternInputGui extends MTEHatchBaseGui<MTEInfinitePa
         private final boolean pattern;
 
         private GuardedSlot(int slot, boolean pattern) {
-            super(machine.inventoryHandler, slot);
+            super(machine.getInventoryHandler(), slot);
             this.pattern = pattern;
         }
 

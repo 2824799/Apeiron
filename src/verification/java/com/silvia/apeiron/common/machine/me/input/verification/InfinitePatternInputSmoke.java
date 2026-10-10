@@ -625,7 +625,7 @@ public final class InfinitePatternInputSmoke {
                 .isItemValidForSlot(359, duplicate),
             "AE terminal accepted duplicate");
         com.cleanroommc.modularui.widgets.slot.ModularSlot guiSlot = new com.cleanroommc.modularui.widgets.slot.ModularSlot(
-            source.inventoryHandler,
+            source.getInventoryHandler(),
             359);
         check(!guiSlot.isItemValid(duplicate), "GUI slot accepted a duplicate pattern");
         check(
