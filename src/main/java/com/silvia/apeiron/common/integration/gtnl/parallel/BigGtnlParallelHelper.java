@@ -5,15 +5,11 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalDouble;
 
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.science.gtnl.common.machine.multiMachineBase.WirelessEnergyMultiMachineBase;
-import com.science.gtnl.config.MainConfig;
-import com.science.gtnl.utils.enums.ModList;
-import com.science.gtnl.utils.recipes.ChanceBonusManager;
 import com.science.gtnl.utils.recipes.GTNLParallelHelper;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.api.machine.energy.BigWirelessEnergySource;
@@ -43,7 +39,6 @@ import gregtech.api.objects.XSTR;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTRecipe;
-import gregtech.api.util.GTUtility;
 
 /** GTNL retains lookup, validation and startup hooks; the common ledgers own counts, inputs and outputs. */
 public final class BigGtnlParallelHelper extends GTNLParallelHelper implements PreparedWirelessRecipe {
@@ -63,6 +58,7 @@ public final class BigGtnlParallelHelper extends GTNLParallelHelper implements P
     private boolean committed;
     private java.util.function.ToDoubleFunction<BigGtnlParallelHelper> durationAdjustment;
     private BigInteger batchMaximum;
+    private BigInteger ultimateCostPerParallel;
 
     public static GTNLParallelHelper adapt(GTNLParallelHelper nativeHelper) {
         if (!(nativeHelper.machine instanceof MTEMultiBlockBase)
@@ -111,11 +107,7 @@ public final class BigGtnlParallelHelper extends GTNLParallelHelper implements P
 
     @Override
     public void determineParallel() {
-        if (!ModList.Overpowered.isModLoaded() && MainConfig.machine.enableRecipeOutputChance) {
-            OptionalDouble bonus = ChanceBonusManager
-                .getChanceBonusOptional(machine, GTUtility.getTier(recipe.mEUt), chanceMultiplier, recipe);
-            if (bonus.isPresent()) recipe = ChanceBonusManager.copyAndBonusChance(recipe, bonus.getAsDouble());
-        }
+        recipe = GtnlRecipeChances.apply(machine, recipe, chanceMultiplier);
         if (hatch == null && !com.silvia.apeiron.compat.OverclockPolicies.allows(calculator, recipe.mEUt)) {
             result = CheckRecipeResultRegistry.insufficientVoltage(recipe.mEUt);
             return;
@@ -145,10 +137,10 @@ public final class BigGtnlParallelHelper extends GTNLParallelHelper implements P
                     .min(BigInteger.valueOf(Integer.MAX_VALUE)));
         }
         BigInteger available = availableEnergy();
-        if (isUltimate() && recipe.mEUt > 0 && recipe.mDuration > 0) {
-            BigInteger perRecipe = BigInteger.valueOf(recipe.mEUt)
-                .multiply(BigInteger.valueOf(recipe.mDuration));
-            limit = ParallelLimit.bounded(limit.applyTo(available.divide(perRecipe)));
+        if (isUltimate()) {
+            ultimateCostPerParallel = unoverclockedCost();
+            if (ultimateCostPerParallel.signum() > 0)
+                limit = ParallelLimit.bounded(limit.applyTo(available.divide(ultimateCostPerParallel)));
         }
         parallels = inputs.allocation()
             .maximum(limit);
@@ -200,9 +192,7 @@ public final class BigGtnlParallelHelper extends GTNLParallelHelper implements P
     private void calculateEnergy(BigInteger count) {
         if (isUltimate()) {
             duration = state.getTargetDuration();
-            totalEnergy = BigInteger.valueOf(recipe.mEUt)
-                .multiply(BigInteger.valueOf(recipe.mDuration))
-                .multiply(count);
+            totalEnergy = ultimateCostPerParallel.multiply(count);
             eut = totalEnergy.add(BigInteger.valueOf(duration - 1L))
                 .divide(BigInteger.valueOf(duration));
             return;
@@ -242,6 +232,26 @@ public final class BigGtnlParallelHelper extends GTNLParallelHelper implements P
                 : Math.max(1, (int) adjusted);
         }
         totalEnergy = eut.multiply(BigInteger.valueOf(duration));
+    }
+
+    private BigInteger unoverclockedCost() {
+        BigInteger consumption = ExactOverclock.ceil(
+            ExactOverclock.power(
+                calculator.recipeEUt,
+                BigInteger.ONE,
+                calculator.eutModifier,
+                calculator.calculateHeatDiscountMultiplier()));
+        double baseTicks = calculator.durationUnderOneTickSupplier == null
+            ? calculator.duration * calculator.durationModifier * calculator.extraDurationModifier
+            : calculator.getDurationUnderOneTickSupplier();
+        int nativeTicks = Math.max(1, (int) Math.ceil(baseTicks));
+        calculator.calculated = true;
+        calculator.calculatedConsumption = consumption.min(BigInteger.valueOf(Long.MAX_VALUE - 1))
+            .longValue();
+        calculator.calculatedDuration = nativeTicks;
+        durationMultiplier = 1;
+        if (durationAdjustment != null) nativeTicks = Math.max(1, (int) durationAdjustment.applyAsDouble(this));
+        return consumption.multiply(BigInteger.valueOf(nativeTicks));
     }
 
     private boolean fits(BigInteger count) {

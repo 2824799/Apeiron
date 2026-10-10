@@ -19,6 +19,7 @@ import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembl
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
 import com.silvia.apeiron.common.machine.parallel.NativeParallelPolicy;
+import com.silvia.apeiron.common.machine.parallel.RecipeChanceEffects;
 import com.silvia.apeiron.common.machine.parallel.WirelessRecipeState;
 import com.silvia.apeiron.common.machine.registration.ApeironMachines;
 import com.silvia.apeiron.config.ApeironConfig;
@@ -497,18 +498,17 @@ public final class InfiniteEnergySmoke {
         RecipeMap<?> recipes = RecipeMapBuilder.of("apeiron.verify.chanced_wireless_recipes")
             .maxIO(1, 1, 0, 1)
             .build();
-        recipes.addRecipe(
-            gregtech.api.util.GTRecipeBuilder.builder()
-                .itemInputs(new ItemStack(Items.diamond, 2))
-                .itemOutputs(new ItemStack(Items.emerald, 3))
-                .outputChances(5000)
-                .fluidOutputs(
-                    new net.minecraftforge.fluids.FluidStack(net.minecraftforge.fluids.FluidRegistry.WATER, 7))
-                .fluidOutputChances(7500)
-                .duration(20)
-                .eut(8)
-                .build()
-                .get());
+        GTRecipe chanceRecipe = gregtech.api.util.GTRecipeBuilder.builder()
+            .itemInputs(new ItemStack(Items.diamond, 2))
+            .itemOutputs(new ItemStack(Items.emerald, 3))
+            .outputChances(5000)
+            .fluidOutputs(new net.minecraftforge.fluids.FluidStack(net.minecraftforge.fluids.FluidRegistry.WATER, 7))
+            .fluidOutputChances(7500)
+            .duration(20)
+            .eut(8)
+            .build()
+            .get();
+        recipes.addRecipe(chanceRecipe);
         Controller controller = fixture(owner, recipes, true);
         controller.mOutputHatches
             .add((com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch) tile(1).getMetaTileEntity());
@@ -530,11 +530,16 @@ public final class InfiniteEnergySmoke {
                 itemCount = itemCount.add(BigAEStackValues.get(output));
             else fluidCount = fluidCount.add(BigAEStackValues.get(output));
         }
+        GTRecipe effective = RecipeChanceEffects.apply(controller, chanceRecipe, 1);
+        boolean guaranteedItems = effective.getOutputChance(0) >= 10000;
+        boolean guaranteedFluids = effective.getFluidOutputChance(0) >= 10000;
         check(
-            itemCount.signum() > 0 && itemCount.compareTo(HUGE.multiply(BigInteger.valueOf(3))) < 0,
+            itemCount.signum() > 0
+                && (guaranteedItems || itemCount.compareTo(HUGE.multiply(BigInteger.valueOf(3))) < 0),
             "item probability became all-or-nothing");
         check(
-            fluidCount.signum() > 0 && fluidCount.compareTo(HUGE.multiply(BigInteger.valueOf(7))) < 0,
+            fluidCount.signum() > 0
+                && (guaranteedFluids || fluidCount.compareTo(HUGE.multiply(BigInteger.valueOf(7))) < 0),
             "fluid guaranteed/fractional chances lost");
         NBTTagCompound saved = state.save();
         WirelessRecipeState restored = new WirelessRecipeState();

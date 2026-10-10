@@ -30,11 +30,9 @@ import appeng.api.storage.IMEInventory;
 import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
+import appeng.api.storage.data.IItemList;
 import appeng.me.GridAccessException;
-import appeng.util.IterationCounter;
 import appeng.util.item.AEFluidStack;
-import appeng.util.item.FluidList;
-import appeng.util.item.ItemList;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
@@ -172,40 +170,46 @@ public class StockingInputLogic {
         }
     }
 
-    protected List<IAEStack<?>> readNetworkStocks() throws GridAccessException {
-        ItemList items = new ItemList();
-        FluidList fluids = new FluidList();
-        if (kind != Kind.FLUIDS) host.getProxy()
+    protected IItemList<IAEItemStack> readNetworkItems() throws GridAccessException {
+        return host.getProxy()
             .getStorage()
             .getItemInventory()
-            .getAvailableItems(items, IterationCounter.fetchNewId());
-        if (kind != Kind.ITEMS) host.getProxy()
+            .getStorageList();
+    }
+
+    protected IItemList<IAEFluidStack> readNetworkFluids() throws GridAccessException {
+        return host.getProxy()
             .getStorage()
             .getFluidInventory()
-            .getAvailableItems(fluids, IterationCounter.fetchNewId());
-        List<IAEStack<?>> result = new ArrayList<>();
-        for (IAEItemStack item : items) result.add(item.copy());
-        for (IAEFluidStack fluid : fluids) result.add(fluid.copy());
-        return result;
+            .getStorageList();
     }
 
     public void refresh() {
         if (processing) return;
         Arrays.fill(displayed, null);
+        projectionReady = false;
         if (!active()) return;
         try {
-            ItemList items = new ItemList();
-            FluidList fluids = new FluidList();
-            for (IAEStack<?> stack : readNetworkStocks()) {
-                if (stack instanceof IAEItemStack && kind != Kind.FLUIDS) items.addStorage((IAEItemStack) stack);
-                if (stack instanceof IAEFluidStack && kind != Kind.ITEMS) fluids.addStorage((IAEFluidStack) stack);
+            boolean needItems = autoPull && kind != Kind.FLUIDS;
+            boolean needFluids = autoPull && kind != Kind.ITEMS;
+            if (!autoPull) for (IAEStack<?> mark : marks) {
+                needItems |= mark instanceof IAEItemStack;
+                needFluids |= mark instanceof IAEFluidStack;
             }
+            // Borrow AE's shared, change-invalidated lists. Only selected stacks are copied; neither filtering nor
+            // recipe debits may mutate the monitor's cache.
+            IItemList<IAEItemStack> items = needItems ? readNetworkItems() : null;
+            IItemList<IAEFluidStack> fluids = needFluids ? readNetworkFluids() : null;
             if (autoPull) {
                 int index = 0;
-                for (IAEItemStack stack : items)
-                    if (index < SLOT_COUNT && filter.accepts(stack)) displayed[index++] = stack.copy();
-                for (IAEFluidStack stack : fluids)
-                    if (index < SLOT_COUNT && filter.accepts(stack)) displayed[index++] = stack.copy();
+                if (items != null) for (IAEItemStack stack : items) {
+                    if (index >= SLOT_COUNT) break;
+                    if (filter.accepts(stack)) displayed[index++] = stack.copy();
+                }
+                if (fluids != null && index < SLOT_COUNT) for (IAEFluidStack stack : fluids) {
+                    if (index >= SLOT_COUNT) break;
+                    if (filter.accepts(stack)) displayed[index++] = stack.copy();
+                }
             } else {
                 for (int i = 0; i < SLOT_COUNT; i++) {
                     IAEStack<?> found = marks[i] instanceof IAEFluidStack ? fluids.findPrecise((IAEFluidStack) marks[i])

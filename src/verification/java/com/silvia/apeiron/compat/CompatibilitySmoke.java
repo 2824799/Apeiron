@@ -12,6 +12,8 @@ public final class CompatibilitySmoke {
             com.silvia.apeiron.common.integration.gtnl.parallel.GtnlIntegrationSmoke.verify();
         if (DependencyCapabilities.hasMethod("gtnhlanth.common.tileentity.MTETargetChamber", "getMaskItemStack", null))
             com.silvia.apeiron.common.integration.lanthanides.TargetChamberInputSmoke.verify();
+        if (DependencyCapabilities.hasClass("gregtech.common.tileentities.machines.multi.beamcrafting.MTEBeamCrafter"))
+            com.silvia.apeiron.common.integration.lanthanides.BeamCrafterParticleSmoke.verify();
         com.silvia.apeiron.ae.smoke.AEProductionEntrypointSmoke.verify();
         com.silvia.apeiron.ae.smoke.AEMixinTargetSmoke.verify();
         com.silvia.apeiron.ae.smoke.AEItemStackSmoke.verify();

@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.silvia.apeiron.api.machine.parallel.BigRecipeInputProvider;
 import com.silvia.apeiron.api.machine.parallel.BigRecipeOutputProvider;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
 import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
@@ -94,13 +95,19 @@ public abstract class ProcessingLogicBigParallelMixin {
         if (hatch == null || InfiniteEnergyHatches.isNativeWirelessController(controller)) return nativeHelper;
         BigRecipeOutputProvider provider = this instanceof BigRecipeOutputProvider
             && ((BigRecipeOutputProvider) this).hasExactRecipeOutputs() ? (BigRecipeOutputProvider) this : null;
+        BigRecipeInputProvider inputProvider = this instanceof BigRecipeInputProvider
+            && ((BigRecipeInputProvider) this).hasExactRecipeInputs() ? (BigRecipeInputProvider) this : null;
+        GTRecipe inputRecipe = inputProvider == null ? recipe : inputProvider.getExactInputRecipe(recipe);
+        if (inputRecipe == null || !BigRecipeParallelHelper.supportsInputs(inputRecipe)) return nativeHelper;
         if (!(provider == null ? BigRecipeParallelHelper.supports(recipe)
             : BigRecipeParallelHelper.supportsInputs(recipe))
-            || !NativeParallelPolicy.supports(nativeHelper, provider != null)) return nativeHelper;
+            || !NativeParallelPolicy.supports(nativeHelper, provider != null, inputProvider != null))
+            return nativeHelper;
         return new BigRecipeParallelHelper(
             controller,
             hatch,
             ((BigWirelessController) machine).getWirelessRecipeState()).preserveNativeModifiers(nativeHelper)
+                .setExactInputRecipe(inputRecipe)
                 .setExactOutputCalculator(
                     provider == null ? null : count -> provider.calculateRecipeOutputsBig(recipe, count))
                 .setRecipe(recipe)

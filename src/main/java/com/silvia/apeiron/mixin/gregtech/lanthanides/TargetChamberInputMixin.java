@@ -16,9 +16,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.silvia.apeiron.api.machine.me.input.BigDualInputHatch;
+import com.silvia.apeiron.common.integration.lanthanides.PatternParticleInputs;
 import com.silvia.apeiron.common.integration.lanthanides.TargetChamberEnhancement;
 import com.silvia.apeiron.common.machine.input.IsolatedRecipeInputs;
-import com.silvia.apeiron.common.machine.lanthanides.MTEAutoLaserBeamlineInput;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
@@ -45,42 +45,53 @@ public abstract class TargetChamberInputMixin {
     private void apeiron$isolatedInputs(CallbackInfoReturnable<CheckRecipeResult> cir) {
         if (apeiron$items != null) return;
         MTETargetChamber machine = (MTETargetChamber) (Object) this;
-        boolean enhanced = TargetChamberEnhancement.isEnabled();
-        boolean automaticLaser = machine.mInputBeamline.stream()
-            .anyMatch(hatch -> hatch instanceof MTEAutoLaserBeamlineInput && hatch.isValid());
+        boolean itemParticles = PatternParticleInputs.hasPatternInput(machine.mDualInputHatches)
+            || PatternParticleInputs.hasPatternInput(mMaskInputBusses);
         List<List<ItemStack>> inputs = IsolatedRecipeInputs.patterns(machine.mDualInputHatches);
         boolean hasSpecialPatterns = mMaskInputBusses.stream()
             .anyMatch(bus -> bus instanceof BigDualInputHatch);
-        if (!enhanced && !automaticLaser && inputs.isEmpty() && !hasSpecialPatterns) return;
-        inputs.add(machine.getStoredInputs());
+        if (!itemParticles && inputs.isEmpty() && !hasSpecialPatterns) return;
+        List<ItemStack> ordinaryInputs = machine.getStoredInputs();
+        inputs.add(ordinaryInputs);
         List<List<ItemStack>> masks = IsolatedRecipeInputs.specialBusses(mMaskInputBusses);
         CheckRecipeResult result = CheckRecipeResultRegistry.NO_RECIPE;
         try {
-            for (List<ItemStack> input : inputs) for (List<ItemStack> mask : masks) {
-                apeiron$items = input;
-                apeiron$masks = mask;
-                CheckRecipeResult found;
-                if (enhanced || automaticLaser) {
-                    if (automaticLaser && (mask.stream()
-                        .anyMatch(stack -> !(stack.getItem() instanceof ItemPhotolithographicMask))
-                        || input.stream()
-                            .anyMatch(stack -> stack.getItem() instanceof ItemPhotolithographicMask)))
-                        continue;
-                    List<ItemStack> all = new ArrayList<>(mask);
-                    all.addAll(input);
-                    found = automaticLaser
-                        ? TargetChamberEnhancement.processAutomaticLaser(machine, all.toArray(new ItemStack[0]))
-                        : TargetChamberEnhancement.process(machine, all.toArray(new ItemStack[0]));
-                    if (found.wasSuccessful()) lastTCRecipeInputParticle = -1;
-                } else {
-                    // Native particle checks, mask position, consumption and progression are retained.
-                    found = machine.checkProcessing();
+            for (List<ItemStack> input : inputs) {
+                List<ItemStack> materials = new ArrayList<>();
+                List<ItemStack> programmedMasks = new ArrayList<>();
+                // In item-particle mode a pattern buffer supplies its own masks, including consumable GT masks.
+                // Ordinary busses retain the native mask position; never borrow from another material buffer.
+                for (ItemStack stack : input) {
+                    if (stack.getItem() instanceof ItemPhotolithographicMask
+                        && (stack.stackSize == 0 || itemParticles && input != ordinaryInputs))
+                        programmedMasks.add(stack);
+                    else materials.add(stack);
                 }
-                if (found.wasSuccessful()) {
-                    cir.setReturnValue(found);
-                    return;
+                for (List<ItemStack> mask : masks) {
+                    apeiron$items = materials;
+                    apeiron$masks = new ArrayList<>(mask);
+                    apeiron$masks.addAll(programmedMasks);
+                    CheckRecipeResult found;
+                    if (itemParticles) {
+                        if (mask.stream()
+                            .anyMatch(stack -> !(stack.getItem() instanceof ItemPhotolithographicMask))
+                            || materials.stream()
+                                .anyMatch(stack -> stack.getItem() instanceof ItemPhotolithographicMask))
+                            continue;
+                        List<ItemStack> all = new ArrayList<>(apeiron$masks);
+                        all.addAll(materials);
+                        found = TargetChamberEnhancement.processParticleItems(machine, all.toArray(new ItemStack[0]));
+                        if (found.wasSuccessful()) lastTCRecipeInputParticle = -1;
+                    } else {
+                        // Native particle checks, mask position, consumption and progression are retained.
+                        found = machine.checkProcessing();
+                    }
+                    if (found.wasSuccessful()) {
+                        cir.setReturnValue(found);
+                        return;
+                    }
+                    if (found != CheckRecipeResultRegistry.NO_RECIPE) result = found;
                 }
-                if (found != CheckRecipeResultRegistry.NO_RECIPE) result = found;
             }
             cir.setReturnValue(result);
         } finally {

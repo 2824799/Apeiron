@@ -57,7 +57,6 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
                     == name.startsWith("Legacy");
             case "TargetChamberInputMixin":
             case "SourceChamberInputMixin":
-            case "AutoLaserRegistrationMixin":
                 return DependencyCapabilities
                     .hasMethod("gtnhlanth.common.tileentity.MTETargetChamber", "getMaskItemStack", null);
             case "GtnlWirelessBatchMixin":

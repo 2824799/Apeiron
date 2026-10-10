@@ -4,4 +4,6 @@ package com.silvia.apeiron.api.machine.lanthanides;
 public interface BeamItemInputController {
 
     void setItemParticleRecipe(boolean enabled);
+
+    void prepareItemParticleRecipe(int particleA, int particleB);
 }

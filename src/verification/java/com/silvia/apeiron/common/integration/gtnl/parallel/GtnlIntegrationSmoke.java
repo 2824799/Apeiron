@@ -186,6 +186,8 @@ public final class GtnlIntegrationSmoke {
             SpaceProjectManager.spaceTeams = new HashMap<>();
             GlobalEnergyWorldSavedData.INSTANCE = new GlobalEnergyWorldSavedData();
             verifyOverclocks();
+            RecipeModifierSmoke.verify();
+            verifyDiscountedUltimate();
             verifyOutputEffects();
             for (int ticks : new int[] { 1, 128 })
                 for (BigInteger parallels : new BigInteger[] { BigInteger.ONE, BigInteger.valueOf(37), HUGE })
@@ -310,7 +312,8 @@ public final class GtnlIntegrationSmoke {
         check(machine.wirelessMode && !machine.wirelessUpgrade, "ultimate mode requires native upgrade");
         CheckRecipeResult result = machine.checkProcessing();
         check(result.wasSuccessful(), "ultimate crusher rejected cross-recipe batch: " + result.getID());
-        BigInteger total = parallels.multiply(BigInteger.valueOf(3200));
+        BigInteger perRecipe = nativeUnOverclockedCost(machine, 20, 32).add(nativeUnOverclockedCost(machine, 40, 64));
+        BigInteger total = parallels.multiply(perRecipe);
         check(
             state(machine).getParallelsBig()
                 .equals(parallels.multiply(BigInteger.valueOf(2))),
@@ -597,7 +600,7 @@ public final class GtnlIntegrationSmoke {
 
     private static void verifyLowEnergy() {
         UUID owner = UUID.randomUUID();
-        BigInteger initial = BigInteger.valueOf(639);
+        BigInteger initial = BigInteger.valueOf(100);
         WirelessNetworkManager.addEUToGlobalEnergyMap(owner, initial);
         Furnace machine = new Furnace(owner);
         energy(machine, owner, true);
@@ -614,6 +617,89 @@ public final class GtnlIntegrationSmoke {
                     .equals(initial)
                 && !state(machine).isRunning(),
             "unaffordable recipe debited input or energy");
+    }
+
+    private static BigInteger nativeUnOverclockedCost(Crusher machine, int ticks, int eu) {
+        GTNLOverclockCalculator calculator = new GTNLOverclockCalculator().setRecipeEUt(eu)
+            .setDuration(ticks)
+            .setEUtDiscount(machine.getEUtDiscount())
+            .setDurationModifier(machine.getDurationModifier())
+            .setExtraDurationModifier(machine.mConfigSpeedBoost)
+            .setNoOverclock(true)
+            .setParallel(1)
+            .setCurrentParallel(1);
+        calculator.calculate();
+        return BigInteger.valueOf(calculator.getConsumption())
+            .multiply(BigInteger.valueOf(calculator.getDuration()));
+    }
+
+    private static void verifyDiscountedUltimate() {
+        UUID owner = UUID.randomUUID();
+        BigInteger initial = HUGE.multiply(BigInteger.valueOf(320));
+        WirelessNetworkManager.setUserEU(owner, initial);
+        Furnace machine = new Furnace(owner);
+        energy(machine, owner, true);
+        MTEInfiniteMEOutputAssembly receiving = output(machine, owner);
+        MTEInfinitePatternInputAssembly source = (MTEInfinitePatternInputAssembly) tile(4, owner).getMetaTileEntity();
+        source.addToBufferBig(
+            0,
+            Arrays.asList(BigAEStackValues.copyWithSize(AEItemStack.create(new ItemStack(Items.diamond)), HUGE)));
+        machine.mDualInputHatches.add(source);
+        GTRecipe recipe = recipe(new ItemStack(Items.diamond), new ItemStack(Items.apple), 20, 100, false);
+        state(machine).setParallelSettingBig(HUGE);
+        state(machine).setTargetDuration(7);
+        com.science.gtnl.utils.recipes.GTNLParallelHelper nativeHelper = new com.science.gtnl.utils.recipes.GTNLParallelHelper()
+            .setMachine(machine, true, true)
+            .setRecipe(recipe)
+            .setItemInputs(
+                source.getBuffers()
+                    .get(0)
+                    .getItemInputs())
+            .setFluidInputs(new FluidStack[0])
+            .setConsumption(true)
+            .setOutputCalculation(true)
+            .setMaxParallel(1);
+        BigGtnlParallelHelper helper = (BigGtnlParallelHelper) BigGtnlParallelHelper.adapt(nativeHelper);
+        helper.setCalculator(
+            new GTNLOverclockCalculator().setRecipeEUt(100)
+                .setDuration(20)
+                .setEUtDiscount(0.8)
+                .setDurationModifier(0.5)
+                .setExtraDurationModifier(0.5));
+        helper.setDurationAdjustment(plan -> plan.calculator.getDuration() * 0.8);
+        helper.build();
+        check(
+            helper.getResult()
+                .wasSuccessful(),
+            "discounted ultimate plan was rejected");
+        check(
+            helper.getParallelsBig()
+                .equals(HUGE),
+            "discounted ultimate budget still used nominal cost");
+        check(
+            helper.getTotalEnergyBig()
+                .equals(initial),
+            "ultimate EU, speed or maintenance modifier lost");
+        helper.commit(7);
+        for (int tick = 0; tick < 7; tick++)
+            check(WirelessControllerEnergy.debitTick(machine), "discounted ultimate debit failed");
+        check(
+            WirelessNetworkManager.getUserEU(owner)
+                .signum() == 0,
+            "discounted ultimate debit differed from plan");
+        check(
+            source.getBuffers()
+                .get(0)
+                .isEmpty(),
+            "discounted ultimate input debit failed");
+        WirelessControllerEnergy.complete(machine);
+        check(
+            receiving.getProvider()
+                .getCachedAmountBig()
+                .equals(HUGE),
+            "discounted ultimate outputs changed");
+        Apeiron.LOG.info(
+            "GTNL discounted ultimate verification passed: 80% EU, speed, extra speed, maintenance duration and affordable big parallels");
     }
 
     private static void verifyNativeWired() {

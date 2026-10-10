@@ -50,7 +50,6 @@
     "tst.compat.TstPatternEncodeGuardMixin",
     "tst.energy.WaterPurifierRecipeAccessor",
     "gregtech.lanthanides.TargetChamberInputMixin",
-    "gregtech.lanthanides.AutoLaserRegistrationMixin",
     "gregtech.lanthanides.MEBeamlineOutputRegistrationMixin",
     "gregtech.lanthanides.MEBeamlineOutputElementMixin",
     "gregtech.lanthanides.BeamCrafterParticleLogicMixin",

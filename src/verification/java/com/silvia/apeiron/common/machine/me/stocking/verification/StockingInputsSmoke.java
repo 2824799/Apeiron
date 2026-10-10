@@ -31,11 +31,13 @@ import appeng.api.config.PowerUnits;
 import appeng.api.networking.security.BaseActionSource;
 import appeng.api.storage.IMEInventory;
 import appeng.api.storage.StorageChannel;
+import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IItemList;
 import appeng.util.item.AEFluidStack;
 import appeng.util.item.AEItemStack;
+import appeng.util.item.FluidList;
 import appeng.util.item.ItemList;
 import cpw.mods.fml.common.Loader;
 import gregtech.api.GregTechAPI;
@@ -79,6 +81,7 @@ public final class StockingInputsSmoke {
     }
 
     public static void verify() {
+        StockingNetworkCacheSmoke.verify();
         com.silvia.apeiron.common.network.verification.GuiSnapshotSmoke.verify();
         ApeironMachines.validateRegisteredReservation();
         check(
@@ -1083,9 +1086,18 @@ public final class StockingInputsSmoke {
         }
 
         @Override
-        protected List<IAEStack<?>> readNetworkStocks() {
-            List<IAEStack<?>> stocks = new ArrayList<>();
-            for (IAEStack<?> stack : network.stored) stocks.add(stack.copy());
+        protected IItemList<IAEItemStack> readNetworkItems() {
+            ItemList stocks = new ItemList();
+            for (IAEStack<?> stack : network.stored)
+                if (stack instanceof IAEItemStack) stocks.addStorage((IAEItemStack) stack);
+            return stocks;
+        }
+
+        @Override
+        protected IItemList<IAEFluidStack> readNetworkFluids() {
+            FluidList stocks = new FluidList();
+            for (IAEStack<?> stack : network.stored)
+                if (stack instanceof IAEFluidStack) stocks.addStorage((IAEFluidStack) stack);
             return stocks;
         }
     }

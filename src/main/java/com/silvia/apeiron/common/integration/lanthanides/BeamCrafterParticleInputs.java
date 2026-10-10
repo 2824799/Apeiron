@@ -12,16 +12,23 @@ import gregtech.api.util.GTRecipe;
 import gregtech.loaders.postload.recipes.beamcrafter.BeamCrafterMetadata;
 import gtnhlanth.common.beamline.Particle;
 import gtnhlanth.common.item.ItemParticle;
+import gtnhlanth.common.register.LanthItemList;
 
 /** Particle items are debited with the selected recipe, never pooled across pattern inventories. */
 public final class BeamCrafterParticleInputs {
 
     private BeamCrafterParticleInputs() {}
 
-    public static boolean hasParticles(ItemStack[] items) {
-        if (items == null) return false;
-        for (ItemStack item : items) if (isParticle(item)) return true;
-        return false;
+    public static GTRecipe inputRecipe(GTRecipe recipe) {
+        BeamCrafterMetadata metadata = recipe.getMetadata(RecipeMaps.BEAMCRAFTER_METADATA);
+        if (metadata == null) return null;
+        GTRecipe inputs = recipe.copy();
+        inputs.mInputs = java.util.Arrays.copyOf(inputs.mInputs, inputs.mInputs.length + 2);
+        inputs.mInputs[inputs.mInputs.length
+            - 2] = new ItemStack(LanthItemList.PARTICLE_ITEM, metadata.amount_A, metadata.particleID_A);
+        inputs.mInputs[inputs.mInputs.length
+            - 1] = new ItemStack(LanthItemList.PARTICLE_ITEM, metadata.amount_B, metadata.particleID_B);
+        return inputs;
     }
 
     private static boolean isParticle(ItemStack item) {

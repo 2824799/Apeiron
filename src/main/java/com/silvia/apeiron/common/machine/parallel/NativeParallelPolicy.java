@@ -30,6 +30,10 @@ public final class NativeParallelPolicy {
     }
 
     public static boolean supports(ParallelHelper helper, boolean exactOutputProvider) {
+        return supports(helper, exactOutputProvider, false);
+    }
+
+    public static boolean supports(ParallelHelper helper, boolean exactOutputProvider, boolean exactInputProvider) {
         Class<?> type = helper.getClass();
         if (type != ParallelHelper.class && !type.getName()
             .equals(TST_HELPER)) return false;
@@ -57,7 +61,7 @@ public final class NativeParallelPolicy {
                         case "maxParallelCalculator":
                         case "inputConsumer":
                             field.setAccessible(true);
-                            if (field.get(helper) != field.get(defaults)) return false;
+                            if (!exactInputProvider && field.get(helper) != field.get(defaults)) return false;
                             break;
                         default:
                             break;

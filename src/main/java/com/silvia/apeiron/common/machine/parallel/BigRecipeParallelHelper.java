@@ -33,6 +33,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper
     private final MTEInfiniteEnergyHatch hatch;
     private final WirelessRecipeState state;
     private BigRecipeInputs inputs;
+    private GTRecipe inputRecipe;
     private BigInteger parallels;
     private BigInteger euPerParallel;
     private BigInteger totalPerParallel;
@@ -67,6 +68,11 @@ public final class BigRecipeParallelHelper extends ParallelHelper
         return this;
     }
 
+    public BigRecipeParallelHelper setExactInputRecipe(GTRecipe recipe) {
+        inputRecipe = recipe;
+        return this;
+    }
+
     public BigRecipeParallelHelper preserveNativeModifiers(ParallelHelper nativeHelper) {
         NativeParallelPolicy.copyModifiers(nativeHelper, this);
         return this;
@@ -74,6 +80,8 @@ public final class BigRecipeParallelHelper extends ParallelHelper
 
     @Override
     protected void determineParallel() {
+        // Native probability mixins attach to the overridden method; run their public policy once here.
+        recipe = RecipeChanceEffects.apply(controller, recipe, chanceMultiplier);
         calculator.setEUt(com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches.processingVoltage(controller));
         if (!com.silvia.apeiron.compat.OverclockPolicies.allows(calculator, recipe.mEUt)) {
             result = CheckRecipeResultRegistry.insufficientVoltage(recipe.mEUt);
@@ -90,7 +98,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper
         }
         euPerParallel = BigInteger.valueOf(calculator.getConsumption());
         baseRecipeDuration = Math.max(1, calculator.getDuration());
-        inputs = new BigRecipeInputs(controller, recipe, itemInputs, fluidInputs);
+        inputs = new BigRecipeInputs(controller, inputRecipe == null ? recipe : inputRecipe, itemInputs, fluidInputs);
         plan(hatch.isUltimate() ? state.getTargetDuration() : Math.max(1, calculator.getDuration()));
     }
 

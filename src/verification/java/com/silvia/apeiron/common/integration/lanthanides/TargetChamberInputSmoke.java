@@ -11,14 +11,12 @@ import net.minecraft.item.ItemStack;
 
 import com.silvia.apeiron.Apeiron;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
-import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
-import com.silvia.apeiron.common.machine.lanthanides.MTEAutoLaserBeamlineInput;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
+import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputMirror;
 import com.silvia.apeiron.common.machine.me.input.storage.BigPatternBuffer;
 import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
 import com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke;
 import com.silvia.apeiron.common.machine.parallel.WirelessRecipeState;
-import com.silvia.apeiron.common.machine.registration.ApeironMachines;
 import com.silvia.apeiron.config.ApeironConfig;
 import com.silvia.apeiron.mixin.gregtech.output.MultiBlockProcessingAccessor;
 
@@ -39,10 +37,8 @@ import gtnhlanth.common.register.LanthItemList;
 import gtnhlanth.common.tileentity.MTETargetChamber;
 import gtnhlanth.common.tileentity.recipe.beamline.TargetChamberMetadata;
 
-/** Detached real controllers: input isolation, native beam policy, optional enhancement and exact output. */
+/** Detached real controllers: input isolation, native beam policy, paid particles and exact output. */
 public final class TargetChamberInputSmoke {
-
-    public static boolean enhanced;
 
     private TargetChamberInputSmoke() {}
 
@@ -99,6 +95,23 @@ public final class TargetChamberInputSmoke {
         }
     }
 
+    private static final class Mirror extends MTEInfinitePatternInputMirror {
+
+        private final Source source;
+
+        private Mirror(Source source) {
+            super("apeiron.verify.target_mirror", 10, new String[0], null);
+            this.source = source;
+            setBaseMetaTileEntity(new BaseMetaTileEntity());
+            if (source != null) setLink(0, 10, 20, 30);
+        }
+
+        @Override
+        protected MTEInfinitePatternInputAssembly lookupSource() {
+            return source;
+        }
+    }
+
     private static Field field(Class<?> type, String name) throws NoSuchFieldException {
         for (Class<?> current = type; current != null; current = current.getSuperclass()) {
             try {
@@ -123,6 +136,14 @@ public final class TargetChamberInputSmoke {
         return source;
     }
 
+    private static ItemStack particle(int id, int amount) {
+        return new ItemStack(LanthItemList.PARTICLE_ITEM, amount, id);
+    }
+
+    private static ItemStack photon(int amount) {
+        return particle(gtnhlanth.common.beamline.Particle.PHOTON.getId(), amount);
+    }
+
     private static void add(Source source, int slot, ItemStack... items) {
         BigPatternBuffer buffer = source.getBuffers()
             .get(slot);
@@ -139,9 +160,6 @@ public final class TargetChamberInputSmoke {
     }
 
     public static void verify() {
-        Field setting = null, resolved = null;
-        Object original = null;
-        boolean originalResolved = false;
         GTRecipe recipe = GTRecipeBuilder.builder()
             .itemInputs(new ItemStack(Items.diamond, 2), new ItemStack(Items.emerald))
             .itemOutputs(new ItemStack(Items.apple, Integer.MAX_VALUE))
@@ -159,71 +177,34 @@ public final class TargetChamberInputSmoke {
             .get();
         LanthanidesRecipeMaps.targetChamberRecipes.addRecipe(recipe);
         try {
-            setting = field(TargetChamberEnhancement.class, "enabledField");
-            resolved = field(TargetChamberEnhancement.class, "resolved");
-            original = setting.get(null);
-            originalResolved = resolved.getBoolean(null);
-            setting.set(null, TargetChamberInputSmoke.class.getField("enhanced"));
-            resolved.setBoolean(null, true);
-            enhanced = false;
-            Chamber disabled = new Chamber();
-            disabled.mInputBusses.add(bus(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2)));
-            disabled.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
-            check(
-                !((MultiBlockProcessingAccessor) disabled).apeiron$checkRecipe(),
-                "disabled enhancement bypassed particle checks");
-            verifyAutomaticLaser();
-            enhanced = true;
-            verifyInputs();
-            verifyLimits();
-            verifyAliasedInputs();
-            verifyStocking();
-            verifyIsolation();
-            verifyNativeMask();
-            verifyBlackHoleMode();
+            verifyPatternParticles();
+            verifyPatternGate();
+            verifyRegisteredGTRecipes();
+            verifyNativeBeam();
             verifySourceChamber();
+            verifyBlackHoleMode();
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Custom input fixture failed", error);
         } finally {
             LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
                 .removeRecipe(recipe);
-            try {
-                if (setting != null) setting.set(null, original);
-                if (resolved != null) resolved.setBoolean(null, originalResolved);
-            } catch (IllegalAccessException error) {
-                throw new IllegalStateException(error);
-            }
         }
-        Apeiron.LOG.info(
-            "Custom input verification passed: target chamber native/enhanced, separate mask bus, isolated buffers, exact outputs, beam checks, black hole mode selectors");
-    }
-
-    private static ApeironMachineTile laserTile() {
-        ApeironMachineTile tile = new ApeironMachineTile();
-        tile.setInitialValuesAsNBT(
-            null,
-            (short) ApeironConfig.getMachineId(ApeironMachines.AUTO_LASER_BEAMLINE_INPUT_OFFSET));
-        check(tile.getMetaTileEntity() instanceof MTEAutoLaserBeamlineInput, "automatic laser placement type");
         check(
-            tile.getMetaTileEntity()
-                .getStackForm(1)
-                .getItem() == net.minecraft.item.Item.getItemFromBlock(ApeironMachines.block),
-            "automatic laser item registry");
-        return tile;
+            gregtech.api.GregTechAPI.METATILEENTITIES[ApeironConfig.getMachineId(13)] == null,
+            "retired automatic beam input was still registered");
+        Apeiron.LOG.info(
+            "Target chamber verification passed: pattern-gated paid particles, native beam fallback, isolated masks, exact outputs and persistence");
     }
 
-    private static void verifyAutomaticLaser() throws ReflectiveOperationException {
+    private static void verifyPatternParticles() throws ReflectiveOperationException {
         for (int mode = 0; mode < 3; mode++) {
             Chamber machine = new Chamber();
-            ApeironMachineTile laser = laserTile();
-            check(machine.addBeamLineInputHatch(laser, 0), "automatic laser structure registration");
-            check(machine.addBeamLineInputHatch(laser, 0), "automatic laser repeated registration");
-            check(machine.mInputBeamline.size() == 1, "automatic laser registered twice");
+            machine.addInputBusToMachineList(new Source().getBaseMetaTileEntity(), 0);
             Source source = null;
-            if (mode == 0)
-                machine.mInputBusses.add(bus(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2)));
+            if (mode == 0) machine.mInputBusses
+                .add(bus(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2), photon(2)));
             else {
-                source = source(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2));
+                source = source(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2), photon(2));
                 if (mode == 2) {
                     source = source(new ItemStack(Items.diamond, 2));
                     add(source, 1, new ItemStack(Items.emerald));
@@ -233,21 +214,23 @@ public final class TargetChamberInputSmoke {
             MTEInfiniteMEOutputAssembly output = InfiniteMEOutputAssemblySmoke.assembly();
             machine.mOutputBusses.add(output);
             boolean started = ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe();
-            check(started == (mode != 2), "automatic laser mixed isolated patterns");
+            check(started == (mode != 2), "pattern particle mode mixed isolated patterns");
             if (mode == 2) continue;
-            check(machine.mMaxProgresstime == 1 && machine.lEUt == -1920, "automatic laser duration or native energy");
+            check(
+                machine.mMaxProgresstime == 1 && machine.lEUt == -1920,
+                "pattern particle mode duration or native energy");
             WirelessRecipeState state = ((BigWirelessController) machine).getWirelessRecipeState();
             check(
                 state.usesNativeEnergy() && state.getParallelsBig()
                     .equals(BigInteger.valueOf(2)),
-                "automatic laser batch");
+                "pattern particle mode batch");
             net.minecraft.nbt.NBTTagCompound saved = new net.minecraft.nbt.NBTTagCompound();
             machine.saveNBTData(saved);
             Chamber restored = new Chamber();
             restored.loadNBTData(saved);
             restored.mOutputBusses.add(output);
             restored.advance();
-            check(restored.mProgresstime == 1, "automatic laser saved recipe waited for a packet");
+            check(restored.mProgresstime == 1, "pattern particle mode saved recipe waited for a packet");
             restored.complete();
             BigInteger expected = BigInteger.valueOf(Integer.MAX_VALUE)
                 .multiply(BigInteger.valueOf(2));
@@ -255,45 +238,45 @@ public final class TargetChamberInputSmoke {
                 output.getProvider()
                     .getCachedAmountBig()
                     .equals(expected),
-                "automatic laser output truncated");
+                "pattern particle mode output truncated");
             restored.complete();
             check(
                 output.getProvider()
                     .getCachedAmountBig()
                     .equals(expected),
-                "automatic laser duplicate completion");
+                "pattern particle mode duplicate completion");
             if (source != null) check(
                 source.getBuffers()
                     .get(0)
                     .getItemAmountBig()
                     .signum() == 0,
-                "automatic laser debit");
+                "pattern particle mode debit");
             machine.clearHatches();
-            check(machine.mInputBeamline.isEmpty(), "automatic laser scan cleanup");
+            check(machine.mInputBeamline.isEmpty(), "pattern particle mode scan cleanup");
         }
         Chamber full = new Chamber();
-        full.addBeamLineInputHatch(laserTile(), 0);
-        Source ingredients = source(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2));
+        full.addInputBusToMachineList(new Source().getBaseMetaTileEntity(), 0);
+        Source ingredients = source(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2), photon(2));
         full.addInputBusToMachineList(ingredients.getBaseMetaTileEntity(), 0);
-        check(!((MultiBlockProcessingAccessor) full).apeiron$checkRecipe(), "automatic laser accepted missing output");
+        check(
+            !((MultiBlockProcessingAccessor) full).apeiron$checkRecipe(),
+            "pattern particle mode accepted missing output");
         check(
             ingredients.getBuffers()
                 .get(0)
                 .getItemAmountBig()
-                .equals(BigInteger.valueOf(6)),
-            "automatic laser lost inputs");
+                .equals(BigInteger.valueOf(8)),
+            "pattern particle mode lost inputs");
 
-        gregtech.common.tileentities.machines.multi.beamcrafting.MTEBeamCrafter crafter = new gregtech.common.tileentities.machines.multi.beamcrafting.MTEBeamCrafter(
-            "apeiron.verify.laser_wrong_machine");
-        check(!crafter.addBeamLineInputHatch(laserTile(), 0), "automatic laser accepted by beam crafter");
-        check(crafter.mInputBeamline.isEmpty(), "automatic laser leaked into another machine");
-        verifyAutomaticLaserMask();
-        verifyAutomaticLaserCapacity();
+        verifyPatternMasks();
+        verifyProgrammedMasks();
+        verifyPatternCapacity();
+        verifyPaidParticles();
         Apeiron.LOG.info(
-            "Automatic laser verification passed: placement, target-only registration, 1 tick, native EU, isolated inputs, mask roles, photon-only recipes, output protection, reload and exact outputs");
+            "Pattern particle verification passed: automatic gating, 1 tick, native EU, isolated inputs, masks, paid particles, output protection, reload and exact outputs");
     }
 
-    private static void verifyAutomaticLaserMask() throws ReflectiveOperationException {
+    private static void verifyPatternMasks() throws ReflectiveOperationException {
         ItemStack mask = new ItemStack(LanthItemList.maskMap.get(MaskList.ASOC));
         GTRecipe recipe = GTRecipeBuilder.builder()
             .itemInputs(mask, new ItemStack(Items.ender_pearl))
@@ -314,23 +297,25 @@ public final class TargetChamberInputSmoke {
         try {
             for (int mode = 0; mode < 4; mode++) {
                 Chamber machine = new Chamber();
-                machine.addBeamLineInputHatch(laserTile(), 0);
+                machine.addInputBusToMachineList(new Source().getBaseMetaTileEntity(), 0);
                 machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
                 if (mode == 0) {
                     machine.mask(bus(mask.copy()));
-                    machine.mInputBusses.add(bus(new ItemStack(Items.ender_pearl)));
+                    machine.mInputBusses.add(bus(new ItemStack(Items.ender_pearl), photon(Integer.MAX_VALUE)));
                 } else if (mode == 1) {
                     machine.mask(source(mask.copy()));
-                    machine
-                        .addInputBusToMachineList(source(new ItemStack(Items.ender_pearl)).getBaseMetaTileEntity(), 0);
+                    machine.addInputBusToMachineList(
+                        source(new ItemStack(Items.ender_pearl), photon(Integer.MAX_VALUE)).getBaseMetaTileEntity(),
+                        0);
                 } else if (mode == 2) {
                     machine.mask(bus(new ItemStack(Items.ender_pearl)));
                     machine.mInputBusses.add(bus(mask.copy()));
                 } else machine.mInputBusses.add(bus(new ItemStack(Items.ender_pearl)));
                 check(
                     ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe() == (mode < 2),
-                    "automatic laser mask role " + mode);
-                if (mode < 2) check(machine.mMaxProgresstime == 1, "automatic laser large photon count was not 1 tick");
+                    "pattern particle mode mask role " + mode);
+                if (mode < 2)
+                    check(machine.mMaxProgresstime == 1, "pattern particle mode large photon count was not 1 tick");
             }
         } finally {
             LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
@@ -354,19 +339,97 @@ public final class TargetChamberInputSmoke {
         LanthanidesRecipeMaps.targetChamberRecipes.addRecipe(nonPhoton);
         try {
             Chamber machine = new Chamber();
-            machine.addBeamLineInputHatch(laserTile(), 0);
-            machine.mInputBusses.add(bus(new ItemStack(Items.blaze_rod)));
+            machine.addInputBusToMachineList(new Source().getBaseMetaTileEntity(), 0);
+            machine.mInputBusses.add(
+                bus(new ItemStack(Items.blaze_rod), particle(gtnhlanth.common.beamline.Particle.ELECTRON.getId(), 1)));
             machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
             check(
-                !((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(),
-                "automatic laser provided non-photons");
+                ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(),
+                "beam conditioner rejected supplied electrons");
         } finally {
             LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
                 .removeRecipe(nonPhoton);
         }
     }
 
-    private static void verifyAutomaticLaserCapacity() {
+    private static void verifyProgrammedMasks() throws ReflectiveOperationException {
+        ItemStack mask = new ItemStack(LanthItemList.maskMap.get(MaskList.CSOC), 0);
+        ItemStack wrongMask = new ItemStack(LanthItemList.maskMap.get(MaskList.ASOC), 0);
+        GTRecipe recipe = GTRecipeBuilder.builder()
+            .itemInputs(mask, new ItemStack(Items.quartz))
+            .itemOutputs(new ItemStack(Items.apple, 512))
+            .metadata(
+                LanthanidesRecipeMaps.TARGET_CHAMBER_METADATA,
+                TargetChamberMetadata.builder(mask)
+                    .particleID(gtnhlanth.common.beamline.Particle.PHOTON.getId())
+                    .amount(2)
+                    .energy(4, 10, 1)
+                    .minFocus(45)
+                    .build())
+            .eut(1920)
+            .duration(1)
+            .build()
+            .get();
+        LanthanidesRecipeMaps.targetChamberRecipes.addRecipe(recipe);
+        try {
+            for (int mode = 0; mode < 4; mode++) {
+                Chamber machine = new Chamber();
+                machine.addInputBusToMachineList(new Source().getBaseMetaTileEntity(), 0);
+                machine.mask(bus());
+                MTEInfiniteMEOutputAssembly output = InfiniteMEOutputAssemblySmoke.assembly();
+                machine.mOutputBusses.add(output);
+                Source source = new Source();
+                BigPatternBuffer buffer = source.getBuffers()
+                    .get(0);
+                // Mirrors the player's material buffer: zero-count particle and mask selectors plus real material.
+                ItemStack particle = new ItemStack(LanthItemList.PARTICLE_ITEM, 0, 1);
+                buffer.assign(0, null, Arrays.asList(particle, mode == 1 || mode == 2 ? wrongMask : mask));
+                buffer.add(
+                    Arrays.asList(AEItemStack.create(new ItemStack(Items.quartz, 2)), AEItemStack.create(photon(4))),
+                    BigInteger.ONE);
+                if (mode == 2) {
+                    BigPatternBuffer other = source.getBuffers()
+                        .get(1);
+                    other.assign(1, null, Collections.singletonList(mask));
+                    other.add(
+                        Collections.singletonList(AEItemStack.create(new ItemStack(Items.blaze_powder))),
+                        BigInteger.ONE);
+                }
+                if (mode == 3) buffer.add(
+                    Collections
+                        .singletonList(AEItemStack.create(new ItemStack(LanthItemList.maskMap.get(MaskList.CSOC)))),
+                    BigInteger.ONE);
+                machine.addInputBusToMachineList(source.getBaseMetaTileEntity(), 0);
+                boolean started = ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe();
+                check(started == (mode == 0 || mode == 3), "programmed mask role or buffer isolation " + mode);
+                if (started) {
+                    check(
+                        buffer.getItemAmountBig()
+                            .equals(mode == 3 ? BigInteger.ONE : BigInteger.ZERO),
+                        "programmed mask material was not consumed");
+                    check(
+                        buffer.getSelectors()
+                            .size() == 2,
+                        "programmed mask or particle selector was consumed");
+                    machine.advance();
+                    machine.complete();
+                    check(
+                        output.getProvider()
+                            .getCachedAmountBig()
+                            .equals(BigInteger.valueOf(1024)),
+                        "programmed mask output amount");
+                } else check(
+                    buffer.getItemAmountBig()
+                        .signum() > 0,
+                    "rejected mask consumed real material");
+            }
+        } finally {
+            LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
+                .removeRecipe(recipe);
+        }
+    }
+
+    private static void verifyPatternCapacity() {
         GTRecipe recipe = GTRecipeBuilder.builder()
             .itemInputs(new ItemStack(Items.stick))
             .itemOutputs(new ItemStack(Items.apple))
@@ -385,9 +448,9 @@ public final class TargetChamberInputSmoke {
         LanthanidesRecipeMaps.targetChamberRecipes.addRecipe(recipe);
         try {
             Chamber machine = new Chamber();
-            machine.addBeamLineInputHatch(laserTile(), 0);
+            machine.addInputBusToMachineList(new Source().getBaseMetaTileEntity(), 0);
             ItemStack sticks = new ItemStack(Items.stick, Integer.MAX_VALUE);
-            machine.mInputBusses.add(bus(sticks));
+            machine.mInputBusses.add(bus(sticks, photon(Integer.MAX_VALUE)));
             gregtech.api.metatileentity.implementations.MTEHatchOutputBus output = new gregtech.api.metatileentity.implementations.MTEHatchOutputBus(
                 "apeiron.verify.laser_capacity",
                 4,
@@ -397,13 +460,15 @@ public final class TargetChamberInputSmoke {
             machine.mOutputBusses.add(output);
             check(
                 ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(),
-                "automatic laser capacity search failed");
+                "pattern particle mode capacity search failed");
             BigInteger parallels = ((BigWirelessController) machine).getWirelessRecipeState()
                 .getParallelsBig();
             check(
                 parallels.signum() > 0 && parallels.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) < 0,
-                "automatic laser did not limit batch to finite output");
-            check(sticks.stackSize == Integer.MAX_VALUE - parallels.intValueExact(), "automatic laser capacity debit");
+                "pattern particle mode did not limit batch to finite output");
+            check(
+                sticks.stackSize == Integer.MAX_VALUE - parallels.intValueExact(),
+                "pattern particle mode capacity debit");
             machine.advance();
             machine.complete();
             long total = 0;
@@ -414,232 +479,215 @@ public final class TargetChamberInputSmoke {
             check(
                 BigInteger.valueOf(total)
                     .equals(parallels),
-                "automatic laser finite output lost items");
+                "pattern particle mode finite output lost items");
         } finally {
             LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
                 .removeRecipe(recipe);
         }
     }
 
-    private static void verifyInputs() throws ReflectiveOperationException {
-        for (int mode = 0; mode < 3; mode++) {
-            Chamber machine = new Chamber();
-            MTEInfiniteMEOutputAssembly output = InfiniteMEOutputAssemblySmoke.assembly();
-            machine.mOutputBusses.add(output);
-            Source source = null;
-            if (mode == 0)
-                machine.mInputBusses.add(bus(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2)));
-            else if (mode == 1) {
-                source = source(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2));
-                machine.addInputBusToMachineList(source.getBaseMetaTileEntity(), 0);
-            } else {
-                source = source(new ItemStack(Items.diamond, 4));
-                machine.addInputBusToMachineList(source.getBaseMetaTileEntity(), 0);
-                machine.mask(bus(new ItemStack(Items.emerald, 2)));
+    private static void verifyPaidParticles() throws ReflectiveOperationException {
+        for (gtnhlanth.common.beamline.Particle type : new gtnhlanth.common.beamline.Particle[] {
+            gtnhlanth.common.beamline.Particle.PHOTON, gtnhlanth.common.beamline.Particle.ZBOSON,
+            gtnhlanth.common.beamline.Particle.WBOSON, gtnhlanth.common.beamline.Particle.ELECTRON }) {
+            GTRecipe recipe = GTRecipeBuilder.builder()
+                .itemInputs(new ItemStack(Items.feather))
+                .itemOutputs(new ItemStack(Items.apple, 7))
+                .metadata(
+                    LanthanidesRecipeMaps.TARGET_CHAMBER_METADATA,
+                    TargetChamberMetadata.builder(null)
+                        .particleID(type.getId())
+                        .amount(3)
+                        .energy(1_000_000, 2_000_000, 1)
+                        .minFocus(100)
+                        .build())
+                .eut(1920)
+                .duration(1)
+                .build()
+                .get();
+            LanthanidesRecipeMaps.targetChamberRecipes.addRecipe(recipe);
+            try {
+                for (int mode = 0; mode < 8; mode++) {
+                    Chamber machine = new Chamber();
+                    machine.addInputBusToMachineList(new Source().getBaseMetaTileEntity(), 0);
+                    ItemStack material = new ItemStack(Items.feather, 3);
+                    int id = mode == 1 ? (type.getId() + 1) % gtnhlanth.common.beamline.Particle.VALUES.length
+                        : type.getId();
+                    ItemStack particles = particle(id, mode == 0 ? 0 : mode == 2 ? 2 : 7);
+                    Source source = null;
+                    if (mode == 3 || mode == 4) {
+                        source = source(material);
+                        if (mode == 3) source.getBuffers()
+                            .get(0)
+                            .add(Collections.singletonList(AEItemStack.create(particles)), BigInteger.ONE);
+                        else add(source, 1, particles);
+                        machine.addInputBusToMachineList(source.getBaseMetaTileEntity(), 0);
+                    } else machine.mInputBusses.add(bus(material, particles));
+                    MTEInfiniteMEOutputAssembly output = InfiniteMEOutputAssemblySmoke.assembly();
+                    if (mode != 5) machine.mOutputBusses.add(output);
+                    if (mode == 6) machine.voltageTier = 1;
+                    boolean expected = mode == 3 || mode == 7;
+                    boolean started = ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe();
+                    check(started == expected, "paid particle type/count/voltage/isolation " + type + " mode=" + mode);
+                    if (!expected) {
+                        check(
+                            material.stackSize == 3 && particles.stackSize == (mode == 0 ? 0 : mode == 2 ? 2 : 7),
+                            "rejected particle input consumed material or particles");
+                        if (source != null) check(
+                            source.getBuffers()
+                                .get(0)
+                                .getItemAmountBig()
+                                .equals(BigInteger.valueOf(3)),
+                            "isolated particle rejection consumed a pattern");
+                        continue;
+                    }
+                    check(
+                        machine.mMaxProgresstime == 1 && machine.lEUt == -1920,
+                        "beam conditioner altered machine EU or duration");
+                    check(
+                        ((BigWirelessController) machine).getWirelessRecipeState()
+                            .getParallelsBig()
+                            .equals(BigInteger.valueOf(2)),
+                        "particle quantity did not limit the batch");
+                    if (source != null) check(
+                        source.getBuffers()
+                            .get(0)
+                            .getItemAmountBig()
+                            .equals(BigInteger.valueOf(2)),
+                        "pattern particle/material debit was not exact");
+                    else check(
+                        material.stackSize == 1 && particles.stackSize == 1,
+                        "particle/material debit was not exact");
+                    machine.advance();
+                    check(machine.mProgresstime == 1, "paid particle recipe still waited for beam focus or eV");
+                    machine.complete();
+                    machine.complete();
+                    check(
+                        output.getProvider()
+                            .getCachedAmountBig()
+                            .equals(BigInteger.valueOf(14)),
+                        "paid particle output was lost or duplicated");
+                    check(
+                        recipe.mInputs.length == 1 && recipe.mInputs[0].stackSize == 1,
+                        "beam conditioner modified the registered recipe");
+                }
+                Chamber stocked = new Chamber();
+                stocked.addInputBusToMachineList(new Source().getBaseMetaTileEntity(), 0);
+                stocked.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
+                com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verifyCustomItemInputs(
+                    stocked,
+                    input -> stocked.addInputBusToMachineList(input.getBaseMetaTileEntity(), 0),
+                    new ItemStack[] { new ItemStack(Items.feather, 2), particle(type.getId(), 6) });
+            } finally {
+                LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
+                    .removeRecipe(recipe);
             }
-            check(((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(), "enhanced input mode " + mode);
-            WirelessRecipeState state = ((BigWirelessController) machine).getWirelessRecipeState();
-            check(
-                state.getParallelsBig()
-                    .equals(BigInteger.valueOf(2)),
-                "parallel input count");
-            check(machine.mMaxProgresstime == 20 && machine.lEUt == -1920, "enhancement duration or native EU");
-            check(state.usesNativeEnergy(), "target chamber bypassed native energy");
-            for (int tick = 0; tick < 20; tick++) machine.advance();
-            check(machine.mProgresstime == 20, "enhancement still waits for particles while running");
-            if (source != null) check(
-                source.getBuffers()
-                    .get(0)
-                    .getItemAmountBig()
-                    .signum() == 0,
-                "pattern inputs not consumed");
-            machine.complete();
-            check(
-                output.getProvider()
-                    .getCachedAmountBig()
-                    .equals(
-                        BigInteger.valueOf(Integer.MAX_VALUE)
-                            .multiply(BigInteger.valueOf(2))),
-                "enhancement output truncated or duplicated");
-            machine.complete();
-            check(
-                output.getProvider()
-                    .getCachedAmountBig()
-                    .equals(
-                        BigInteger.valueOf(Integer.MAX_VALUE)
-                            .multiply(BigInteger.valueOf(2))),
-                "repeated completion duplicated outputs");
         }
-        Chamber full = new Chamber();
-        Source source = source(new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2));
-        full.addInputBusToMachineList(source.getBaseMetaTileEntity(), 0);
-        check(!((MultiBlockProcessingAccessor) full).apeiron$checkRecipe(), "missing output accepted");
-        check(
-            source.getBuffers()
-                .get(0)
-                .getItemAmountBig()
-                .equals(BigInteger.valueOf(6)),
-            "failed capacity consumed input");
     }
 
-    private static void verifyAliasedInputs() {
-        Chamber machine = new Chamber();
-        machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
-        ItemStack diamond = new ItemStack(Items.diamond, 2);
-        ItemStack emerald = new ItemStack(Items.emerald);
-        check(
-            TargetChamberEnhancement.process(machine, new ItemStack[] { diamond, emerald, diamond, emerald })
-                .wasSuccessful(),
-            "aliased input rejected");
-        check(
-            ((BigWirelessController) machine).getWirelessRecipeState()
-                .getParallelsBig()
-                .equals(BigInteger.ONE),
-            "aliased input counted more than once");
-        check(diamond.stackSize == 0 && emerald.stackSize == 0, "aliased input debit");
-    }
-
-    private static void verifyLimits() {
-        Chamber machine = new Chamber();
-        machine.voltageTier = 15;
-        machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
-        int supplied = TargetChamberEnhancement.MAX_PARALLEL + 1;
-        Source input = source(new ItemStack(Items.diamond, supplied * 2), new ItemStack(Items.emerald, supplied));
-        machine.addInputBusToMachineList(input.getBaseMetaTileEntity(), 0);
-        check(((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(), "large enhanced batch rejected");
-        WirelessRecipeState state = ((BigWirelessController) machine).getWirelessRecipeState();
-        check(
-            state.getParallelsBig()
-                .equals(BigInteger.valueOf(TargetChamberEnhancement.MAX_PARALLEL)),
-            "enhancement cap changed");
-        check(
-            input.getBuffers()
-                .get(0)
-                .getItemAmountBig()
-                .equals(BigInteger.valueOf(3)),
-            "batch cap input debit");
-        check(
-            machine.lEUt == -gregtech.api.enums.GTValues.VP[15] && machine.lEUt < -Integer.MAX_VALUE,
-            "high-voltage native energy narrowed to int");
-        net.minecraft.nbt.NBTTagCompound tag = state.save();
-        WirelessRecipeState restored = new WirelessRecipeState();
-        restored.load(tag);
-        check(
-            restored.usesNativeEnergy() && restored.getParallelsBig()
-                .equals(state.getParallelsBig()),
-            "saved target batch lost native energy or count");
-    }
-
-    private static void verifyStocking() {
-        for (boolean fail : new boolean[] { false, true }) {
+    private static void verifyNativeBeam() throws ReflectiveOperationException {
+        for (int mode = 0; mode < 5; mode++) {
             Chamber machine = new Chamber();
+            ItemStack diamond = new ItemStack(Items.diamond, 2);
+            ItemStack emerald = new ItemStack(Items.emerald);
+            machine.mInputBusses.add(bus(diamond, emerald, photon(10)));
             machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
-            com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke
-                .verifySplitItemInputs(machine, (rear, front) -> {
-                    machine.addInputBusToMachineList(rear.getBaseMetaTileEntity(), 0);
-                    try {
-                        machine.mask(front);
-                    } catch (ReflectiveOperationException error) {
-                        throw new IllegalStateException(error);
-                    }
-                }, fail);
-        }
-        for (boolean front : new boolean[] { false, true }) {
-            Chamber machine = new Chamber();
-            machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
-            if (front) machine.mInputBusses.add(bus(new ItemStack(Items.diamond, 4)));
-            com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke
-                .verifyCustomItemInputs(machine, input -> {
-                    if (!front) machine.addInputBusToMachineList(input.getBaseMetaTileEntity(), 0);
-                    else try {
-                        machine.mask(input);
-                    } catch (ReflectiveOperationException failure) {
-                        throw new IllegalStateException(failure);
-                    }
-                },
-                    front ? new ItemStack[] { new ItemStack(Items.emerald, 2) }
-                        : new ItemStack[] { new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2) });
-        }
-    }
-
-    private static void verifyIsolation() {
-        Chamber machine = new Chamber();
-        machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
-        Source source = source(new ItemStack(Items.diamond, 4));
-        add(source, 1, new ItemStack(Items.emerald, 2));
-        machine.addInputBusToMachineList(source.getBaseMetaTileEntity(), 0);
-        check(!((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(), "unrelated buffers were merged");
-        check(
-            source.getBuffers()
-                .get(0)
-                .getItemAmountBig()
-                .equals(BigInteger.valueOf(4)),
-            "failed isolated recipe consumed input");
-        add(source, 2, new ItemStack(Items.diamond, 4), new ItemStack(Items.emerald, 2));
-        check(((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(), "later matching buffer was not tried");
-        check(
-            source.getBuffers()
-                .get(1)
-                .getItemAmountBig()
-                .equals(BigInteger.valueOf(2)),
-            "other buffer consumed");
-    }
-
-    private static void verifyNativeMask() throws ReflectiveOperationException {
-        enhanced = false;
-        ItemStack mask = new ItemStack(LanthItemList.maskMap.get(MaskList.ASOC), 1);
-        GTRecipe recipe = GTRecipeBuilder.builder()
-            .itemInputs(mask, new ItemStack(Items.ender_pearl))
-            .itemOutputs(new ItemStack(Items.apple))
-            .metadata(
-                LanthanidesRecipeMaps.TARGET_CHAMBER_METADATA,
-                TargetChamberMetadata.builder(mask)
-                    .particleID(0)
-                    .amount(1)
-                    .energy(100, 200, 1)
-                    .minFocus(50)
-                    .build())
-            .eut(1920)
-            .duration(1)
-            .build()
-            .get();
-        LanthanidesRecipeMaps.targetChamberRecipes.addRecipe(recipe);
-        try {
-            for (boolean patternMask : new boolean[] { false, true }) {
-                Chamber machine = new Chamber();
-                Source material = source(new ItemStack(Items.ender_pearl));
-                machine.addInputBusToMachineList(material.getBaseMetaTileEntity(), 0);
-                MTEHatchInputBus masks = patternMask ? source(mask.copy()) : bus(mask.copy());
-                machine.mask(masks);
-                machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
-                check(
-                    !((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(),
-                    "native patterned recipe ignored beam");
+            if (mode > 0) {
                 machine.beam();
-                check(
-                    ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe(),
-                    "native patterned recipe not found");
-                check(
-                    material.getBuffers()
-                        .get(0)
-                        .getItemAmountBig()
-                        .signum() == 0,
-                    "native patterned material unconsumed");
-                if (patternMask) check(
-                    ((Source) masks).getBuffers()
-                        .get(0)
-                        .getItemAmountBig()
-                        .signum() == 0,
-                    "pattern mask unconsumed");
-                else check(
-                    masks.getStackInSlot(0) == null || masks.getStackInSlot(0).stackSize == 0,
-                    "mask unconsumed");
+                machine.mInputBeamline.get(0).dataPacket = new BeamLinePacket(
+                    new BeamInformation(mode == 1 ? 1 : 150, 1, mode == 3 ? 1 : 0, mode == 2 ? 1 : 100));
             }
-        } finally {
-            LanthanidesRecipeMaps.targetChamberRecipes.getBackend()
-                .removeRecipe(recipe);
-            enhanced = true;
+            boolean started = ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe();
+            check(started == (mode == 4), "ordinary input bypassed native beam checks mode=" + mode);
+            if (!started)
+                check(diamond.stackSize == 2 && emerald.stackSize == 1, "rejected native beam consumed inputs");
         }
+    }
+
+    private static void verifyPatternGate() throws ReflectiveOperationException {
+        for (int mode = 0; mode < 5; mode++) {
+            Chamber machine = new Chamber();
+            Source source = new Source();
+            MTEHatchInputBus hatch = mode == 0 || mode == 2 ? source : new Mirror(mode == 3 ? null : source);
+            if (mode == 2) machine.mask(hatch);
+            else machine.addInputBusToMachineList(hatch.getBaseMetaTileEntity(), 0);
+            if (mode == 4) ((BaseMetaTileEntity) source.getBaseMetaTileEntity()).invalidate();
+            ItemStack photons = photon(1);
+            machine.mInputBusses.add(bus(new ItemStack(Items.diamond, 2), new ItemStack(Items.emerald), photons));
+            machine.mOutputBusses.add(InfiniteMEOutputAssemblySmoke.assembly());
+            boolean started = ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe();
+            check(started == (mode < 3), "target pattern/mirror gate mode=" + mode);
+            check(photons.stackSize == (mode < 3 ? 0 : 1), "target pattern/mirror particle debit mode=" + mode);
+        }
+    }
+
+    private static void verifyRegisteredGTRecipes() throws ReflectiveOperationException {
+        int verified = 0;
+        for (GTRecipe recipe : LanthanidesRecipeMaps.targetChamberRecipes.getAllRecipes()) {
+            TargetChamberMetadata metadata = recipe.getMetadata(LanthanidesRecipeMaps.TARGET_CHAMBER_METADATA);
+            if (metadata == null || metadata.focusItem == null || metadata.focusItem.stackSize <= 0) continue;
+            if (Arrays.stream(recipe.mInputs)
+                .noneMatch(
+                    input -> input != null && input.stackSize > 0
+                        && input.getItem() instanceof gtnhlanth.common.item.ItemPhotolithographicMask))
+                continue;
+            for (int mode = 0; mode < 4; mode++) {
+                Chamber machine = new Chamber();
+                machine.voltageTier = 14;
+                Source source = new Source();
+                java.util.List<ItemStack> supplied = new ArrayList<>();
+                for (ItemStack input : recipe.mInputs) {
+                    if (input == null) continue;
+                    if (input.getItem() instanceof gtnhlanth.common.item.ItemPhotolithographicMask) {
+                        if (mode == 1) {
+                            machine.mask(bus(input.copy()));
+                            continue;
+                        }
+                        if (mode == 2) continue;
+                    }
+                    supplied.add(input.copy());
+                }
+                supplied.add(particle(metadata.particleID, mode == 3 ? metadata.amount - 1 : metadata.amount));
+                add(source, 0, supplied.toArray(new ItemStack[0]));
+                machine.addInputBusToMachineList(source.getBaseMetaTileEntity(), 0);
+                MTEInfiniteMEOutputAssembly output = InfiniteMEOutputAssemblySmoke.assembly();
+                machine.mOutputBusses.add(output);
+                BigInteger before = source.getBuffers()
+                    .get(0)
+                    .getItemAmountBig();
+                boolean started = ((MultiBlockProcessingAccessor) machine).apeiron$checkRecipe();
+                check(
+                    started == (mode < 2),
+                    "registered GT target recipe mask/particle mode=" + mode
+                        + " output="
+                        + recipe.mOutputs[0].getDisplayName());
+                if (started) {
+                    check(
+                        source.getBuffers()
+                            .get(0)
+                            .getItemAmountBig()
+                            .signum() == 0,
+                        "registered GT target recipe did not debit full input");
+                    machine.advance();
+                    machine.complete();
+                    check(
+                        output.getProvider()
+                            .getCachedAmountBig()
+                            .equals(BigInteger.valueOf(recipe.mOutputs[0].stackSize)),
+                        "registered GT target recipe output changed");
+                } else check(
+                    source.getBuffers()
+                        .get(0)
+                        .getItemAmountBig()
+                        .equals(before),
+                    "rejected GT target recipe lost inputs");
+            }
+            verified++;
+        }
+        check(verified > 0, "no registered consumable-mask GT recipes were tested");
+        Apeiron.LOG.info(
+            "Registered GT target chamber recipes verified: {} recipes, pattern masks, dedicated masks and rejection",
+            verified);
     }
 
     private static void verifySourceChamber() {
