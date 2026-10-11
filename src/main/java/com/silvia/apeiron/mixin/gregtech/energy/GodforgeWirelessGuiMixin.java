@@ -25,8 +25,14 @@ public abstract class GodforgeWirelessGuiMixin {
     @Inject(method = "openModulePanel", at = @At("RETURN"), require = 1)
     private static void apeiron$size(SyncHypervisor hypervisor, Modules<?> module,
         CallbackInfoReturnable<ModularPanel> cir) {
+        PanelSyncManager sync = hypervisor.getSyncManager(module, Panels.VOLTAGE_CONFIG);
+        BooleanSyncValue installed = WirelessPowerWidgets.installed(sync, hypervisor.getModule(module));
         cir.getReturnValue()
-            .size(138, 148);
+            .size(138, 148)
+            .onUpdateListener(panel -> {
+                int height = installed.getBoolValue() ? 148 : 98;
+                if (panel.getArea().height != height) panel.height(height);
+            });
     }
 
     @Inject(method = "createMaxParallelGroup", at = @At("RETURN"), cancellable = true, require = 1)
@@ -60,7 +66,7 @@ public abstract class GodforgeWirelessGuiMixin {
         CallbackInfoReturnable<ParentWidget<?>> cir) {
         MTEBaseModule machine = hypervisor.getModule(module);
         PanelSyncManager sync = hypervisor.getSyncManager(module, Panels.VOLTAGE_CONFIG);
-        BooleanSyncValue installed = sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class);
+        BooleanSyncValue installed = WirelessPowerWidgets.installed(sync, machine);
         ParentWidget<?> nativeGroup = cir.getReturnValue();
         nativeGroup.setEnabledIf(w -> !installed.getBoolValue());
         cir.setReturnValue(

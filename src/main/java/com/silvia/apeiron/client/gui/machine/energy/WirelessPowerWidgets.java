@@ -89,6 +89,7 @@ public final class WirelessPowerWidgets {
         Supplier<BigInteger> getter, Consumer<BigInteger> setter, boolean zero, String hint) {
         StringSyncValue value = new StringSyncValue(() -> ScientificInteger.format(getter.get()), text -> {
             if (InfiniteEnergyHatches.find(machine) == null) return;
+            if (key.equals("apeiron_voltage") && InfiniteEnergyHatches.isUltimate(machine)) return;
             try {
                 setter.accept(zero ? ScientificInteger.nonNegative(text) : ScientificInteger.positive(text));
                 machine.markDirty();

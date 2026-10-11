@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.silvia.apeiron.api.machine.parallel.BigRecipeEnergyProvider;
 import com.silvia.apeiron.api.machine.parallel.BigRecipeInputProvider;
 import com.silvia.apeiron.api.machine.parallel.BigRecipeOutputProvider;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
@@ -108,6 +109,10 @@ public abstract class ProcessingLogicBigParallelMixin {
             hatch,
             ((BigWirelessController) machine).getWirelessRecipeState()).preserveNativeModifiers(nativeHelper)
                 .setExactInputRecipe(inputRecipe)
+                .setEnergyMultiplier(
+                    this instanceof BigRecipeEnergyProvider
+                        ? ((BigRecipeEnergyProvider) this).getRecipeEnergyMultiplier(recipe)
+                        : java.math.BigInteger.ONE)
                 .setExactOutputCalculator(
                     provider == null ? null : count -> provider.calculateRecipeOutputsBig(recipe, count))
                 .setRecipe(recipe)
@@ -138,6 +143,9 @@ public abstract class ProcessingLogicBigParallelMixin {
             calculatedParallels = big.getParallelsBig()
                 .min(java.math.BigInteger.valueOf(Integer.MAX_VALUE))
                 .intValue();
+            if (machine instanceof com.silvia.apeiron.api.machine.parallel.BigWirelessRecipeListener)
+                ((com.silvia.apeiron.api.machine.parallel.BigWirelessRecipeListener) machine)
+                    .beforeWirelessRecipeStart();
             CheckRecipeResult started = ((ProcessingLogicAccessor) this).apeiron$onStart(recipe);
             if (!started.wasSuccessful()) {
                 cir.setReturnValue(started);

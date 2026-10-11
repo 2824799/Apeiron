@@ -64,8 +64,10 @@ public final class CompatibilitySmoke {
         if (cpw.mods.fml.common.FMLCommonHandler.instance()
             .getSide()
             .isClient()) com.silvia.apeiron.common.machine.energy.verification.WirelessPowerPanelSmoke.verify();
-        if (DependencyCapabilities.hasClass("tectech.thing.metaTileEntity.multi.godforge.MTESmeltingModule"))
+        if (DependencyCapabilities.hasClass("tectech.thing.metaTileEntity.multi.godforge.MTESmeltingModule")) {
             com.silvia.apeiron.common.machine.energy.verification.WirelessMachineIntegrationSmoke.verify();
+            com.silvia.apeiron.common.machine.energy.verification.GodforgeEnergySmoke.verify();
+        }
         if (DependencyCapabilities
             .hasClass("gtPlusPlus.xmod.gregtech.common.tileentities.machines.multi.production.MTEMassFabricator"))
             com.silvia.apeiron.common.machine.energy.verification.MassFabricatorEnergySmoke.verify();

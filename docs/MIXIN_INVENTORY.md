@@ -156,6 +156,9 @@
 | `compat.omniocular.WirelessTooltipMixin` | 公共 | Redirect:1, Inject:1 |
 | `compat.waila.WailaPacketBudgetMixin` | 公共 | ModifyVariable:1 |
 | `gregtech.energy.GodforgeWirelessEnergyMixin` | 公共 | Inject:2 |
+| `gregtech.energy.GodforgeExoticStateMixin` | 公共 | Inject:2 |
+| `gregtech.energy.GodforgeExoticRecipeMixin` | 公共 | Redirect:1 |
+| `gregtech.energy.GodforgeMilestoneMixin` | 公共 | Redirect:2 |
 | `gregtech.energy.GodforgeWirelessGuiMixin` | 公共 | Inject:3 |
 | `gregtech.energy.TecTechWirelessRunningMixin` | 公共 | Inject:2 |
 | `gregtech.spaceelevator.SpaceElevatorModuleEnergyMixin` | 公共 | Inject:1, Redirect:1 |

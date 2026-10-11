@@ -40,6 +40,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper
     private BigInteger totalEnergy;
     private int baseRecipeDuration;
     private java.util.function.Function<BigInteger, List<IAEStack<?>>> outputCalculator;
+    private BigInteger energyMultiplier = BigInteger.ONE;
 
     public BigRecipeParallelHelper(MTEMultiBlockBase controller, MTEInfiniteEnergyHatch hatch,
         WirelessRecipeState state) {
@@ -50,8 +51,11 @@ public final class BigRecipeParallelHelper extends ParallelHelper
 
     public static boolean supports(GTRecipe recipe) {
         if (!supportsInputs(recipe)) return false;
-        for (int i = 0; i < recipe.mOutputs.length; i++) if (recipe.getOutputChance(i) < 0) return false;
-        for (int i = 0; i < recipe.mFluidOutputs.length; i++) if (recipe.getFluidOutputChance(i) < 0) return false;
+        for (int i = 0; i < recipe.mOutputs.length; i++)
+            if (recipe.getOutputChance(i) < 0 || recipe.mOutputs[i] != null && recipe.mOutputs[i].stackSize < 0)
+                return false;
+        for (int i = 0; i < recipe.mFluidOutputs.length; i++) if (recipe.getFluidOutputChance(i) < 0
+            || recipe.mFluidOutputs[i] != null && recipe.mFluidOutputs[i].amount < 0) return false;
         return true;
     }
 
@@ -70,6 +74,12 @@ public final class BigRecipeParallelHelper extends ParallelHelper
 
     public BigRecipeParallelHelper setExactInputRecipe(GTRecipe recipe) {
         inputRecipe = recipe;
+        return this;
+    }
+
+    public BigRecipeParallelHelper setEnergyMultiplier(BigInteger multiplier) {
+        if (multiplier.signum() <= 0) throw new IllegalArgumentException("Recipe energy multiplier must be positive");
+        energyMultiplier = multiplier;
         return this;
     }
 
@@ -96,7 +106,8 @@ public final class BigRecipeParallelHelper extends ParallelHelper
             result = CheckRecipeResultRegistry.POWER_OVERFLOW;
             return;
         }
-        euPerParallel = BigInteger.valueOf(calculator.getConsumption());
+        euPerParallel = BigInteger.valueOf(calculator.getConsumption())
+            .multiply(energyMultiplier);
         baseRecipeDuration = Math.max(1, calculator.getDuration());
         inputs = new BigRecipeInputs(controller, inputRecipe == null ? recipe : inputRecipe, itemInputs, fluidInputs);
         plan(hatch.isUltimate() ? state.getTargetDuration() : Math.max(1, calculator.getDuration()));
@@ -194,6 +205,9 @@ public final class BigRecipeParallelHelper extends ParallelHelper
         }
         inputs.consume(parallels);
         state.startExact(parallels, totalEnergy, duration, exactOutputs, hatch.isUltimate());
+        if (controller instanceof com.silvia.apeiron.api.machine.parallel.BigWirelessRecipeListener)
+            ((com.silvia.apeiron.api.machine.parallel.BigWirelessRecipeListener) controller)
+                .onWirelessRecipeStarted(parallels, totalEnergy);
     }
 
     public BigInteger getParallelsBig() {
