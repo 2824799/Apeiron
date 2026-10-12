@@ -92,6 +92,7 @@ public final class InfiniteEnergySmoke {
             GlobalVariableStorage.GlobalEnergy = new HashMap<>();
             SpaceProjectManager.spaceTeams = new HashMap<>();
             GlobalEnergyWorldSavedData.INSTANCE = new GlobalEnergyWorldSavedData();
+            ChemicalReactorEnergySmoke.verify();
             check(NativeParallelPolicy.supports(new ParallelHelper()), "standard helper rejected");
             check(
                 NativeParallelPolicy.supports(new ParallelHelper().setChanceMultiplier(0.5)),

@@ -50,7 +50,9 @@ public final class BigRecipeInputs {
             costs.add(BigInteger.valueOf(input.inputAmount));
             matches.add(matching);
         }
-        for (FluidStack input : recipe.mFluidInputs) if (input != null && input.amount > 0) {
+        for (int slot = 0; slot < recipe.mFluidInputs.length; slot++) {
+            FluidStack input = RecipeFluidInputs.resolve(recipe, slot, stocks);
+            if (input == null || input.amount <= 0) continue;
             boolean[] matching = new boolean[stocks.size()];
             for (int i = 0; i < stocks.size(); i++) if (stocks.get(i) instanceof IAEFluidStack)
                 matching[i] = ((IAEFluidStack) stocks.get(i)).getFluidStack()

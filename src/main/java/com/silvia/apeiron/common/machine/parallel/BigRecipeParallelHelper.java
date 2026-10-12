@@ -60,7 +60,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper
     }
 
     public static boolean supportsInputs(GTRecipe recipe) {
-        if (recipe.mAltFluidInputs != null) return false;
+        if (!RecipeFluidInputs.supports(recipe)) return false;
         for (int i = 0; i < recipe.mInputs.length; i++) if (recipe.getInputChance(i) != 10000) return false;
         for (int i = 0; i < recipe.mFluidInputs.length; i++) if (recipe.getFluidInputChance(i) != 10000) return false;
         return true;
