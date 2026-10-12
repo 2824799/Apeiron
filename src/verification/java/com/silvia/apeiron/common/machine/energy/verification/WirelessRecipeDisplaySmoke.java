@@ -113,6 +113,7 @@ public final class WirelessRecipeDisplaySmoke {
                     .contains(BigNumberFormatter.formatCompact(BigInteger.valueOf(2000))),
                 "OmniOcular kept the native parallel limit on a wireless machine");
             final List<String> nativeTip = new ArrayList<>();
+            verifyTaggedTooltip(waila);
             waila.setLong("energyUsage", 8);
             nativeTip.add(
                 net.minecraft.util.StatCollector.translateToLocalFormatted(
@@ -171,6 +172,71 @@ public final class WirelessRecipeDisplaySmoke {
         }
         Apeiron.LOG.info(
             "Wireless recipe display: exact item/fluid output snapshots, GUI codecs, rates and Waila energy verification passed");
+    }
+
+    private static void verifyTaggedTooltip(NBTTagCompound tag) {
+        mcp.mobius.waila.api.impl.TipList<String, String> lines = new mcp.mobius.waila.api.impl.TipList<>();
+        lines.add("§b并行限制 §e2147483647", "parallel-provider");
+        lines.add("§d机器功率 1 EU/t", "power-provider");
+        lines.add("其他模组信息", "other-provider");
+        List<String> result = WirelessWailaDisplay.updateOmni(lines, tag);
+        check(result == lines, "wireless HUD replaced Waila's tagged list");
+        check(
+            lines.getTags(0)
+                .contains("parallel-provider")
+                && lines.getTags(1)
+                    .contains("power-provider"),
+            "exact row replacement discarded Waila tags");
+        NBTTagCompound eye = (NBTTagCompound) tag.copy();
+        eye.setTag("ApeironEyeOfHarmony", new NBTTagCompound());
+        lines.add("氢氦需求：旧估算", "old-eye-provider");
+        lines.add("(0 L / 0 L)", "old-eye-provider");
+        result = com.silvia.apeiron.common.machine.tectech.EyeOfHarmonyWailaDisplay.updateOmni(result, eye);
+        check(
+            result == lines && result instanceof mcp.mobius.waila.api.ITaggedList,
+            "Eye HUD broke the next Waila provider's tagged-list cast");
+        check(
+            lines.getTags("其他模组信息")
+                .contains("other-provider"),
+            "Eye HUD discarded unrelated tags");
+        check(!lines.contains("(0 L / 0 L)"), "Eye HUD retained obsolete requirements");
+        verifyOmniProvider(lines, eye);
+        lines.removeEntries("other-provider");
+        check(!lines.contains("其他模组信息"), "subsequent providers cannot remove tagged rows");
+        Apeiron.LOG.info(
+            "Waila tagged tooltip verification passed: wireless/Eye row replacements preserve list identity and tags for subsequent providers");
+    }
+
+    private static void verifyOmniProvider(mcp.mobius.waila.api.impl.TipList<String, String> lines,
+        NBTTagCompound tag) {
+        if (!com.silvia.apeiron.compat.DependencyCapabilities.hasClass("me.exz.omniocular.waila.TileEntityHandler"))
+            return;
+        try {
+            java.lang.reflect.Field enabled = Class.forName("me.exz.omniocular.config.Config")
+                .getField("enableTileEntityInfo");
+            boolean original = enabled.getBoolean(null);
+            // Supply already-evaluated rows to the actual transformed provider without creating a client world.
+            enabled.setBoolean(null, false);
+            try {
+                mcp.mobius.waila.api.IWailaDataProvider provider = (mcp.mobius.waila.api.IWailaDataProvider) Class
+                    .forName("me.exz.omniocular.waila.TileEntityHandler")
+                    .getDeclaredConstructor()
+                    .newInstance();
+                mcp.mobius.waila.api.IWailaDataAccessor accessor = (mcp.mobius.waila.api.IWailaDataAccessor) java.lang.reflect.Proxy
+                    .newProxyInstance(
+                        WirelessRecipeDisplaySmoke.class.getClassLoader(),
+                        new Class<?>[] { mcp.mobius.waila.api.IWailaDataAccessor.class },
+                        (proxy, method, args) -> method.getName()
+                            .equals("getNBTData") ? tag : null);
+                check(
+                    provider.getWailaBody(new ItemStack(Items.emerald), lines, accessor, null) == lines,
+                    "transformed OmniOcular provider returned an untagged replacement list");
+            } finally {
+                enabled.setBoolean(null, original);
+            }
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException("Cannot verify transformed OmniOcular tagged tooltip", failure);
+        }
     }
 
     public static void verifyController(gregtech.api.metatileentity.implementations.MTEMultiBlockBase machine) {

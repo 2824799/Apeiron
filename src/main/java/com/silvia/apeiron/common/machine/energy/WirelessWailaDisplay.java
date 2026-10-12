@@ -1,7 +1,6 @@
 package com.silvia.apeiron.common.machine.energy;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.nbt.NBTTagCompound;
@@ -10,6 +9,7 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.common.integration.waila.WailaTooltipLists;
 import com.silvia.apeiron.common.machine.parallel.WirelessRecipeState;
 import com.silvia.apeiron.math.BigNumberFormatter;
 import com.silvia.apeiron.math.RecipeDisplayNumbers;
@@ -117,7 +117,7 @@ public final class WirelessWailaDisplay {
             tag.getBoolean("ApeironNativeRecipeEnergy") ? GTUtility.getColoredTierNameFromVoltage(legacy)
                 : StatCollector.translateToLocal("apeiron.machine.energy.wireless"));
         final int position = lines.indexOf(oldLine);
-        if (position >= 0) lines.set(position, newLine);
+        if (position >= 0) WailaTooltipLists.replace(lines, position, newLine);
         final NBTTagList outputs = tag.getTagList("ApeironWirelessOutputRows", 10);
         if (outputs.tagCount() > 0) {
             lines.add(StatCollector.translateToLocal("GT5U.waila.producing"));
@@ -142,11 +142,12 @@ public final class WirelessWailaDisplay {
     public static List<String> updateOmni(List<String> original, NBTTagCompound tag) {
         if (tag == null || !tag.hasKey("ApeironParallelSetting") && !tag.hasKey("ApeironActualWirelessEUt"))
             return original;
-        final List<String> lines = new ArrayList<>(original);
+        final List<String> lines = WailaTooltipLists.editable(original);
         for (int index = 0; index < lines.size(); index++) {
             final String plain = plainText(lines.get(index));
             if (plain.contains("并行限制") && tag.hasKey("ApeironParallelSetting")) {
-                lines.set(
+                WailaTooltipLists.replace(
+                    lines,
                     index,
                     EnumChatFormatting.AQUA + "并行限制： "
                         + EnumChatFormatting.YELLOW
@@ -154,26 +155,31 @@ public final class WirelessWailaDisplay {
                 continue;
             }
             if (!tag.hasKey("ApeironActualWirelessEUt")) continue;
-            if (plain.contains("功耗总额")) lines.set(
+            if (plain.contains("功耗总额")) WailaTooltipLists.replace(
+                lines,
                 index,
                 EnumChatFormatting.LIGHT_PURPLE + "功耗总额： "
                     + EnumChatFormatting.YELLOW
                     + tag.getString("ApeironActualWirelessTotalEUDisplay")
                     + " EU");
-            else if (plain.contains("机器功率")) lines.set(
+            else if (plain.contains("机器功率")) WailaTooltipLists.replace(
+                lines,
                 index,
                 EnumChatFormatting.LIGHT_PURPLE + "机器功率： "
                     + EnumChatFormatting.YELLOW
                     + tag.getString("ApeironActualWirelessEUtDisplay")
                     + " EU/t");
-            else if (plain.contains("MAX-Tier") && !tag.getBoolean("ApeironNativeRecipeEnergy")) lines.set(
-                index,
-                EnumChatFormatting.LIGHT_PURPLE + "MAX-Tier： "
-                    + EnumChatFormatting.YELLOW
-                    + tag.getString("ApeironActualWirelessAmperageDisplay")
-                    + " A "
-                    + GTUtility.getColoredTierNameFromVoltage(tag.getLong("ApeironWirelessInputVoltage")));
-            else if (plain.contains("运行电压") && !tag.getBoolean("ApeironNativeRecipeEnergy")) lines.set(
+            else if (plain.contains("MAX-Tier") && !tag.getBoolean("ApeironNativeRecipeEnergy"))
+                WailaTooltipLists.replace(
+                    lines,
+                    index,
+                    EnumChatFormatting.LIGHT_PURPLE + "MAX-Tier： "
+                        + EnumChatFormatting.YELLOW
+                        + tag.getString("ApeironActualWirelessAmperageDisplay")
+                        + " A "
+                        + GTUtility.getColoredTierNameFromVoltage(tag.getLong("ApeironWirelessInputVoltage")));
+            else if (plain.contains("运行电压") && !tag.getBoolean("ApeironNativeRecipeEnergy")) WailaTooltipLists.replace(
+                lines,
                 index,
                 EnumChatFormatting.LIGHT_PURPLE + "运行电压： "
                     + GTUtility.getColoredTierNameFromVoltage(tag.getLong("ApeironWirelessInputVoltage")));

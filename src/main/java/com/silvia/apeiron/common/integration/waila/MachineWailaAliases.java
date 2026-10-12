@@ -164,6 +164,9 @@ public final class MachineWailaAliases {
                 return field;
             } catch (NoSuchFieldException absent) {
                 // Try the class that declares this inherited property.
+            } catch (NoClassDefFoundError optionalType) {
+                // Reflection resolves every declared field type, including unavailable optional-mod classes.
+                // Native Waila data remains available; continue with aliases declared by the base classes.
             }
         }
         return null;

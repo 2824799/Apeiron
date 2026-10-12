@@ -91,6 +91,8 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
             tag.setTag("ApeironWirelessRecipe", apeiron$wireless.save());
         if (com.silvia.apeiron.common.machine.energy.PurificationPlantEnergy.writeDisplay(apeiron$machine(), tag))
             return;
+        if (com.silvia.apeiron.common.machine.spaceelevator.SpaceElevatorWailaSnapshot.write(apeiron$machine(), tag))
+            return;
         if (!installed && !apeiron$wireless.isRunning()) return;
         com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay
             .write(tag, apeiron$wireless, apeiron$machine().mEfficiency);
@@ -134,6 +136,8 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
     private void apeiron$waila(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x, int y,
         int z, CallbackInfo ci) {
         if (com.silvia.apeiron.common.machine.energy.PurificationPlantEnergy.writeDisplay(apeiron$machine(), tag))
+            return;
+        if (com.silvia.apeiron.common.machine.spaceelevator.SpaceElevatorWailaSnapshot.write(apeiron$machine(), tag))
             return;
         if (InfiniteEnergyHatches.find(apeiron$machine()) == null && !apeiron$wireless.isRunning()) return;
         com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay

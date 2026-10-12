@@ -3,7 +3,6 @@ package com.silvia.apeiron.common.machine.tectech;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -15,6 +14,7 @@ import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.silvia.apeiron.common.integration.waila.WailaTooltipLists;
 import com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay;
 import com.silvia.apeiron.math.BigNumberFormatter;
 
@@ -29,18 +29,23 @@ public final class EyeOfHarmonyWailaDisplay {
 
     static List<String> updateOmni(List<String> original, NBTTagCompound tag, Function<String, String> fluidName) {
         if (tag == null || !tag.hasKey("ApeironEyeOfHarmony", 10)) return original;
-        List<String> lines = new ArrayList<>();
+        List<String> lines = WailaTooltipLists.editable(original);
         boolean inLegacyRequirement = false;
-        for (String line : original) {
+        for (int index = 0; index < lines.size();) {
+            String line = lines.get(index);
             String plain = WirelessWailaDisplay.plainText(line)
                 .trim();
             if (plain.startsWith("恒星等离子需求") || plain.startsWith("氢氦需求")) {
                 inLegacyRequirement = true;
+                lines.remove(index);
                 continue;
             }
-            if (inLegacyRequirement && (plain.isEmpty() || plain.startsWith("(") && plain.contains("L"))) continue;
+            if (inLegacyRequirement && (plain.isEmpty() || plain.startsWith("(") && plain.contains("L"))) {
+                lines.remove(index);
+                continue;
+            }
             inLegacyRequirement = false;
-            lines.add(line);
+            index++;
         }
         NBTTagList requirements = tag.getCompoundTag("ApeironEyeOfHarmony")
             .getTagList("requirements", 10);

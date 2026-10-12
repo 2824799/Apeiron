@@ -76,6 +76,7 @@ public final class SpaceElevatorIntegrationSmoke {
                 .setTargetDuration(1);
             verifyPump(parent, owner);
             verifyMiner(parent, owner);
+            verifyWaila(parent);
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Space elevator verification failed", error);
         } finally {
@@ -411,6 +412,164 @@ public final class SpaceElevatorIntegrationSmoke {
 
     private static WirelessRecipeState state(MTEMultiBlockBase module) {
         return ((BigWirelessController) module).getWirelessRecipeState();
+    }
+
+    private static void verifyWaila(TileEntitySpaceElevator parent) throws ReflectiveOperationException {
+        TileEntityModulePump.TileEntityModulePumpT3 pump = new TileEntityModulePump.TileEntityModulePumpT3(
+            "apeiron.verify.waila_pump");
+        TileEntityModuleAssemblerT1 assembler = new TileEntityModuleAssemblerT1("apeiron.verify.waila_assembler");
+        Miner miner = new Miner();
+        for (TileEntityModuleBase module : new TileEntityModuleBase[] { pump, assembler, miner }) {
+            module.setBaseMetaTileEntity(new BaseMetaTileEntity());
+            module.getClass()
+                .getMethod("initParameters")
+                .invoke(module);
+            connect(module, parent);
+            parent.mProjectModuleHatches.add(module);
+        }
+        BigInteger expectedLimit = HUGE;
+        IntegerParameter[] pumpParameters = (IntegerParameter[]) field(pump, "parallelParameters");
+        check(pumpParameters.length == 4, "Waila fixture must exercise all four pump slots");
+        for (int index = 0; index < pumpParameters.length; index++) {
+            BigInteger cap = HUGE.add(BigInteger.valueOf(index));
+            ((ModuleParallelParameter) pumpParameters[index]).setBig(cap);
+            expectedLimit = expectedLimit.add(cap);
+        }
+        ((ModuleParallelParameter) field(assembler, "parallelParameter")).setBig(HUGE);
+        ((ModuleParallelParameter) field(miner, "parallelParameter")).setBig(BigInteger.ZERO);
+        BigInteger pumpLimit = expectedLimit.subtract(HUGE);
+        check(
+            display(pump).getString("ApeironParallelSetting")
+                .equals(compact(pumpLimit)),
+            "pump HUD lost per-slot caps");
+        check(
+            display(assembler).getString("ApeironParallelSetting")
+                .equals(compact(HUGE)),
+            "assembler HUD used generic int cap");
+        check(
+            display(miner).getString("ApeironParallelSetting")
+                .equals("0"),
+            "disabled miner cap became unlimited");
+        state(pump).startExact(
+            BigInteger.valueOf(11),
+            HUGE.multiply(BigInteger.valueOf(40)),
+            2,
+            new com.silvia.apeiron.common.machine.output.BigMachineOutputQueue(),
+            true);
+        state(assembler).startExact(
+            BigInteger.valueOf(13),
+            HUGE.multiply(BigInteger.valueOf(90)),
+            3,
+            new com.silvia.apeiron.common.machine.output.BigMachineOutputQueue(),
+            true);
+        pump.mMaxProgresstime = 2;
+        assembler.mMaxProgresstime = 3;
+        pump.mEfficiency = 9000;
+        assembler.mEfficiency = 8000;
+        parent.mProjectModuleHatches.add(pump); // A stale duplicate must not charge the display twice.
+        NBTTagCompound tag = display(parent);
+        check(
+            tag.getString("ApeironParallelSetting")
+                .equals(compact(expectedLimit)),
+            "parent HUD did not sum module caps");
+        check(
+            tag.getString("ApeironRunningParallels")
+                .equals("24"),
+            "parent HUD did not sum running parallels");
+        check(
+            tag.getString("ApeironActualWirelessEUt")
+                .equals(
+                    HUGE.multiply(BigInteger.valueOf(50))
+                        .toString()),
+            "parent HUD capped power or applied efficiency twice");
+        check(
+            tag.getString("ApeironActualWirelessTotalEU")
+                .equals(
+                    HUGE.multiply(BigInteger.valueOf(130))
+                        .toString()),
+            "parent HUD assumed all modules have the same duration");
+        set(assembler, "isConnected", false);
+        tag = display(parent);
+        check(
+            tag.getString("ApeironParallelSetting")
+                .equals(compact(pumpLimit)),
+            "disconnected module remained in parent cap");
+        check(
+            tag.getString("ApeironRunningParallels")
+                .equals("11"),
+            "disconnected module remained in parent parallels");
+        check(
+            tag.getString("ApeironActualWirelessEUt")
+                .equals(
+                    HUGE.multiply(BigInteger.valueOf(20))
+                        .toString()),
+            "disconnected module remained in parent power");
+        state(pump).complete();
+        pump.mMaxProgresstime = 0;
+        tag = display(parent);
+        check(
+            tag.getString("ApeironParallelSetting")
+                .equals(compact(pumpLimit))
+                && tag.getString("ApeironRunningParallels")
+                    .equals("0")
+                && tag.getString("ApeironWirelessEUt")
+                    .equals("0"),
+            "idle parent lost caps or retained running figures");
+        // Native module power uses amperage and maintenance efficiency, independently of exact recipe state.
+        pump.mMaxProgresstime = 20;
+        pump.lEUt = -100;
+        pump.eAmpereFlow = 3;
+        pump.mEfficiency = 5000;
+        check(
+            display(parent).getString("ApeironActualWirelessEUt")
+                .equals("600"),
+            "native module power lost amperage/efficiency");
+        parent.mProjectModuleHatches.clear();
+        tag = display(parent);
+        check(
+            tag.getString("ApeironParallelSetting")
+                .equals("0")
+                && tag.getString("ApeironWirelessEUt")
+                    .equals("0"),
+            "empty elevator inherited its unrelated power-panel settings");
+        Apeiron.LOG.info(
+            "Space elevator Waila verification passed: four-slot exact cap, assembler/miner caps, parent parallel/power totals, native amperage/efficiency, idle/disconnect/duplicate cleanup");
+    }
+
+    private static NBTTagCompound display(MTEMultiBlockBase module) {
+        NBTTagCompound saved = new NBTTagCompound();
+        module.saveNBTData(saved);
+        NBTTagCompound hover = new NBTTagCompound();
+        module.getWailaNBTData(viewer(), null, hover, null, 0, 0, 0);
+        check(
+            saved.getString("ApeironParallelSetting")
+                .equals(hover.getString("ApeironParallelSetting")),
+            "save and Waila display disagree about module cap");
+        return hover;
+    }
+
+    private static net.minecraft.entity.player.EntityPlayerMP viewer() {
+        try {
+            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+            Field singleton = unsafeClass.getDeclaredField("theUnsafe");
+            singleton.setAccessible(true);
+            net.minecraft.entity.player.EntityPlayerMP player = (net.minecraft.entity.player.EntityPlayerMP) unsafeClass
+                .getMethod("allocateInstance", Class.class)
+                .invoke(singleton.get(null), net.minecraft.entity.player.EntityPlayerMP.class);
+            for (Field property : net.minecraft.entity.Entity.class.getDeclaredFields()) {
+                if (property.getType() != UUID.class || java.lang.reflect.Modifier.isStatic(property.getModifiers()))
+                    continue;
+                property.setAccessible(true);
+                property.set(player, UUID.fromString("01000000-0000-0000-0000-000000000001"));
+            }
+            return player;
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException("Cannot create detached Waila viewer", failure);
+        }
+    }
+
+    private static String compact(BigInteger value) {
+        return com.silvia.apeiron.math.BigNumberFormatter.formatCompact(value);
     }
 
     private static void connect(TileEntityModuleBase module, TileEntitySpaceElevator parent)

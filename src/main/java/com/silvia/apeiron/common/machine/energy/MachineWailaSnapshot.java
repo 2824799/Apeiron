@@ -34,7 +34,14 @@ public final class MachineWailaSnapshot {
         protected List<Field> computeValue(Class<?> type) {
             List<Field> result = new ArrayList<>();
             for (Class<?> current = type; current != null && result.size() < 192; current = current.getSuperclass()) {
-                for (Field field : current.getDeclaredFields()) {
+                Field[] fields;
+                try {
+                    fields = current.getDeclaredFields();
+                } catch (NoClassDefFoundError optionalType) {
+                    // Missing optional-mod field types must not break the entire machine tooltip.
+                    continue;
+                }
+                for (Field field : fields) {
                     if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) continue;
                     Class<?> value = field.getType();
                     if (!value.isPrimitive() && value != BigInteger.class && value != String.class && !value.isEnum())
