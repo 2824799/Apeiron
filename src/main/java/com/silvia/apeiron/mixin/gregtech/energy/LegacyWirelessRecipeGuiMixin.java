@@ -33,9 +33,12 @@ public abstract class LegacyWirelessRecipeGuiMixin {
         column.widget(
             new ChunkedNbtSyncWidget(
                 () -> machine instanceof com.silvia.apeiron.api.machine.tst.BigTstOutputController
-                    ? com.silvia.apeiron.common.machine.energy.MachineRecipeDisplay.snapshot(machine)
-                    : ((BigWirelessController) this).getWirelessRecipeState()
-                        .writeDisplayNBT(),
+                    || (machine instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationUnit
+                        && ((com.silvia.apeiron.api.machine.parallel.BigPurificationUnit) machine)
+                            .isPurificationOutputPendingBig())
+                                ? com.silvia.apeiron.common.machine.energy.MachineRecipeDisplay.snapshot(machine)
+                                : ((BigWirelessController) this).getWirelessRecipeState()
+                                    .writeDisplayNBT(),
                 snapshot -> {
                     final com.silvia.apeiron.common.machine.output.BigMachineOutputQueue preview = new com.silvia.apeiron.common.machine.output.BigMachineOutputQueue();
                     preview.load(snapshot);

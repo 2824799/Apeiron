@@ -18,6 +18,9 @@
 | `gregtech.input.BigInputHatchElementMixin` | 公共 | Inject:1 |
 | `gregtech.input.LegacyBigInputHatchElementMixin` | 公共 | Inject:1 |
 | `gregtech.input.BigInputRegistrationMixin` | 公共 | Inject:1 |
+| `gregtech.purification.PurificationWaterMixin` | 公共 | Inject:13, Redirect:1, WrapMethod:1 |
+| `gregtech.purification.PurificationPlantPowerMixin` | 公共 | Inject:3, WrapMethod:1 |
+| `gregtech.purification.PurificationDegasserOutputMixin` | 公共 | Inject:2 |
 | `aeinfinitycell.storage.CellCountBigMixin` | 公共 |  |
 | `aeinfinitycell.storage.InfinityCellRecordBigMixin` | 公共 |  |
 | `aeinfinitycell.ae.InfinityInventoryBigMixin` | 公共 | Inject:4 |
@@ -142,6 +145,7 @@
 | `gregtech.energy.NativeMachineWailaMixin` | 公共 | Redirect:2, Inject:1 |
 | `gregtech.energy.WirelessRunningTickMixin` | 公共 | Inject:3 |
 | `gregtech.energy.WirelessParallelGuiMixin` | 公共 | Inject:4 |
+| `gregtech.purification.PurificationParallelGuiMixin` | 公共 | WrapMethod:1 |
 | `proghatches.PatternInputOptimizationMixin` | 公共 |  |
 | `gregtech.energy.ExtendedWirelessRunningTickMixin` | 公共 | Inject:3 |
 | `gregtech.energy.LegacyWirelessParallelGuiMixin` | 公共 | Inject:2 |

@@ -28,6 +28,11 @@ public abstract class ExtendedWirelessRunningTickMixin {
     @Inject(method = "onRunningTick", at = @At("HEAD"), cancellable = true, require = 1)
     private void apeiron$debitExtended(ItemStack slot, CallbackInfoReturnable<Boolean> cir) {
         MTEMultiBlockBase controller = (MTEMultiBlockBase) (Object) this;
+        Boolean purification = com.silvia.apeiron.common.machine.energy.PurificationPlantEnergy.debitTick(controller);
+        if (purification != null) {
+            cir.setReturnValue(purification);
+            return;
+        }
         com.silvia.apeiron.common.machine.parallel.WirelessRecipeState state = ((BigWirelessController) this)
             .getWirelessRecipeState();
         if (state.isRunning() && !state.usesNativeEnergy())

@@ -84,6 +84,30 @@ public final class BigRecipeInventory {
         return Collections.unmodifiableList(stocks);
     }
 
+    /** Exact fluid requirements for machines whose cycles bypass ProcessingLogic. */
+    public boolean consumeFluids(List<IAEFluidStack> required, boolean simulate) {
+        BigInteger[] available = new BigInteger[stocks.size()];
+        boolean[] renewable = new boolean[stocks.size()];
+        for (int i = 0; i < stocks.size(); i++) {
+            available[i] = BigAEStackValues.get(stocks.get(i));
+            renewable[i] = BigAEStackValues.isInfinite(stocks.get(i));
+        }
+        BigInteger[] costs = new BigInteger[required.size()];
+        boolean[][] matches = new boolean[required.size()][stocks.size()];
+        for (int r = 0; r < required.size(); r++) {
+            costs[r] = BigAEStackValues.get(required.get(r));
+            for (int i = 0; i < stocks.size(); i++) matches[r][i] = stocks.get(i) instanceof IAEFluidStack
+                && ((IAEFluidStack) stocks.get(i)).getFluidStack()
+                    .isFluidEqual(
+                        required.get(r)
+                            .getFluidStack());
+        }
+        BigInteger[] debit = new BigInputAllocation(available, costs, matches, renewable).allocate(BigInteger.ONE);
+        if (debit == null) return false;
+        if (!simulate) consume(debit);
+        return true;
+    }
+
     private void addPhysical(Object view, IAEStack<?> fallback, List<StockingInputLogic> networks) {
         StockingInputLogic owner = null;
         int slot = -1;

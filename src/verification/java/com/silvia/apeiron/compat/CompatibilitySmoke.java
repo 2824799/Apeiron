@@ -50,6 +50,7 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.PcbFactoryEnergySmoke.verify();
+        com.silvia.apeiron.common.machine.energy.verification.PurificationWaterSmoke.verify();
         com.silvia.apeiron.common.machine.quantum.verification.QuantumEnhancementSmoke.verify();
         com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyEnhancementSmoke.verify();
         if (DependencyCapabilities.hasClass("gregtech.api.interfaces.IOutputHatch"))
@@ -63,7 +64,10 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.common.machine.spaceelevator.verification.SpaceElevatorIntegrationSmoke.verify();
         if (cpw.mods.fml.common.FMLCommonHandler.instance()
             .getSide()
-            .isClient()) com.silvia.apeiron.common.machine.energy.verification.WirelessPowerPanelSmoke.verify();
+            .isClient()) {
+            com.silvia.apeiron.common.machine.energy.verification.WirelessPowerPanelSmoke.verify();
+            com.silvia.apeiron.common.machine.energy.verification.PurificationParallelPanelSmoke.verify();
+        }
         if (DependencyCapabilities.hasClass("tectech.thing.metaTileEntity.multi.godforge.MTESmeltingModule")) {
             com.silvia.apeiron.common.machine.energy.verification.WirelessMachineIntegrationSmoke.verify();
             com.silvia.apeiron.common.machine.energy.verification.GodforgeEnergySmoke.verify();

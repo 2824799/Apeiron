@@ -6,6 +6,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.silvia.apeiron.api.machine.parallel.BigPurificationUnit;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
 import com.silvia.apeiron.api.machine.tst.BigTstOutputController;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
@@ -30,7 +31,9 @@ public final class MachineRecipeDisplay {
                 if (stack != null && stack.stackSize > 0) outputs.addItem(stack, BigInteger.valueOf(stack.stackSize));
             }
         }
-        if (machine.mOutputFluids != null) {
+        boolean exactFluids = machine instanceof BigPurificationUnit
+            && ((BigPurificationUnit) machine).copyPurificationRecipeFluidsBig(outputs);
+        if (!exactFluids && machine.mOutputFluids != null) {
             for (FluidStack stack : machine.mOutputFluids) {
                 if (stack != null && stack.amount > 0) outputs.addFluid(stack, BigInteger.valueOf(stack.amount));
             }

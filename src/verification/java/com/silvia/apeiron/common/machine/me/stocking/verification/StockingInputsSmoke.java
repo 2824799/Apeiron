@@ -1060,6 +1060,48 @@ public final class StockingInputsSmoke {
         throw new IllegalStateException("No prefabricated provider registered");
     }
 
+    /** Shared real ME stocking fixture for native cycle regressions. */
+    public static final class Fixture {
+
+        private final Network network = new Network();
+        private final Input input;
+
+        public Fixture(boolean mixed) {
+            input = new Input(network, mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.FLUIDS);
+        }
+
+        public void store(int slot, IAEStack<?> type, BigInteger amount) {
+            network.store(type, amount);
+            input.setMark(slot, type);
+            input.refresh();
+        }
+
+        public BigInteger count(IAEStack<?> type) {
+            return network.count(type);
+        }
+
+        public void attach(MTEMultiBlockBase machine, boolean mixed) {
+            if (mixed) {
+                Assembly assembly = new Assembly(input);
+                check(
+                    machine.addInputHatchToMachineList(assembly.getBaseMetaTileEntity(), 0),
+                    "native cycle assembly registration failed");
+            } else machine.mInputHatches.add(new Hatch(input));
+        }
+
+        public void partialFluid() {
+            network.partialFluid = true;
+        }
+
+        public StockingInputLogic logic() {
+            return input;
+        }
+
+        public IMEInventory<?> inventory() {
+            return network;
+        }
+    }
+
     private static final class Input extends StockingInputLogic {
 
         private final Network network;

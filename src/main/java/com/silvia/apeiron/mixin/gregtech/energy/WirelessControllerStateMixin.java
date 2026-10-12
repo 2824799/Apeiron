@@ -38,6 +38,9 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Override
     public ParallelLimit getParallelLimitBig() {
+        if (this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationUnit)
+            return com.silvia.apeiron.common.machine.parallel.PurificationParallels.limit(
+                (gregtech.common.tileentities.machines.multi.purification.MTEPurificationUnitBase<?>) (Object) this);
         if (this instanceof com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule)
             return ((com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) this).getModuleParallelLimitBig();
         return InfiniteEnergyHatches.find(apeiron$machine()) == null
@@ -47,16 +50,31 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Override
     public BigInteger getCurrentParallelsBig() {
+        if (this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationUnit)
+            return apeiron$machine().mMaxProgresstime > 0
+                ? ((com.silvia.apeiron.api.machine.parallel.BigPurificationUnit) this).getPurificationParallelsBig()
+                : BigInteger.ZERO;
         return apeiron$wireless.isRunning() ? apeiron$wireless.getParallelsBig() : BigInteger.ZERO;
     }
 
     @Override
     public BigInteger getRecipeEUtBig() {
+        if (apeiron$machine().mMaxProgresstime > 0) {
+            if (this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationUnit)
+                return ((com.silvia.apeiron.api.machine.parallel.BigPurificationUnit) this)
+                    .getPurificationPowerUsageBig();
+            if (this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationPlant)
+                return ((com.silvia.apeiron.api.machine.parallel.BigPurificationPlant) this)
+                    .getPurificationPowerUsageBig();
+        }
         return apeiron$wireless.isRunning() ? apeiron$wireless.getEUtBig() : BigInteger.ZERO;
     }
 
     @Override
     public BigInteger getRecipeTotalEUBig() {
+        if (this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationUnit
+            || this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationPlant)
+            return getRecipeEUtBig().multiply(BigInteger.valueOf(apeiron$machine().mMaxProgresstime));
         return apeiron$wireless.isRunning() ? apeiron$wireless.getTotalEUBig() : BigInteger.ZERO;
     }
 
@@ -71,6 +89,8 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
         tag.removeTag("ApeironWirelessRecipe");
         if (installed || apeiron$wireless.hasPersistentData())
             tag.setTag("ApeironWirelessRecipe", apeiron$wireless.save());
+        if (com.silvia.apeiron.common.machine.energy.PurificationPlantEnergy.writeDisplay(apeiron$machine(), tag))
+            return;
         if (!installed && !apeiron$wireless.isRunning()) return;
         com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay
             .write(tag, apeiron$wireless, apeiron$machine().mEfficiency);
@@ -113,6 +133,8 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
     @Inject(method = "getWailaNBTData", at = @At("RETURN"), require = 1)
     private void apeiron$waila(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x, int y,
         int z, CallbackInfo ci) {
+        if (com.silvia.apeiron.common.machine.energy.PurificationPlantEnergy.writeDisplay(apeiron$machine(), tag))
+            return;
         if (InfiniteEnergyHatches.find(apeiron$machine()) == null && !apeiron$wireless.isRunning()) return;
         com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay
             .write(tag, apeiron$wireless, apeiron$machine().mEfficiency);
