@@ -40,13 +40,16 @@ public final class BigRecipeParallelHelper extends ParallelHelper
     private BigInteger totalEnergy;
     private int baseRecipeDuration;
     private java.util.function.Function<BigInteger, List<IAEStack<?>>> outputCalculator;
+    private java.util.function.UnaryOperator<List<IAEStack<?>>> outputModifier;
     private BigInteger energyMultiplier = BigInteger.ONE;
+    private final ExactProcessingContext context;
 
     public BigRecipeParallelHelper(MTEMultiBlockBase controller, MTEInfiniteEnergyHatch hatch,
         WirelessRecipeState state) {
         this.controller = controller;
         this.hatch = hatch;
         this.state = state;
+        context = ExactProcessingContext.find(controller);
     }
 
     public static boolean supports(GTRecipe recipe) {
@@ -74,6 +77,11 @@ public final class BigRecipeParallelHelper extends ParallelHelper
 
     public BigRecipeParallelHelper setExactInputRecipe(GTRecipe recipe) {
         inputRecipe = recipe;
+        return this;
+    }
+
+    public BigRecipeParallelHelper setOutputModifier(java.util.function.UnaryOperator<List<IAEStack<?>>> modifier) {
+        outputModifier = modifier;
         return this;
     }
 
@@ -118,12 +126,15 @@ public final class BigRecipeParallelHelper extends ParallelHelper
         // Ultimate time changes redistribute the native, unoverclocked cost across the configured work ticks.
         totalPerParallel = euPerParallel
             .multiply(BigInteger.valueOf(hatch.isUltimate() ? baseRecipeDuration : duration));
-        ParallelLimit cap = state.getLimit();
+        ParallelLimit cap = context == null ? state.getLimit() : context.limit;
+        BigInteger available = hatch.getAvailableEUBig()
+            .subtract(context == null ? BigInteger.ZERO : context.reservedEnergy)
+            .max(BigInteger.ZERO);
         if (totalPerParallel.signum() > 0) {
             BigInteger affordable = hatch.isUltimate()
-                ? com.silvia.apeiron.math.RecipeEnergyBudget.affordable(hatch.getAvailableEUBig(), totalPerParallel)
+                ? com.silvia.apeiron.math.RecipeEnergyBudget.affordable(available, totalPerParallel)
                 : com.silvia.apeiron.math.RecipeEnergyBudget
-                    .affordableNormal(hatch.getAvailableEUBig(), euPerParallel, duration, efficiency);
+                    .affordableNormal(available, euPerParallel, duration, efficiency);
             cap = ParallelLimit.bounded(cap.applyTo(affordable));
         }
         parallels = inputs.allocation()
@@ -159,6 +170,11 @@ public final class BigRecipeParallelHelper extends ParallelHelper
     }
 
     private List<IAEStack<?>> outputs(BigInteger count, boolean capacity) {
+        List<IAEStack<?>> values = unmodifiedOutputs(count, capacity);
+        return outputModifier == null ? values : outputModifier.apply(values);
+    }
+
+    private List<IAEStack<?>> unmodifiedOutputs(BigInteger count, boolean capacity) {
         if (outputCalculator != null) return outputCalculator.apply(count);
         List<IAEStack<?>> values = new ArrayList<>();
         for (int i = 0; i < Math.min(recipe.mOutputs.length, controller.getItemOutputLimit()); i++)
@@ -191,7 +207,9 @@ public final class BigRecipeParallelHelper extends ParallelHelper
     }
 
     private CheckRecipeResult outputResult(BigInteger count) {
-        return com.silvia.apeiron.common.machine.output.BigRecipeOutputCapacity.check(controller, outputs(count, true));
+        List<IAEStack<?>> planned = outputs(count, true);
+        if (context != null) planned.addAll(context.reservedOutputs);
+        return com.silvia.apeiron.common.machine.output.BigRecipeOutputCapacity.check(controller, planned);
     }
 
     public void commit(int duration) {

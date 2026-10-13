@@ -35,7 +35,19 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
         if (feature == com.silvia.apeiron.config.MixinFeature.PACKET_DIAGNOSTICS) return true;
         if (!DependencyCapabilities.hasClass(targetClassName)) return false;
         String name = mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1);
+        if (feature == com.silvia.apeiron.config.MixinFeature.MESSTECH)
+            return com.silvia.apeiron.compat.MessTechContracts.supports(name, targetClassName);
         switch (name) {
+            case "SolarFactoryOutputAccessor":
+                return DependencyCapabilities.hasMethod(targetClassName, "calculateNewOutput", null);
+            case "SolarFactoryProcessingMixin":
+                return DependencyCapabilities.hasMethod(targetClassName, "applyRecipe", null)
+                    && DependencyCapabilities.hasMethod(targetClassName, "adjustRecipe", null)
+                    && DependencyCapabilities.hasMethod(targetClassName, "clearVars", null)
+                    && DependencyCapabilities.hasMethod(
+                        "gregtech.common.tileentities.machines.multi.MTESolarFactory",
+                        "calculateNewOutput",
+                        null);
             case "BeamCrafterParticleLogicMixin":
                 return DependencyCapabilities.hasMethod(targetClassName, "createParallelHelper", null)
                     && DependencyCapabilities.hasMethod(targetClassName, "applyRecipe", null);

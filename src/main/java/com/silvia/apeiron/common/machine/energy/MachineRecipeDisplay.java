@@ -19,6 +19,16 @@ public final class MachineRecipeDisplay {
     private MachineRecipeDisplay() {}
 
     public static NBTTagCompound snapshot(MTEMultiBlockBase machine) {
+        if (machine instanceof com.silvia.apeiron.common.integration.messtech.MessNanoController
+            && ((com.silvia.apeiron.common.integration.messtech.MessNanoController) machine).getMessNanoTasks()
+                .isActive()) {
+            NBTTagCompound tag = new NBTTagCompound();
+            ((com.silvia.apeiron.common.integration.messtech.MessNanoController) machine).getMessNanoTasks()
+                .products()
+                .save(tag);
+            tag.setBoolean("running", true);
+            return tag;
+        }
         if (machine instanceof BigWirelessController && ((BigWirelessController) machine).getWirelessRecipeState()
             .isRunning()) {
             return ((BigWirelessController) machine).getWirelessRecipeState()

@@ -4,6 +4,15 @@
 
 | 注入类 | 端 | 注入 / 重定向 / 覆盖 / 访问器数量 |
 | --- | --- | --- |
+| `messtech.MessControllerMixin` | 公共 |  |
+| `messtech.MessNanoMixin` | 公共 | Inject:8 |
+| `messtech.MessThreadMixin` | 公共 | Inject:2 |
+| `messtech.MessBosesMixin` | 公共 | Inject:1 |
+| `messtech.MessWirelessMixin` | 公共 | Inject:3, Redirect:1 |
+| `messtech.MessModuleMixin` | 公共 | Inject:4, Redirect:1 |
+| `messtech.MessPumpMixin` | 公共 | Inject:1 |
+| `messtech.MessMinerMixin` | 公共 | Inject:1 |
+| `messtech.MessApiaryMixin` | 公共 | Inject:1 |
 | `gtnl.GtnlProcessingLogicBigMixin` | 公共 | Inject:3, Redirect:2 |
 | `gtnl.GtnlWirelessMachineMixin` | 公共 | Inject:3 |
 | `gtnl.GtnlWirelessBatchMixin` | 公共 | Inject:2 |
@@ -12,7 +21,10 @@
 | `tst.compat.TstPatternEncodeGuardMixin` | 公共 | Inject:1 |
 | `tst.energy.WaterPurifierRecipeAccessor` | 公共 | Accessor:1 |
 | `gregtech.lanthanides.TargetChamberInputMixin` | 公共 | Inject:4, Redirect:1 |
-| `gregtech.lanthanides.AutoLaserRegistrationMixin` | 公共 | Inject:1 |
+| `gregtech.lanthanides.MEBeamlineOutputRegistrationMixin` | 公共 | Inject:2 |
+| `gregtech.lanthanides.MEBeamlineOutputElementMixin` | 公共 | Inject:1 |
+| `gregtech.lanthanides.BeamCrafterParticleLogicMixin` | 公共 | Inject:5 |
+| `gregtech.lanthanides.BeamCrafterParticleStateMixin` | 公共 | Inject:3 |
 | `gregtech.lanthanides.SourceChamberInputMixin` | 公共 | Inject:1, Redirect:2 |
 | `gregtech.input.BigDualInputProcessingMixin` | 公共 | Inject:3 |
 | `gregtech.input.BigInputHatchElementMixin` | 公共 | Inject:1 |
@@ -139,6 +151,8 @@
 | `ae.terminal.pattern.PatternHelperBigMixin` | 公共 | Inject:1 |
 | `gregtech.energy.ProcessingLogicAccessor` | 公共 | Invoker:4 |
 | `gregtech.energy.ProcessingLogicBigParallelMixin` | 公共 | Inject:3, Redirect:2 |
+| `gregtech.energy.SolarFactoryOutputAccessor` | 公共 | Invoker:1 |
+| `gregtech.energy.SolarFactoryProcessingMixin` | 公共 | Inject:1 |
 | `gregtech.quantum.QuantumEnhancementMixin` | 公共 |  |
 | `gregtech.quantum.QuantumProcessingEnhancementMixin` | 公共 | Inject:1 |
 | `gregtech.energy.WirelessControllerStateMixin` | 公共 | Inject:7 |
@@ -183,6 +197,8 @@
 | `ae.crafting.core.ModernCraftingEntrypointMixin` | 公共 | Inject:1 |
 | `ae.crafting.core.LegacyTaskProgressAccessMixin` | 公共 | Inject:4 |
 | `ae.crafting.core.ModernTaskProgressAccessMixin` | 公共 | Redirect:2 |
+| `messtech.MessNanoGuiMixin` | 客户端 | Inject:2 |
+| `blockrenderer.StructurePreviewItemSourceMixin` | 客户端 | Inject:1 |
 | `gregtech.spaceelevator.LegacyModuleParallelGuiMixin` | 客户端 | Inject:1 |
 | `network.CustomPayloadDiagnosticsMixin` | 客户端 | ModifyConstant:1 |
 | `aeinfinitycell.stack.EUStackRendererBigMixin` | 客户端 | Redirect:1 |
@@ -212,5 +228,3 @@
 | `ae.stack.ItemMEStackPacketBigMixin` | 客户端 | Inject:1 |
 | `ae.stack.AEStackOverlayMixin` | 客户端 | Inject:1, Redirect:1 |
 | `ae.flow.PartThroughputMonitorMixin` | 客户端 | Inject:2, Redirect:1 |
-
-合计：200 个注册类，其中 29 个仅客户端；602 个上述注解。接口桥接类可能没有注入注解；该数字不等于实际版本上的命中次数。

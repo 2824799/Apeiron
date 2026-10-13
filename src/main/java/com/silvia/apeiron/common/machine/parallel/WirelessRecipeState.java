@@ -90,6 +90,18 @@ public final class WirelessRecipeState {
         if (paidTicks < duration) paidTicks++;
     }
 
+    public BigInteger remainingEnergy() {
+        if (!running) return BigInteger.ZERO;
+        BigInteger total = getTotalEUBig();
+        BigInteger[] parts = total.divideAndRemainder(BigInteger.valueOf(duration));
+        return total.subtract(parts[0].multiply(BigInteger.valueOf(paidTicks)))
+            .subtract(parts[1].min(BigInteger.valueOf(paidTicks)));
+    }
+
+    public java.util.List<appeng.api.storage.data.IAEStack<?>> getOutputsUnsorted() {
+        return recipeOutputs.snapshotOutputsUnsorted();
+    }
+
     public BigInteger displayEUt(int efficiency) {
         return exactDebit ? euPerTick
             : com.silvia.apeiron.math.RecipeDisplayNumbers.effectiveEUt(euPerTick, efficiency);

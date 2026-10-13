@@ -17,6 +17,7 @@ import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
 import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
 import com.silvia.apeiron.common.machine.energy.MTEInfiniteEnergyHatch;
 import com.silvia.apeiron.common.machine.parallel.BigRecipeParallelHelper;
+import com.silvia.apeiron.common.machine.parallel.ExactProcessingContext;
 import com.silvia.apeiron.common.machine.parallel.NativeParallelPolicy;
 import com.silvia.apeiron.common.machine.parallel.WirelessRecipeState;
 
@@ -53,7 +54,15 @@ public abstract class ProcessingLogicBigParallelMixin {
 
     @Inject(method = "process", at = @At("HEAD"), require = 1)
     private void apeiron$power(CallbackInfoReturnable<CheckRecipeResult> cir) {
-        if (machine instanceof MTEMultiBlockBase && InfiniteEnergyHatches.find((MTEMultiBlockBase) machine) != null) {
+        if (machine instanceof MTEMultiBlockBase
+            && com.silvia.apeiron.common.integration.messtech.MessTechAccess.permitsSharedProcessing(machine)
+            && InfiniteEnergyHatches.find((MTEMultiBlockBase) machine) != null) {
+            if (machine instanceof com.silvia.apeiron.common.integration.messtech.MessWirelessController)
+                com.silvia.apeiron.common.integration.messtech.MessTechAccess.set(
+                    machine,
+                    "ownerUUID",
+                    InfiniteEnergyHatches.find((MTEMultiBlockBase) machine)
+                        .getOwnerUuid());
             ProcessingLogic logic = (ProcessingLogic) (Object) this;
             logic.setAvailableVoltage(InfiniteEnergyHatches.processingVoltage((MTEMultiBlockBase) machine));
             logic.setAvailableAmperage(1);
@@ -69,17 +78,21 @@ public abstract class ProcessingLogicBigParallelMixin {
         require = 1)
     private OverclockCalculator apeiron$calculator(ProcessingLogic logic, GTRecipe recipe) {
         OverclockCalculator calculator = ((ProcessingLogicAccessor) logic).apeiron$nativeCalculator(recipe);
-        if (machine instanceof MTEMultiBlockBase && InfiniteEnergyHatches.isUltimate((MTEMultiBlockBase) machine))
-            calculator.setNoOverclock(true);
-        if (machine instanceof MTEMultiBlockBase && InfiniteEnergyHatches.find((MTEMultiBlockBase) machine) != null)
+        if (machine instanceof MTEMultiBlockBase
+            && com.silvia.apeiron.common.integration.messtech.MessTechAccess.permitsSharedProcessing(machine)
+            && InfiniteEnergyHatches.isUltimate((MTEMultiBlockBase) machine)) calculator.setNoOverclock(true);
+        if (machine instanceof MTEMultiBlockBase
+            && com.silvia.apeiron.common.integration.messtech.MessTechAccess.permitsSharedProcessing(machine)
+            && InfiniteEnergyHatches.find((MTEMultiBlockBase) machine) != null)
             calculator.setEUt(InfiniteEnergyHatches.processingVoltage((MTEMultiBlockBase) machine));
         return calculator;
     }
 
     @Inject(method = "clear", at = @At("HEAD"), require = 1)
     private void apeiron$clearPrepared(CallbackInfoReturnable<ProcessingLogic> cir) {
-        if (machine instanceof BigWirelessController) ((BigWirelessController) machine).getWirelessRecipeState()
-            .discardPreparedRecipe();
+        if (machine instanceof MTEMultiBlockBase && machine instanceof BigWirelessController)
+            ExactProcessingContext.state((MTEMultiBlockBase) machine)
+                .discardPreparedRecipe();
     }
 
     @Redirect(
@@ -92,6 +105,8 @@ public abstract class ProcessingLogicBigParallelMixin {
         ParallelHelper nativeHelper = ((ProcessingLogicAccessor) logic).apeiron$nativeHelper(recipe);
         if (!(machine instanceof MTEMultiBlockBase) || !(machine instanceof BigWirelessController)) return nativeHelper;
         MTEMultiBlockBase controller = (MTEMultiBlockBase) machine;
+        if (!com.silvia.apeiron.common.integration.messtech.MessTechAccess.permitsSharedProcessing(controller))
+            return nativeHelper;
         MTEInfiniteEnergyHatch hatch = InfiniteEnergyHatches.find(controller);
         if (hatch == null || InfiniteEnergyHatches.isNativeWirelessController(controller)) return nativeHelper;
         BigRecipeOutputProvider provider = this instanceof BigRecipeOutputProvider
@@ -104,23 +119,26 @@ public abstract class ProcessingLogicBigParallelMixin {
             : BigRecipeParallelHelper.supportsInputs(recipe))
             || !NativeParallelPolicy.supports(nativeHelper, provider != null, inputProvider != null))
             return nativeHelper;
-        return new BigRecipeParallelHelper(
-            controller,
-            hatch,
-            ((BigWirelessController) machine).getWirelessRecipeState()).preserveNativeModifiers(nativeHelper)
-                .setExactInputRecipe(inputRecipe)
-                .setEnergyMultiplier(
-                    this instanceof BigRecipeEnergyProvider
-                        ? ((BigRecipeEnergyProvider) this).getRecipeEnergyMultiplier(recipe)
-                        : java.math.BigInteger.ONE)
-                .setExactOutputCalculator(
-                    provider == null ? null : count -> provider.calculateRecipeOutputsBig(recipe, count))
-                .setRecipe(recipe)
-                .setItemInputs(inputItems)
-                .setFluidInputs(inputFluids)
-                .setMachine(machine, protectItems, protectFluids)
-                .setOutputCalculation(true)
-                .setConsumption(true);
+        return new BigRecipeParallelHelper(controller, hatch, ExactProcessingContext.state(controller))
+            .preserveNativeModifiers(nativeHelper)
+            .setExactInputRecipe(inputRecipe)
+            .setEnergyMultiplier(
+                this instanceof BigRecipeEnergyProvider
+                    ? ((BigRecipeEnergyProvider) this).getRecipeEnergyMultiplier(recipe)
+                    : java.math.BigInteger.ONE)
+            .setExactOutputCalculator(
+                provider == null ? null : count -> provider.calculateRecipeOutputsBig(recipe, count))
+            .setOutputModifier(
+                this instanceof com.silvia.apeiron.api.machine.parallel.BigRecipeOutputModifier
+                    ? ((com.silvia.apeiron.api.machine.parallel.BigRecipeOutputModifier) this)
+                        .snapshotOutputModifier(recipe)
+                    : null)
+            .setRecipe(recipe)
+            .setItemInputs(inputItems)
+            .setFluidInputs(inputFluids)
+            .setMachine(machine, protectItems, protectFluids)
+            .setOutputCalculation(true)
+            .setConsumption(true);
     }
 
     @Inject(method = "applyRecipe", at = @At("HEAD"), cancellable = true, require = 1)
@@ -133,7 +151,11 @@ public abstract class ProcessingLogicBigParallelMixin {
                 cir.setReturnValue(gregtech.api.recipe.check.CheckRecipeResultRegistry.DURATION_OVERFLOW);
                 return;
             }
-            duration = big.recipeDuration((int) nativeDuration);
+            int actualDuration = (int) nativeDuration;
+            if (machine instanceof com.silvia.apeiron.common.integration.messtech.MessNaniteController)
+                actualDuration = ((com.silvia.apeiron.common.integration.messtech.MessNaniteController) machine)
+                    .naniteDuration(recipe, actualDuration);
+            duration = big.recipeDuration(actualDuration);
             if (!big.plan(duration)) {
                 cir.setReturnValue(big.getResult());
                 return;
@@ -146,14 +168,15 @@ public abstract class ProcessingLogicBigParallelMixin {
             if (machine instanceof com.silvia.apeiron.api.machine.parallel.BigWirelessRecipeListener)
                 ((com.silvia.apeiron.api.machine.parallel.BigWirelessRecipeListener) machine)
                     .beforeWirelessRecipeStart();
-            CheckRecipeResult started = ((ProcessingLogicAccessor) this).apeiron$onStart(recipe);
+            CheckRecipeResult started = ExactProcessingContext
+                .start((MTEMultiBlockBase) machine, () -> ((ProcessingLogicAccessor) this).apeiron$onStart(recipe));
             if (!started.wasSuccessful()) {
                 cir.setReturnValue(started);
                 return;
             }
             ((ProcessingLogic) (Object) this).overwriteOutputItems(new ItemStack[0])
                 .overwriteOutputFluids(new FluidStack[0]);
-            WirelessRecipeState state = ((BigWirelessController) machine).getWirelessRecipeState();
+            WirelessRecipeState state = ExactProcessingContext.state((MTEMultiBlockBase) machine);
             state.prepare(big, duration);
             calculatedParallels = ((BigRecipeParallelHelper) helper).getParallelsBig()
                 .min(java.math.BigInteger.valueOf(Integer.MAX_VALUE))

@@ -7,6 +7,7 @@ public enum MixinFeature {
 
     CORE(null, null),
     GTNL("mixins.sciencenotleisure", "enableWirelessIntegration"),
+    MESSTECH("mixins.messtech", "enableEnergyIntegration"),
     BEAMLINE("mixins.gregtech", "enableBeamlineInputs"),
     QUANTUM("mixins.gregtech", "enableQuantumEnhancement"),
     SPACE_ELEVATOR("mixins.gregtech", "enableSpaceElevatorIntegration"),
@@ -41,6 +42,9 @@ public enum MixinFeature {
 
     private String playerDescription() {
         switch (this) {
+            case MESSTECH:
+                return "MessTech 加工机器适配：安装 Apeiron 能源仓后使用其并行、电压或完成时间设置，保留机器自身的配方条件、速度和耗电减免。\n"
+                    + "独立线程及太空模块继续按各自的任务规则加工；未安装能源仓时保留原有行为。";
             case GTNL:
                 return "GT Not Leisure 无线机器适配：保留原生跨配方执行，支持大数产物与耗电。\n" + "适用其无线机器系列（如超生高速）。装终极无限能源仓后，无需无线升级即可无线供电，"
                     + "并按 Apeiron 面板设置并行和时间；未装 Apeiron 能源仓时保留原生并行及超频规则。";
@@ -96,6 +100,7 @@ public enum MixinFeature {
         String local = name.replace("com.silvia.apeiron.mixin.", "");
         if (local.startsWith("ae.")) return CORE;
         if (local.startsWith("gtnl.")) return GTNL;
+        if (local.startsWith("messtech.")) return MESSTECH;
         if (local.startsWith("gregtech.lanthanides.")) return BEAMLINE;
         if (local.startsWith("gregtech.quantum.")) return QUANTUM;
         if (local.startsWith("gregtech.spaceelevator.")) return SPACE_ELEVATOR;

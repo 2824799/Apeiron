@@ -22,6 +22,7 @@ public final class BigRecipeInputs {
     private final BigRecipeInventory inventory;
     private final List<IAEStack<?>> stocks;
     private final BigInputAllocation allocation;
+    private BigInteger[] fixedDebit;
 
     public BigRecipeInputs(MTEMultiBlockBase machine, GTRecipe recipe, ItemStack[] items, FluidStack[] fluids) {
         this(machine, null, recipe, items, fluids);
@@ -29,6 +30,12 @@ public final class BigRecipeInputs {
 
     public BigRecipeInputs(MTEMultiBlockBase machine, MTEMultiBlockBase sharedInputs, GTRecipe recipe,
         ItemStack[] items, FluidStack[] fluids) {
+        this(machine, sharedInputs, recipe, items, fluids, java.util.Collections.emptyList());
+    }
+
+    /** Reserve fixed auxiliary fluids in the same transaction as parallel recipe inputs. */
+    public BigRecipeInputs(MTEMultiBlockBase machine, MTEMultiBlockBase sharedInputs, GTRecipe recipe,
+        ItemStack[] items, FluidStack[] fluids, List<IAEFluidStack> fixedFluids) {
         inventory = new BigRecipeInventory(machine, sharedInputs, items, fluids);
         stocks = inventory.getStacksBig();
         List<BigInteger> costs = new ArrayList<>();
@@ -63,6 +70,23 @@ public final class BigRecipeInputs {
         BigInteger[] available = stocks.stream()
             .map(BigAEStackValues::get)
             .toArray(BigInteger[]::new);
+        if (!fixedFluids.isEmpty()) {
+            BigInteger[] fixedCosts = new BigInteger[fixedFluids.size()];
+            boolean[][] fixedMatches = new boolean[fixedFluids.size()][stocks.size()];
+            for (int r = 0; r < fixedCosts.length; r++) {
+                fixedCosts[r] = BigAEStackValues.get(fixedFluids.get(r));
+                for (int i = 0; i < stocks.size(); i++) fixedMatches[r][i] = stocks.get(i) instanceof IAEFluidStack
+                    && ((IAEFluidStack) stocks.get(i)).getFluidStack()
+                        .isFluidEqual(
+                            fixedFluids.get(r)
+                                .getFluidStack());
+            }
+            fixedDebit = new BigInputAllocation(available, fixedCosts, fixedMatches, renewable())
+                .allocate(BigInteger.ONE);
+            if (fixedDebit == null) throw new IllegalArgumentException("Missing auxiliary fluids");
+            for (int i = 0; i < available.length; i++)
+                if (!BigAEStackValues.isInfinite(stocks.get(i))) available[i] = available[i].subtract(fixedDebit[i]);
+        }
         allocation = new BigInputAllocation(
             available,
             costs.toArray(new BigInteger[0]),
@@ -83,6 +107,7 @@ public final class BigRecipeInputs {
     public void consume(BigInteger parallels) {
         BigInteger[] debit = allocation.allocate(parallels);
         if (debit == null) throw new IllegalStateException("Recipe snapshot cannot satisfy its plan");
+        if (fixedDebit != null) for (int i = 0; i < debit.length; i++) debit[i] = debit[i].add(fixedDebit[i]);
         inventory.consume(debit);
     }
 }

@@ -73,4 +73,25 @@ public class BigCacheCounterTest {
         cache.updateAll((key, amount) -> amount - 1);
         assertEquals(4L, cache.getTotal());
     }
+
+    @org.junit.Test
+    public void multiplicationPromotesAmountsAndPreservesDebitAccounting() {
+        BigCacheCounter<String> cache = new BigCacheCounter<>();
+        cache.insert("items", Long.MAX_VALUE);
+        cache.insert("fluids", 7);
+        BigInteger factor = BigInteger.TEN.pow(70)
+            .add(BigInteger.valueOf(3));
+        cache.multiplyBig(factor);
+        BigInteger items = factor.multiply(BigInteger.valueOf(Long.MAX_VALUE));
+        BigInteger fluids = factor.multiply(BigInteger.valueOf(7));
+        assertEquals(items, cache.getBig("items"));
+        assertEquals(items.add(fluids), cache.getTotalBig());
+        cache.extractBig("items", items);
+        assertEquals(fluids, cache.getTotalBig());
+        cache.updateAllBig((key, amount) -> BigInteger.ZERO);
+        assertEquals(BigInteger.ZERO, cache.getTotalBig());
+        org.junit.Assert.assertTrue(cache.isEmpty());
+        org.junit.Assert.assertThrows(IllegalArgumentException.class, () -> cache.multiplyBig(BigInteger.ZERO));
+    }
+
 }

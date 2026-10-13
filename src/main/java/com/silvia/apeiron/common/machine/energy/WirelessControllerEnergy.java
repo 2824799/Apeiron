@@ -28,6 +28,9 @@ public final class WirelessControllerEnergy {
     public static boolean debitTick(MTEMultiBlockBase machine) {
         WirelessRecipeState state = ((BigWirelessController) machine).getWirelessRecipeState();
         MTEInfiniteEnergyHatch hatch = InfiniteEnergyHatches.find(machine);
+        if (machine instanceof com.silvia.apeiron.common.integration.messtech.MessNaniteController
+            && !((com.silvia.apeiron.common.integration.messtech.MessNaniteController) machine).canAdvanceNanites())
+            return true;
         BigInteger debit = state.nextDebit(machine.mEfficiency);
         if (hatch == null || !hatch.consumeEUBig(debit)) return false;
         state.paidTick();

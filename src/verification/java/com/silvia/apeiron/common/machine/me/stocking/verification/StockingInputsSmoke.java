@@ -60,6 +60,68 @@ import tectech.recipe.EyeOfHarmonyRecipeStorage;
 /** Detached, transformed AE inventories and recipe projections; does not open a GUI or touch player inventories. */
 public final class StockingInputsSmoke {
 
+    public static final class ItemBusFixture {
+
+        private final Network network = new Network();
+        private final Input input = new Input(network, StockingInputLogic.Kind.ITEMS);
+        public final MTEInfiniteStorageInputBus bus = new Bus(input);
+        private final IAEItemStack type;
+
+        public ItemBusFixture(IAEItemStack type, BigInteger amount) {
+            this.type = type;
+            network.store(type, amount);
+            input.setAutoPull(true);
+            input.setMark(0, type);
+            input.refresh();
+        }
+
+        public void begin() {
+            input.begin();
+        }
+
+        public void end() {
+            check(
+                input.end()
+                    .wasSuccessful(),
+                "stocking bus fixture transaction failed");
+        }
+
+        public BigInteger count() {
+            return network.count(type);
+        }
+    }
+
+    public static final class FluidHatchFixture {
+
+        private final Network network = new Network();
+        private final Input input = new Input(network, StockingInputLogic.Kind.FLUIDS);
+        public final MTEInfiniteStorageInputHatch hatch = new Hatch(input);
+        private final IAEFluidStack type;
+
+        public FluidHatchFixture(IAEFluidStack type, BigInteger amount) {
+            this.type = type;
+            network.store(type, amount);
+            input.setAutoPull(true);
+            input.setMark(0, type);
+            input.refresh();
+        }
+
+        public void begin() {
+            input.begin();
+        }
+
+        public void end() {
+            check(
+                input.end()
+                    .wasSuccessful(),
+                "stocking fluid fixture transaction failed");
+        }
+
+        public BigInteger count() {
+            return network.count(type);
+        }
+    }
+
     private StockingInputsSmoke() {}
 
     private static void check(boolean condition, String message) {

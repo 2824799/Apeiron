@@ -8,6 +8,9 @@ public final class CompatibilitySmoke {
     private CompatibilitySmoke() {}
 
     public static void verify() {
+        if (cpw.mods.fml.common.Loader.isModLoaded("MessTech")
+            && com.silvia.apeiron.config.MixinFeature.MESSTECH.isEnabled())
+            com.silvia.apeiron.common.integration.messtech.MessTechIntegrationSmoke.verify();
         if (cpw.mods.fml.common.Loader.isModLoaded("sciencenotleisure"))
             com.silvia.apeiron.common.integration.gtnl.parallel.GtnlIntegrationSmoke.verify();
         if (DependencyCapabilities.hasMethod("gtnhlanth.common.tileentity.MTETargetChamber", "getMaskItemStack", null))
@@ -50,6 +53,7 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.PcbFactoryEnergySmoke.verify();
+        com.silvia.apeiron.common.machine.energy.verification.SolarFactoryEnergySmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.PurificationWaterSmoke.verify();
         com.silvia.apeiron.common.machine.quantum.verification.QuantumEnhancementSmoke.verify();
         com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyEnhancementSmoke.verify();

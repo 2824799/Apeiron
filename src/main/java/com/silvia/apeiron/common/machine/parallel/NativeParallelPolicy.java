@@ -8,6 +8,7 @@ import gregtech.api.util.ParallelHelper;
 public final class NativeParallelPolicy {
 
     private static final String TST_HELPER = "com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.processingLogics.GTCM_ParallelHelper";
+    private static final String MESS_HELPER = "com.MessTech.common.machine.Base.MTParallelHelper";
     private static final Field CHANCE = modifier("chanceMultiplier");
     private static final Field EU = modifier("eutModifier");
     private static final ClassValue<Object> DEFAULTS = new ClassValue<Object>() {
@@ -35,8 +36,10 @@ public final class NativeParallelPolicy {
 
     public static boolean supports(ParallelHelper helper, boolean exactOutputProvider, boolean exactInputProvider) {
         Class<?> type = helper.getClass();
+        boolean mess = type.getName()
+            .equals(MESS_HELPER) && com.silvia.apeiron.config.MixinFeature.MESSTECH.isEnabled();
         if (type != ParallelHelper.class && !type.getName()
-            .equals(TST_HELPER)) return false;
+            .equals(TST_HELPER) && !mess) return false;
         Object defaults = DEFAULTS.get(type);
         if (defaults == Boolean.FALSE) return false;
         try {

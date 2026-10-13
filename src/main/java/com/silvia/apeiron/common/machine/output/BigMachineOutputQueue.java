@@ -69,8 +69,8 @@ public final class BigMachineOutputQueue {
 
     public void multiply(BigInteger factor) {
         if (factor.signum() <= 0) throw new IllegalArgumentException("Output multiplier must be positive");
-        items.updateAllBig((type, amount) -> amount.multiply(factor));
-        fluids.updateAllBig((type, amount) -> amount.multiply(factor));
+        items.multiplyBig(factor);
+        fluids.multiplyBig(factor);
     }
 
     /** Display consumers receive detached exact stacks and cannot consume this output ledger. */

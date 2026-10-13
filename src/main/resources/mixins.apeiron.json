@@ -10,6 +10,7 @@
   "target": "@env(DEFAULT)",
   "compatibilityLevel": "JAVA_8",
   "client": [
+    "messtech.MessNanoGuiMixin",
     "blockrenderer.StructurePreviewItemSourceMixin",
     "gregtech.spaceelevator.LegacyModuleParallelGuiMixin",
     "network.CustomPayloadDiagnosticsMixin",
@@ -42,6 +43,15 @@
     "ae.flow.PartThroughputMonitorMixin"
   ],
   "mixins": [
+    "messtech.MessControllerMixin",
+    "messtech.MessNanoMixin",
+    "messtech.MessThreadMixin",
+    "messtech.MessBosesMixin",
+    "messtech.MessWirelessMixin",
+    "messtech.MessModuleMixin",
+    "messtech.MessPumpMixin",
+    "messtech.MessMinerMixin",
+    "messtech.MessApiaryMixin",
     "gtnl.GtnlProcessingLogicBigMixin",
     "gtnl.GtnlWirelessMachineMixin",
     "gtnl.GtnlWirelessBatchMixin",
@@ -180,6 +190,8 @@
     "ae.terminal.pattern.PatternHelperBigMixin",
     "gregtech.energy.ProcessingLogicAccessor",
     "gregtech.energy.ProcessingLogicBigParallelMixin",
+    "gregtech.energy.SolarFactoryOutputAccessor",
+    "gregtech.energy.SolarFactoryProcessingMixin",
     "gregtech.quantum.QuantumEnhancementMixin",
     "gregtech.quantum.QuantumProcessingEnhancementMixin",
     "gregtech.energy.WirelessControllerStateMixin",

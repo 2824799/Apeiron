@@ -77,6 +77,18 @@ public final class BigCacheCounter<T> {
         this.total.set(0L);
     }
 
+    public void multiplyBig(final BigInteger factor) {
+        if (factor.signum() <= 0) throw new IllegalArgumentException("Cache multiplier must be positive");
+        this.amounts.values()
+            .forEach(
+                value -> value.set(
+                    value.toBigInteger()
+                        .multiply(factor)));
+        this.total.set(
+            this.total.toBigInteger()
+                .multiply(factor));
+    }
+
     @FunctionalInterface
     public interface EntryProcessor<T> {
 

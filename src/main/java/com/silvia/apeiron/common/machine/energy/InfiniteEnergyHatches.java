@@ -32,7 +32,9 @@ public final class InfiniteEnergyHatches {
         if (machine instanceof com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) {
             MTEMultiBlockBase parent = ((com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) machine)
                 .getEnergyParent();
-            if (parent != null) return processingVoltage(parent);
+            if (parent != null
+                && !(machine instanceof com.silvia.apeiron.common.integration.messtech.MessRecipeController))
+                return processingVoltage(parent);
         }
         return isUltimate(machine) ? Long.MAX_VALUE
             : ((com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine).getWirelessRecipeState()
@@ -50,7 +52,9 @@ public final class InfiniteEnergyHatches {
         if (machine instanceof com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) {
             MTEMultiBlockBase parent = ((com.silvia.apeiron.api.machine.parallel.BigSpaceElevatorModule) machine)
                 .getEnergyParent();
-            if (parent != null) machine = parent;
+            if (parent != null
+                && !(machine instanceof com.silvia.apeiron.common.integration.messtech.MessRecipeController))
+                machine = parent;
         }
         return ((com.silvia.apeiron.api.machine.parallel.BigWirelessController) machine).getWirelessRecipeState()
             .getTargetDuration();

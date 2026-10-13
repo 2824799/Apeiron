@@ -1,6 +1,6 @@
 # 全项目清理与注入审查（2026-10-07）
 
-本轮检查覆盖 200 个注册 Mixin（602 个注入、重定向、覆盖或访问注解） 的配置归属、目标类和方法，并对关键输入、输出、能源、存档、显示路径核对运行条件。完整清单见 [MIXIN_INVENTORY.md](MIXIN_INVENTORY.md)。验证强度与限制应区分：接口和指令存在、Mixin 实际转换成功、回归用例通过，都不能证明所有第三方交互和玩家存档组合绝无副作用。
+本轮检查覆盖 224 个注册 Mixin（668 个注入、重定向、覆盖或访问注解） 的配置归属、目标类和方法，并对关键输入、输出、能源、存档、显示路径核对运行条件。完整清单见 [MIXIN_INVENTORY.md](MIXIN_INVENTORY.md)。验证强度与限制应区分：接口和指令存在、Mixin 实际转换成功、回归用例通过，都不能证明所有第三方交互和玩家存档组合绝无副作用。
 
 ## 清理结果
 
@@ -33,6 +33,7 @@
 | --- | --- |
 | `mixins.appliedenergistics2.enableAeMixins` | AE 精确数值、协议、合成和 GT 公共输入/输出/能源协作核心。它们通过注入接口相互依赖，作为整体关闭，避免只关一半造成类型转换或数据协议错误 |
 | `mixins.sciencenotleisure.enableWirelessIntegration` | GTNL 无线批处理；原生无线保持原超频规则，Apeiron 仓按自身配置。该集成也修复原生大数输出，不以安装能源仓作为唯一触发条件 |
+| `mixins.messtech.enableEnergyIntegration` | MessTech 公共加工、无线批次、纳米铸造厂独立线程和无限太空模块；仅在使用 Apeiron 能源仓时接入设置、精确输入输出和扣电 |
 | `mixins.gregtech.enableBeamlineInputs` | 束流源室、靶室隔离输入支持与已安装增强模组的配置协作 |
 | `mixins.gregtech.enableQuantumEnhancement` | 量子操纵者模块；配方放宽条件以实际安装增强方块为前提 |
 | `mixins.gregtech.enableSpaceElevatorIntegration` | 太空电梯主模块供电子模块、大数并行与输出适配 |

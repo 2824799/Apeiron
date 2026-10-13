@@ -38,6 +38,20 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Override
     public ParallelLimit getParallelLimitBig() {
+        if (this instanceof com.silvia.apeiron.common.integration.messtech.MessNanoController
+            && InfiniteEnergyHatches.find(apeiron$machine()) != null
+            && ((Number) com.silvia.apeiron.common.integration.messtech.MessTechAccess.get(this, "machineMode"))
+                .intValue() == 0) {
+            return apeiron$wireless.getLimit()
+                .isUnlimited()
+                    ? ParallelLimit.unlimited()
+                    : ParallelLimit.bounded(
+                        apeiron$wireless.getParallelSettingBig()
+                            .multiply(
+                                BigInteger.valueOf(
+                                    ((java.util.Collection<?>) com.silvia.apeiron.common.integration.messtech.MessTechAccess
+                                        .call(this, "getThreads")).size())));
+        }
         if (this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationUnit)
             return com.silvia.apeiron.common.machine.parallel.PurificationParallels.limit(
                 (gregtech.common.tileentities.machines.multi.purification.MTEPurificationUnitBase<?>) (Object) this);
@@ -50,6 +64,11 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Override
     public BigInteger getCurrentParallelsBig() {
+        if (this instanceof com.silvia.apeiron.common.integration.messtech.MessNanoController
+            && ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .isActive())
+            return ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .parallels();
         if (this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationUnit)
             return apeiron$machine().mMaxProgresstime > 0
                 ? ((com.silvia.apeiron.api.machine.parallel.BigPurificationUnit) this).getPurificationParallelsBig()
@@ -59,6 +78,11 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Override
     public BigInteger getRecipeEUtBig() {
+        if (this instanceof com.silvia.apeiron.common.integration.messtech.MessNanoController
+            && ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .isActive())
+            return ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .eut();
         if (apeiron$machine().mMaxProgresstime > 0) {
             if (this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationUnit)
                 return ((com.silvia.apeiron.api.machine.parallel.BigPurificationUnit) this)
@@ -72,6 +96,11 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Override
     public BigInteger getRecipeTotalEUBig() {
+        if (this instanceof com.silvia.apeiron.common.integration.messtech.MessNanoController
+            && ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .isActive())
+            return ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .energy();
         if (this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationUnit
             || this instanceof com.silvia.apeiron.api.machine.parallel.BigPurificationPlant)
             return getRecipeEUtBig().multiply(BigInteger.valueOf(apeiron$machine().mMaxProgresstime));
@@ -85,6 +114,7 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
 
     @Inject(method = "saveNBTData", at = @At("RETURN"), require = 1)
     private void apeiron$save(NBTTagCompound tag, CallbackInfo ci) {
+        com.silvia.apeiron.common.integration.messtech.MessNanites.save(apeiron$machine(), tag);
         boolean installed = InfiniteEnergyHatches.find(apeiron$machine()) != null;
         tag.removeTag("ApeironWirelessRecipe");
         if (installed || apeiron$wireless.hasPersistentData())
@@ -94,13 +124,19 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
         if (com.silvia.apeiron.common.machine.spaceelevator.SpaceElevatorWailaSnapshot.write(apeiron$machine(), tag))
             return;
         if (!installed && !apeiron$wireless.isRunning()) return;
-        com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay
+        if (this instanceof com.silvia.apeiron.common.integration.messtech.MessNanoController
+            && ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .isActive())
+            ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .writeDisplay(apeiron$machine(), tag);
+        else com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay
             .write(tag, apeiron$wireless, apeiron$machine().mEfficiency);
     }
 
     @Inject(method = "loadNBTData", at = @At("RETURN"), require = 1)
     private void apeiron$load(NBTTagCompound tag, CallbackInfo ci) {
         apeiron$wireless.load(tag.getCompoundTag("ApeironWirelessRecipe"));
+        com.silvia.apeiron.common.integration.messtech.MessNanites.load(apeiron$machine(), tag);
     }
 
     @Inject(method = "outputAfterRecipe", at = @At("HEAD"), require = 1)
@@ -140,7 +176,12 @@ public abstract class WirelessControllerStateMixin implements BigWirelessControl
         if (com.silvia.apeiron.common.machine.spaceelevator.SpaceElevatorWailaSnapshot.write(apeiron$machine(), tag))
             return;
         if (InfiniteEnergyHatches.find(apeiron$machine()) == null && !apeiron$wireless.isRunning()) return;
-        com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay
+        if (this instanceof com.silvia.apeiron.common.integration.messtech.MessNanoController
+            && ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .isActive())
+            ((com.silvia.apeiron.common.integration.messtech.MessNanoController) this).getMessNanoTasks()
+                .writeDisplay(apeiron$machine(), tag);
+        else com.silvia.apeiron.common.machine.energy.WirelessWailaDisplay
             .write(tag, apeiron$wireless, apeiron$machine().mEfficiency);
     }
 

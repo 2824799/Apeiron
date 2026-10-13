@@ -36,6 +36,8 @@ public final class BigRecipeInventory {
     private final List<StockingInputLogic> owners = new ArrayList<>();
     private final List<Integer> ownerSlots = new ArrayList<>();
     private final BigPatternBuffer buffer;
+    private final int bufferStocks;
+    private final List<Integer> physicalStockIndices = new ArrayList<>();
 
     public BigRecipeInventory(MTEMultiBlockBase machine, ItemStack[] items, FluidStack[] fluids) {
         this(machine, null, items, fluids);
@@ -45,7 +47,8 @@ public final class BigRecipeInventory {
         FluidStack[] fluids) {
         buffer = findPatternBuffer(machine, items, fluids);
         if (buffer != null) stocks.addAll(buffer.getStacksBig());
-        else {
+        bufferStocks = stocks.size();
+        if (buffer == null || sharedInputs != null) {
             List<StockingInputLogic> networks = new ArrayList<>();
             List<Object> hatches = new ArrayList<>();
             hatches.addAll(machine.mInputBusses);
@@ -58,13 +61,21 @@ public final class BigRecipeInventory {
             }
             for (Object hatch : hatches)
                 if (hatch instanceof StockingInputHost) networks.add(((StockingInputHost) hatch).getStockingInput());
+            Set<Object> shared = Collections.newSetFromMap(new IdentityHashMap<>());
+            if (buffer != null && sharedInputs != null) {
+                shared.addAll(sharedInputs.getStoredInputs());
+                shared.addAll(sharedInputs.getStoredFluids());
+            }
             Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-            for (ItemStack item : items) if (item != null && item.stackSize > 0 && seen.add(item)) {
-                addPhysical(item, AEItemStack.create(item), networks);
-            }
-            for (FluidStack fluid : fluids) if (fluid != null && fluid.amount > 0 && seen.add(fluid)) {
-                addPhysical(fluid, AEFluidStack.create(fluid), networks);
-            }
+            for (ItemStack item : items)
+                if (item != null && item.stackSize > 0 && seen.add(item) && (buffer == null || shared.contains(item))) {
+                    addPhysical(item, AEItemStack.create(item), networks);
+                }
+            for (FluidStack fluid : fluids) if (fluid != null && fluid.amount > 0
+                && seen.add(fluid)
+                && (buffer == null || shared.contains(fluid))) {
+                    addPhysical(fluid, AEFluidStack.create(fluid), networks);
+                }
         }
     }
 
@@ -119,6 +130,7 @@ public final class BigRecipeInventory {
                 break;
             }
         }
+        physicalStockIndices.add(stocks.size());
         stocks.add(
             owner == null ? fallback
                 : owner.stock(slot)
@@ -169,49 +181,48 @@ public final class BigRecipeInventory {
             throw new IllegalArgumentException("Input debit exceeds inventory");
         if (buffer != null) {
             buffer.reconcile();
-            for (int i = 0; i < stocks.size(); i++) if (!buffer.getAmountBig(stocks.get(i))
+            for (int i = 0; i < bufferStocks; i++) if (!buffer.getAmountBig(stocks.get(i))
                 .equals(BigAEStackValues.get(stocks.get(i))))
                 throw new IllegalStateException("Recipe buffer changed during planning");
-            for (int i = 0; i < stocks.size(); i++)
-                if (debit[i].signum() > 0) buffer.removeBig(stocks.get(i), debit[i]);
-        } else {
-            for (int i = 0; i < physical.size(); i++) {
-                if (owners.get(i) != null) {
-                    IAEStack<?> current = owners.get(i)
-                        .stock(ownerSlots.get(i));
-                    if (!BigAEStackValues.get(current)
-                        .equals(BigAEStackValues.get(stocks.get(i))))
-                        throw new IllegalStateException("Network input changed during planning");
-                    continue;
-                }
+        }
+        for (int i = 0; i < physical.size(); i++) {
+            int stockIndex = physicalStockIndices.get(i);
+            if (owners.get(i) != null) {
+                IAEStack<?> current = owners.get(i)
+                    .stock(ownerSlots.get(i));
+                if (!BigAEStackValues.get(current)
+                    .equals(BigAEStackValues.get(stocks.get(stockIndex))))
+                    throw new IllegalStateException("Network input changed during planning");
+            } else {
                 Object value = physical.get(i);
                 int amount = value instanceof ItemStack ? ((ItemStack) value).stackSize : ((FluidStack) value).amount;
                 if (!BigInteger.valueOf(amount)
-                    .equals(BigAEStackValues.get(stocks.get(i))))
+                    .equals(BigAEStackValues.get(stocks.get(stockIndex))))
                     throw new IllegalStateException("Physical input changed during planning");
             }
-            Map<StockingInputLogic, List<IAEStack<?>>> networkDebits = new LinkedHashMap<>();
-            for (int i = 0; i < physical.size(); i++) if (owners.get(i) != null && debit[i].signum() > 0) {
-                IAEStack<?> request = stocks.get(i)
-                    .copy();
-                if (request instanceof InfiniteAEStack) ((InfiniteAEStack) request).setInfinite(false);
-                BigAEStackValues.set(request, debit[i]);
-                networkDebits.computeIfAbsent(owners.get(i), key -> new ArrayList<>())
-                    .add(request);
-            }
-            if (!StockingInputLogic.commit(networkDebits))
-                throw new IllegalStateException("Network cannot satisfy exact input debit");
-            for (int i = 0; i < physical.size(); i++) {
-                if (owners.get(i) != null) {
-                    owners.get(i)
-                        .recordCommitted(ownerSlots.get(i), debit[i]);
-                    continue;
-                }
-                Object value = physical.get(i);
-                int amount = debit[i].intValueExact();
-                if (value instanceof ItemStack) ((ItemStack) value).stackSize -= amount;
-                else((FluidStack) value).amount -= amount;
-            }
+        }
+        Map<StockingInputLogic, List<IAEStack<?>>> networkDebits = new LinkedHashMap<>();
+        for (int i = 0; i < physical.size(); i++) {
+            int stockIndex = physicalStockIndices.get(i);
+            if (owners.get(i) == null || debit[stockIndex].signum() == 0) continue;
+            IAEStack<?> request = stocks.get(stockIndex)
+                .copy();
+            if (request instanceof InfiniteAEStack) ((InfiniteAEStack) request).setInfinite(false);
+            BigAEStackValues.set(request, debit[stockIndex]);
+            networkDebits.computeIfAbsent(owners.get(i), key -> new ArrayList<>())
+                .add(request);
+        }
+        if (!StockingInputLogic.commit(networkDebits))
+            throw new IllegalStateException("Network cannot satisfy exact input debit");
+        if (buffer != null)
+            for (int i = 0; i < bufferStocks; i++) if (debit[i].signum() > 0) buffer.removeBig(stocks.get(i), debit[i]);
+        for (int i = 0; i < physical.size(); i++) {
+            BigInteger amount = debit[physicalStockIndices.get(i)];
+            if (owners.get(i) != null) owners.get(i)
+                .recordCommitted(ownerSlots.get(i), amount);
+            else if (physical.get(i) instanceof ItemStack)
+                ((ItemStack) physical.get(i)).stackSize -= amount.intValueExact();
+            else((FluidStack) physical.get(i)).amount -= amount.intValueExact();
         }
     }
 }
