@@ -85,14 +85,32 @@ gt.blockmachines.apeiron.infinite_storage_input_assembly.name=Infinite Storage I
 apeiron.machine.infinite_circuit_provider.desc=§bSupplies programming circuits to ME without a quantity limit§r\n§781 sample slots (9×9); samples are not consumed§r\n§7Insert item samples to provide their programming circuits§r\n§7A prefabricated provider supplies its complete circuit set§r\n§7Constant power cost: 1,024 EU/t from the ME network§r\n§eControls: wire cutter changes ME connection sides§r\n§6Requires: Programmable Hatches§r\n§6Note: stops supplying circuits without power or a channel§r
 apeiron.machine.stocking.marks=Selections (360 slots)
 apeiron.machine.stocking.available=Available in the ME network
-apeiron.machine.stocking.auto=Automatically select network contents
-apeiron.machine.stocking.configure=Configure auto-selection filters and refresh interval
-apeiron.machine.stocking.minimum=Minimum stock (auto-select)
+apeiron.machine.stocking.auto=Automatically pull ME network contents
+apeiron.machine.stocking.configure=Configure automatic pulling
+apeiron.machine.stocking.minimum=Minimum stock
+apeiron.machine.stocking.maximum=Maximum stock
+apeiron.machine.stocking.type_limit=Type limit (1-360)
+apeiron.machine.stocking.priority=Pull priority
+apeiron.machine.stocking.priority.network=ME network order
+apeiron.machine.stocking.priority.most=Most stock first
+apeiron.machine.stocking.priority.least=Least stock first
+apeiron.machine.stocking.priority.network.hint=Select in ME network order and stop at the type limit.
+apeiron.machine.stocking.priority.most.hint=Apply stock and type filters, then prefer the largest quantities.
+apeiron.machine.stocking.priority.least.hint=Apply stock and type filters, then prefer the smallest quantities.
+apeiron.machine.stocking.settings=Automatic ME pulling - Settings
+apeiron.machine.stocking.stock_range=Stock range
+apeiron.machine.stocking.pull_strategy=Pull strategy
+apeiron.machine.stocking.type_filter=Type filters
+apeiron.machine.stocking.range_hint=Leave maximum blank for no limit.\nScientific notation such as 1E18 is supported.\nBounds are inclusive; fluids use mB.
+apeiron.machine.stocking.strategy_hint=Items and fluids share the assembly's type limit.\nQuantities are compared together; infinite stock ranks highest.
+apeiron.machine.stocking.settings_hint=These rules apply when automatic pulling is enabled. Materials are withdrawn when a recipe runs.
+apeiron.machine.stocking.item_amount=Available in ME: %s
+apeiron.machine.stocking.fluid_amount=Available in ME: %s mB
 apeiron.machine.stocking.refresh=Refresh interval (ticks)
 apeiron.machine.stocking.mod=Item mod ID
 apeiron.machine.stocking.item=Item ID / fluid name
-apeiron.machine.stocking.meta=Damage value (32767 = any)
-apeiron.machine.stocking.ore=Ore dictionary (* = wildcard)
+apeiron.machine.stocking.meta=Damage (32767 = any)
+apeiron.machine.stocking.ore=Ore dictionary (* wildcard)
 apeiron.machine.infinite_storage_input_bus.desc=§bSupplies machines with items from ME storage§r\n§7360 selection slots; scroll to see them all§r\n§7Select manually or automatically from matching ME stock§r\n§7Item filters: mod, item ID, damage value, ore dictionary§r\n§eSettings: minimum stock for auto-selection and refresh interval§r\n§7Minimum stock accepts scientific notation, e.g. 1E18§r\n§eControls: wire cutter changes connections; data stick copies settings§r\n§6Note: selections are markers; recipes consume the actual resources§r
 apeiron.machine.infinite_storage_input_hatch.desc=§bSupplies machines with fluids from ME storage§r\n§7360 selection slots; scroll to see them all§r\n§7Select manually or automatically from matching ME stock§r\n§7Fluid filter: fluid registry name§r\n§eSettings: minimum stock for auto-selection and refresh interval§r\n§7Minimum stock accepts scientific notation, e.g. 1E18§r\n§eControls: wire cutter changes connections; data stick copies settings§r\n§6Note: selections are markers; recipes consume the actual resources§r
 apeiron.machine.infinite_storage_input_assembly.desc=§bSupplies machines with items and fluids from ME storage§r\n§7360 selection slots; scroll to see them all§r\n§7Select manually or automatically from matching ME stock§r\n§7Item filters: mod, item ID, damage value, ore dictionary§r\n§7Fluid filter: fluid registry name§r\n§eSettings: minimum stock for auto-selection and refresh interval§r\n§7Minimum stock accepts scientific notation, e.g. 1E18§r\n§eControls: wire cutter changes connections; data stick copies settings§r\n§6Note: selections are markers; recipes consume the actual resources§r

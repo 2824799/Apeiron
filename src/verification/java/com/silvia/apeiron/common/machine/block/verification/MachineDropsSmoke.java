@@ -57,6 +57,7 @@ public final class MachineDropsSmoke {
         verifyLegacyItems();
         verifyPhysicalInventory();
         verifyRefunds();
+        verifyStockingSettings();
         verifyUpgrades();
         Apeiron.LOG.info(
             "Machine drop verification passed: all 12 empty machines stack; legacy tags cleaned; exact contents and upgrades preserved");
@@ -264,6 +265,44 @@ public final class MachineDropsSmoke {
                     .func_150296_c()
                     .size() == 1,
                 "refund-only drop retained ghost configuration");
+        }
+    }
+
+    private static void verifyStockingSettings() {
+        for (boolean own : new boolean[] { false, true }) for (int offset : new int[] { 7, 8, 9 }) {
+            BaseMetaTileEntity source = tile(offset, own, null);
+            StockingInputHost input = (StockingInputHost) source.getMetaTileEntity();
+            com.silvia.apeiron.common.machine.me.stocking.StockingFilter filter = input.getStockingInput()
+                .getFilter();
+            filter.setMinimum("64");
+            filter.setMaximum("1e40");
+            filter.setTypeLimit(1);
+            filter.setPriority(com.silvia.apeiron.common.machine.me.stocking.StockingFilter.Priority.MOST);
+            input.getStockingInput()
+                .setAutoPull(true);
+            ItemStack drop = source.getDrops()
+                .get(0);
+            MachineItemNbt.normalize(drop);
+            StockingInputHost restored = (StockingInputHost) tile(offset, own, drop.getTagCompound())
+                .getMetaTileEntity();
+            check(
+                restored.getStockingInput()
+                    .isAutoPull()
+                    && restored.getStockingInput()
+                        .getFilter()
+                        .getMinimum()
+                        .equals(BigInteger.valueOf(64))
+                    && restored.getStockingInput()
+                        .getFilter()
+                        .getMaximumText()
+                        .equals("1e40")
+                    && restored.getStockingInput()
+                        .getFilter()
+                        .getTypeLimit() == 1
+                    && restored.getStockingInput()
+                        .getFilter()
+                        .getPriority() == com.silvia.apeiron.common.machine.me.stocking.StockingFilter.Priority.MOST,
+                "normalization or drop lost automatic pull settings at offset " + offset);
         }
     }
 

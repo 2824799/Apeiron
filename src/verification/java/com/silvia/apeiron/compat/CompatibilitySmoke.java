@@ -69,6 +69,7 @@ public final class CompatibilitySmoke {
         if (cpw.mods.fml.common.FMLCommonHandler.instance()
             .getSide()
             .isClient()) {
+            com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputGuiSmoke.verify();
             com.silvia.apeiron.common.machine.energy.verification.WirelessPowerPanelSmoke.verify();
             com.silvia.apeiron.common.machine.energy.verification.PurificationParallelPanelSmoke.verify();
         }

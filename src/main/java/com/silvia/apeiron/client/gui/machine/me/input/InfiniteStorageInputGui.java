@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Mark/stock grids and right-side configuration adapted from GT Not Leisure's stocking input GUIs.
+// Shared mark/stock grids and automatic network selection settings for all three stocking inputs.
 package com.silvia.apeiron.client.gui.machine.me.input;
 
 import java.util.Arrays;
@@ -11,16 +11,22 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
+import com.cleanroommc.modularui.api.UpOrDown;
 import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.integration.recipeviewer.RecipeViewerIngredientProvider;
 import com.cleanroommc.modularui.screen.ModularPanel;
+import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.utils.item.ItemStackHandler;
 import com.cleanroommc.modularui.value.ObjectValue;
 import com.cleanroommc.modularui.value.sync.BooleanSyncValue;
+import com.cleanroommc.modularui.value.sync.IntSyncValue;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.cleanroommc.modularui.value.sync.StringSyncValue;
 import com.cleanroommc.modularui.widget.ParentWidget;
+import com.cleanroommc.modularui.widget.Widget;
 import com.cleanroommc.modularui.widget.scroll.VerticalScrollData;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
+import com.cleanroommc.modularui.widgets.CycleButtonWidget;
 import com.cleanroommc.modularui.widgets.Dialog;
 import com.cleanroommc.modularui.widgets.FluidDisplayWidget;
 import com.cleanroommc.modularui.widgets.ItemDisplayWidget;
@@ -99,7 +105,7 @@ public final class InfiniteStorageInputGui extends MTEHatchBaseGui<MTEHatch> {
     protected ParentWidget<?> createContentSection(ModularPanel panel, PanelSyncManager sync) {
         sync.registerSlotGroup("apeiron_stocking_marks", 10);
         IPanelHandler config = sync
-            .syncedPanel("apeiron_stocking_config", true, (manager, handler) -> configPanel(panel, manager));
+            .syncedPanel("apeiron_stocking_config", true, (manager, handler) -> configPanel(manager));
         ItemStackHandler marks = new ItemStackHandler(StockingInputLogic.SLOT_COUNT) {
 
             @Override
@@ -132,12 +138,13 @@ public final class InfiniteStorageInputGui extends MTEHatchBaseGui<MTEHatch> {
                         for (int col = 0; col < 10; col++) {
                             int index = row * 10 + col;
                             line.child(
-                                new PhantomItemSlot()
+                                new StockingMarkSlot()
                                     .slot(new ModularSlot(marks, index).slotGroup("apeiron_stocking_marks"))
                                     .backgroundOverlay(
                                         GTGuiTextures.SLOT_ITEM_STANDARD,
                                         GTGuiTextures.OVERLAY_SLOT_ARROW_ME)
                                     .pos(col * SLOT_SIZE, 0)
+                                    .name("apeiron_mark_" + index)
                                     .setEnabledIf(widget -> !autoPull.getBoolValue()));
                             line.child(stockWidget(index).pos(202 + col * SLOT_SIZE, 0));
                         }
@@ -214,18 +221,19 @@ public final class InfiniteStorageInputGui extends MTEHatchBaseGui<MTEHatch> {
             .background(GTGuiTextures.SLOT_ITEM_DARK);
         result.child(new ItemDisplayWidget().item(new ObjectValue.Dynamic<>(ItemStack.class, () -> {
             IAEStack<?> stack = available(index);
-            return stack instanceof IAEItemStack ? ((IAEItemStack) stack).getItemStack() : null;
+            return stack instanceof IAEItemStack ? displayItem(stack) : null;
         }, ignored -> {}))
             .displayAmount(false)
             .size(SLOT_SIZE));
         result.child(new FluidDisplayWidget().value(new ObjectValue.Dynamic<>(FluidStack.class, () -> {
             IAEStack<?> stack = available(index);
-            return stack instanceof IAEFluidStack ? ((IAEFluidStack) stack).getFluidStack() : null;
+            return stack instanceof IAEFluidStack ? displayFluid(stack) : null;
         }, ignored -> {}))
             .displayAmount(false)
             .size(SLOT_SIZE));
         result.child(
-            new com.cleanroommc.modularui.widget.Widget<>().size(SLOT_SIZE)
+            new StockTooltipWidget(index).size(SLOT_SIZE)
+                .name("apeiron_stock_" + index)
                 .overlay((context, x, y, width, height, theme) -> {
                     IAEStack<?> stack = available(index);
                     if (stack != null) stack.drawOverlayInGui(
@@ -236,54 +244,170 @@ public final class InfiniteStorageInputGui extends MTEHatchBaseGui<MTEHatch> {
                         true,
                         false,
                         false);
+                })
+                .tooltipDynamic(t -> {
+                    IAEStack<?> stack = available(index);
+                    if (stack == null) return;
+                    if (stack instanceof IAEItemStack) t.addFromItem(displayItem(stack));
+                    else if (stack instanceof IAEFluidStack) t.addFromFluid(displayFluid(stack));
+                    String amount = cell(index).getBoolean("infinite") ? "∞"
+                        : BigNumberFormatter.formatExact(BigAEStackValues.get(stack));
+                    t.addLine(
+                        IKey.lang(
+                            stack instanceof IAEFluidStack ? "apeiron.machine.stocking.fluid_amount"
+                                : "apeiron.machine.stocking.item_amount",
+                            amount));
                 }));
-        result.tooltip(t -> t.addLine(IKey.dynamic(() -> {
-            IAEStack<?> stack = available(index);
-            return stack == null ? ""
-                : cell(index).getBoolean("infinite") ? "∞"
-                    : BigNumberFormatter.formatExact(BigAEStackValues.get(stack));
-        })));
         return result;
     }
 
-    private ModularPanel configPanel(ModularPanel parent, PanelSyncManager sync) {
+    private static ItemStack displayItem(IAEStack<?> stack) {
+        ItemStack item = stack instanceof IAEItemStack ? ((IAEItemStack) stack).getItemStack()
+            : stack instanceof IAEFluidStack ? GTUtility.getFluidDisplayStack(displayFluid(stack), false) : null;
+        if (item != null) item.stackSize = 1;
+        return item;
+    }
+
+    private static FluidStack displayFluid(IAEStack<?> stack) {
+        FluidStack fluid = ((IAEFluidStack) stack).getFluidStack();
+        fluid.amount = 1;
+        return fluid;
+    }
+
+    /** Marks select a type, so wheel input belongs to the surrounding shared scroll grid. */
+    private static final class StockingMarkSlot extends PhantomItemSlot {
+
+        @Override
+        public boolean onMouseScroll(UpOrDown direction, int amount) {
+            return false;
+        }
+    }
+
+    /** The topmost quantity overlay also owns the tooltip and NEI ingredient lookup. */
+    private final class StockTooltipWidget extends Widget<StockTooltipWidget>
+        implements RecipeViewerIngredientProvider {
+
+        private final int index;
+
+        private StockTooltipWidget(int index) {
+            this.index = index;
+        }
+
+        @Override
+        public ItemStack getStackForRecipeViewer() {
+            return displayItem(available(index));
+        }
+    }
+
+    private ModularPanel configPanel(PanelSyncManager sync) {
         Dialog<?> dialog = new Dialog<>("apeiron_stocking_config", null);
-        dialog.relative(parent)
+        dialog.relativeToScreen()
             .background(GTGuiTextures.BACKGROUND_POPUP_STANDARD)
-            .size(130, 226)
-            .leftRel(1)
-            .topRel(0);
-        dialog.setDisablePanelsBelow(false)
+            .size(406, 246)
+            .center();
+        dialog.setDisablePanelsBelow(true)
             .setCloseOnOutOfBoundsClick(false)
             .setDraggable(true);
         dialog.child(ButtonWidget.panelCloseButton());
+        dialog.child(
+            IKey.lang("apeiron.machine.stocking.settings")
+                .asWidget()
+                .pos(12, 10));
+        section(dialog, "stock_range", 12);
+        section(dialog, "pull_strategy", 142);
+        section(dialog, "type_filter", 272);
         StockingFilter filter = logic.getFilter();
-        addField(dialog, sync, "minimum", 20, filter::getMinimumText, value -> filter.setMinimum(value), true);
+        addField(dialog, sync, "minimum", 12, 52, filter::getMinimumText, filter::setMinimum, true);
+        addField(dialog, sync, "maximum", 12, 90, filter::getMaximumText, filter::setMaximum, true);
+        note(dialog, "range_hint", 12, 124, 116, 42);
+        addField(
+            dialog,
+            sync,
+            "type_limit",
+            142,
+            52,
+            () -> Integer.toString(filter.getTypeLimit()),
+            value -> filter.setTypeLimit(
+                ScientificInteger.positive(value)
+                    .intValueExact()),
+            true);
+        IntSyncValue priority = new IntSyncValue(
+            () -> filter.getPriority()
+                .ordinal(),
+            value -> {
+                if (logic.isProcessing() || value < 0 || value >= StockingFilter.Priority.values().length) return;
+                filter.setPriority(StockingFilter.Priority.values()[value]);
+                logic.changed();
+            }).allowC2S();
+        sync.syncValue("apeiron_stocking_priority", priority);
+        dialog.child(
+            IKey.lang("apeiron.machine.stocking.priority")
+                .asWidget()
+                .pos(142, 90));
+        CycleButtonWidget priorityButton = new CycleButtonWidget().value(priority)
+            .stateCount(StockingFilter.Priority.values().length)
+            .size(116, 18)
+            .pos(142, 102)
+            .name("apeiron_stocking_priority")
+            .background(GTGuiTextures.BUTTON_STANDARD);
+        for (StockingFilter.Priority order : StockingFilter.Priority.values()) {
+            String key = "apeiron.machine.stocking.priority." + order.name()
+                .toLowerCase(java.util.Locale.ROOT);
+            priorityButton.stateOverlay(
+                order,
+                IKey.lang(key)
+                    .scale(0.8f));
+            priorityButton.tooltip(order.ordinal(), t -> t.addLine(IKey.lang(key + ".hint")));
+        }
+        dialog.child(priorityButton);
         addField(
             dialog,
             sync,
             "refresh",
-            52,
+            142,
+            128,
             () -> Integer.toString(filter.getRefreshTicks()),
             value -> filter.setRefreshTicks(
                 ScientificInteger.positive(value)
                     .intValueExact()),
             true);
-        addField(dialog, sync, "mod", 84, filter::getModId, filter::setModId, false);
-        addField(dialog, sync, "item", 116, filter::getItemId, filter::setItemId, false);
+        note(dialog, "strategy_hint", 142, 166, 116, 38);
+        addField(dialog, sync, "mod", 272, 52, filter::getModId, filter::setModId, false);
+        addField(dialog, sync, "item", 272, 90, filter::getItemId, filter::setItemId, false);
         addField(
             dialog,
             sync,
             "meta",
-            148,
+            272,
+            128,
             () -> Integer.toString(filter.getMeta()),
             value -> filter.setMeta(Integer.parseInt(value)),
             false);
-        addField(dialog, sync, "ore", 180, filter::getOre, filter::setOre, false);
+        addField(dialog, sync, "ore", 272, 166, filter::getOre, filter::setOre, false);
+        note(dialog, "settings_hint", 12, 214, 380, 24);
         return dialog;
     }
 
-    private void addField(ModularPanel panel, PanelSyncManager sync, String key, int y,
+    private static void section(ModularPanel panel, String key, int x) {
+        panel.child(
+            IKey.lang("apeiron.machine.stocking." + key)
+                .asWidget()
+                .pos(x, 32)
+                .color(0xFF234A70));
+    }
+
+    private static void note(ModularPanel panel, String key, int x, int y, int width, int height) {
+        panel.child(
+            IKey.lang("apeiron.machine.stocking." + key)
+                .asWidget()
+                .pos(x, y)
+                .size(width, height)
+                .alignment(Alignment.TopLeft)
+                .scale(0.8f)
+                .color(0xFF555555));
+    }
+
+    private void addField(ModularPanel panel, PanelSyncManager sync, String key, int x, int y,
         java.util.function.Supplier<String> getter, java.util.function.Consumer<String> setter, boolean numeric) {
         StringSyncValue value = new StringSyncValue(getter, text -> {
             if (logic.isProcessing()) return;
@@ -296,9 +420,11 @@ public final class InfiniteStorageInputGui extends MTEHatchBaseGui<MTEHatch> {
         panel.child(
             IKey.lang("apeiron.machine.stocking." + key)
                 .asWidget()
-                .pos(6, y));
+                .pos(x, y)
+                .scale(0.9f));
         TextFieldWidget field = new TextFieldWidget().size(116, 18)
-            .pos(6, y + 11)
+            .pos(x, y + 12)
+            .name("apeiron_stocking_" + key)
             .value(value)
             .acceptsExpressions(false)
             .autoUpdateOnChange(false)
@@ -306,9 +432,13 @@ public final class InfiniteStorageInputGui extends MTEHatchBaseGui<MTEHatch> {
         if (numeric) field.setPattern(Pattern.compile("[0-9.eE+\\-]*"));
         panel.child(field.setValidator(text -> {
             try {
-                if (numeric) {
+                if (numeric && !(key.equals("maximum") && text.trim()
+                    .isEmpty())) {
                     java.math.BigInteger parsed = ScientificInteger.positive(text);
                     if (key.equals("refresh")) parsed.intValueExact();
+                    if (key.equals("type_limit") && (parsed.compareTo(java.math.BigInteger.ONE) < 0
+                        || parsed.compareTo(java.math.BigInteger.valueOf(StockingInputLogic.SLOT_COUNT)) > 0))
+                        throw new IllegalArgumentException("Type limit out of range");
                 } else if (key.equals("meta")) Integer.parseInt(text);
                 return text;
             } catch (IllegalArgumentException | ArithmeticException ignored) {

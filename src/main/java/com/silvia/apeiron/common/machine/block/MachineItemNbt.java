@@ -13,7 +13,9 @@ import com.silvia.apeiron.common.machine.me.output.MTEBeamlineMEOutputHatch;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputBus;
 import com.silvia.apeiron.common.machine.me.output.MTEBoundlessMEOutputHatch;
 import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
+import com.silvia.apeiron.common.machine.me.stocking.StockingFilter;
 import com.silvia.apeiron.common.machine.me.stocking.StockingInputHost;
+import com.silvia.apeiron.common.machine.me.stocking.StockingInputLogic;
 import com.silvia.apeiron.common.machine.tectech.MTEEyeOfHarmonyEnhancementModule;
 
 import gregtech.api.GregTechAPI;
@@ -155,6 +157,12 @@ public final class MachineItemNbt {
                 .trim()))
             state.removeTag("minimum");
         if (state.hasKey("refresh") && state.getInteger("refresh") == 100) state.removeTag("refresh");
+        if (state.hasKey("maximum") && state.getString("maximum")
+            .isEmpty()) state.removeTag("maximum");
+        if (state.hasKey("typeLimit") && state.getInteger("typeLimit") == StockingInputLogic.SLOT_COUNT)
+            state.removeTag("typeLimit");
+        if (state.hasKey("priority") && StockingFilter.Priority.NETWORK.name()
+            .equals(state.getString("priority"))) state.removeTag("priority");
         if (state.hasKey("mod") && state.getString("mod")
             .isEmpty()) state.removeTag("mod");
         if (state.hasKey("item") && "*".equals(state.getString("item"))) state.removeTag("item");

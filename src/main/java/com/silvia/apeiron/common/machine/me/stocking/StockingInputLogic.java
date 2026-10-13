@@ -202,14 +202,7 @@ public class StockingInputLogic {
             IItemList<IAEFluidStack> fluids = needFluids ? readNetworkFluids() : null;
             if (autoPull) {
                 int index = 0;
-                if (items != null) for (IAEItemStack stack : items) {
-                    if (index >= SLOT_COUNT) break;
-                    if (filter.accepts(stack)) displayed[index++] = stack.copy();
-                }
-                if (fluids != null && index < SLOT_COUNT) for (IAEFluidStack stack : fluids) {
-                    if (index >= SLOT_COUNT) break;
-                    if (filter.accepts(stack)) displayed[index++] = stack.copy();
-                }
+                for (IAEStack<?> stack : StockingSelection.select(filter, items, fluids)) displayed[index++] = stack;
             } else {
                 for (int i = 0; i < SLOT_COUNT; i++) {
                     IAEStack<?> found = marks[i] instanceof IAEFluidStack ? fluids.findPrecise((IAEFluidStack) marks[i])

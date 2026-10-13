@@ -18,8 +18,18 @@ import appeng.api.storage.data.IAEStack;
 
 public final class StockingFilter {
 
+    public enum Priority {
+        NETWORK,
+        MOST,
+        LEAST
+    }
+
     private BigInteger minimum = BigInteger.ONE;
     private String minimumText = "1";
+    private BigInteger maximum;
+    private String maximumText = "";
+    private int typeLimit = StockingInputLogic.SLOT_COUNT;
+    private Priority priority = Priority.NETWORK;
     private int refreshTicks = 100;
     private String modId = "", itemId = "*", ore = "";
     private int meta = OreDictionary.WILDCARD_VALUE;
@@ -35,6 +45,35 @@ public final class StockingFilter {
 
     public String getMinimumText() {
         return minimumText;
+    }
+
+    public void setMaximum(String value) {
+        String text = value.trim();
+        maximum = text.isEmpty() ? null : ScientificInteger.positive(text);
+        maximumText = text;
+    }
+
+    public String getMaximumText() {
+        return maximumText;
+    }
+
+    public int getTypeLimit() {
+        return typeLimit;
+    }
+
+    public void setTypeLimit(int value) {
+        if (value < 1 || value > StockingInputLogic.SLOT_COUNT)
+            throw new IllegalArgumentException("Type limit must be between 1 and 360");
+        typeLimit = value;
+    }
+
+    public Priority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Priority value) {
+        if (value == null) throw new IllegalArgumentException("Missing selection priority");
+        priority = value;
     }
 
     public int getRefreshTicks() {
@@ -75,6 +114,9 @@ public final class StockingFilter {
 
     public boolean isDefault() {
         return minimum.equals(BigInteger.ONE) && "1".equals(minimumText)
+            && maximum == null
+            && typeLimit == StockingInputLogic.SLOT_COUNT
+            && priority == Priority.NETWORK
             && refreshTicks == 100
             && modId.isEmpty()
             && "*".equals(itemId)
@@ -113,8 +155,13 @@ public final class StockingFilter {
     }
 
     public boolean accepts(IAEStack<?> stack) {
-        if (stack == null || (!BigAEStackValues.isInfinite(stack) && BigAEStackValues.get(stack)
-            .compareTo(minimum) < 0)) return false;
+        if (stack == null) return false;
+        if (BigAEStackValues.isInfinite(stack)) {
+            if (maximum != null) return false;
+        } else {
+            BigInteger amount = BigAEStackValues.get(stack);
+            if (amount.compareTo(minimum) < 0 || maximum != null && amount.compareTo(maximum) > 0) return false;
+        }
         if (stack instanceof IAEItemStack) {
             ItemStack item = ((IAEItemStack) stack).getItemStack();
             String id = String.valueOf(Item.itemRegistry.getNameForObject(item.getItem()));
@@ -140,6 +187,9 @@ public final class StockingFilter {
     public NBTTagCompound save() {
         NBTTagCompound tag = new NBTTagCompound();
         tag.setString("minimum", minimumText);
+        tag.setString("maximum", maximumText);
+        tag.setInteger("typeLimit", typeLimit);
+        tag.setString("priority", priority.name());
         tag.setInteger("refresh", refreshTicks);
         tag.setString("mod", modId);
         tag.setString("item", itemId);
@@ -149,8 +199,16 @@ public final class StockingFilter {
     }
 
     public void load(NBTTagCompound tag) {
-        if (tag.hasKey("minimum")) setMinimum(tag.getString("minimum"));
-        if (tag.hasKey("refresh")) setRefreshTicks(tag.getInteger("refresh"));
+        setMinimum(tag.hasKey("minimum") ? tag.getString("minimum") : "1");
+        setMaximum(tag.getString("maximum"));
+        int limit = tag.hasKey("typeLimit") ? tag.getInteger("typeLimit") : StockingInputLogic.SLOT_COUNT;
+        setTypeLimit(Math.max(1, Math.min(StockingInputLogic.SLOT_COUNT, limit)));
+        try {
+            setPriority(Priority.valueOf(tag.getString("priority")));
+        } catch (IllegalArgumentException ignored) {
+            setPriority(Priority.NETWORK);
+        }
+        setRefreshTicks(tag.hasKey("refresh") ? tag.getInteger("refresh") : 100);
         setModId(tag.getString("mod"));
         setItemId(tag.hasKey("item") ? tag.getString("item") : "*");
         setOre(tag.getString("ore"));

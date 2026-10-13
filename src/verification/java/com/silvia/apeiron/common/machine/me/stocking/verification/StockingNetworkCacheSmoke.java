@@ -15,6 +15,7 @@ import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.stack.InfiniteAEStack;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
 import com.silvia.apeiron.ae.storage.BigMEInventory;
+import com.silvia.apeiron.common.machine.me.stocking.StockingFilter;
 import com.silvia.apeiron.common.machine.me.stocking.StockingInputLogic;
 
 import appeng.api.config.Actionable;
@@ -142,8 +143,143 @@ public final class StockingNetworkCacheSmoke {
         items.invalidate();
         first.refresh();
         check(first.getDisplayed(0) == null, "removed network inventory remained available in projection");
+        verifyAutomaticStrategies();
         Apeiron.LOG.info(
-            "Stocking cache verification passed: shared scans, bounded selection, exact/infinite quantities, live invalidation and detached recipe projections");
+            "Stocking cache verification passed: shared scans, bounded selection, all three input kinds, exact stock ranges/priorities/type caps, live invalidation and detached recipe projections");
+    }
+
+    private static void verifyAutomaticStrategies() {
+        CachedNetwork<IAEItemStack> items = new CachedNetwork<>(AEItemStackType.ITEM_STACK_TYPE);
+        CachedNetwork<IAEFluidStack> fluids = new CachedNetwork<>(AEFluidStackType.FLUID_STACK_TYPE);
+        IAEItemStack diamond = AEItemStack.create(new ItemStack(Items.diamond));
+        IAEItemStack apple = AEItemStack.create(new ItemStack(Items.apple));
+        IAEItemStack paper = AEItemStack.create(new ItemStack(Items.paper));
+        ((InfiniteAEStack) paper).setInfinite(true);
+        IAEFluidStack water = AEFluidStack.create(new FluidStack(FluidRegistry.WATER, 1));
+        IAEFluidStack lava = AEFluidStack.create(new FluidStack(FluidRegistry.LAVA, 1));
+        BigInteger huge = BigInteger.TEN.pow(80)
+            .add(BigInteger.valueOf(17));
+        items.stored.addStorage(BigAEStackValues.copyWithSize(diamond, BigInteger.valueOf(64)));
+        items.stored.addStorage(BigAEStackValues.copyWithSize(apple, huge));
+        items.stored.addStorage(paper);
+        fluids.stored.addStorage(BigAEStackValues.copyWithSize(water, huge.add(BigInteger.ONE)));
+        fluids.stored.addStorage(BigAEStackValues.copyWithSize(lava, BigInteger.valueOf(64)));
+        for (int i = 1; i <= 1000; i++) {
+            ItemStack stick = new ItemStack(Items.stick);
+            NBTTagCompound tag = new NBTTagCompound();
+            tag.setInteger("entry", i);
+            stick.setTagCompound(tag);
+            items.stored.addStorage(BigAEStackValues.copyWithSize(AEItemStack.create(stick), BigInteger.valueOf(i)));
+        }
+        items.invalidate();
+        fluids.invalidate();
+        for (StockingInputLogic.Kind kind : StockingInputLogic.Kind.values()) {
+            CachedInput manual = new CachedInput(items, fluids, kind);
+            IAEStack<?> mark = kind == StockingInputLogic.Kind.FLUIDS ? water : apple;
+            manual.setMark(359, mark);
+            manual.getFilter()
+                .setTypeLimit(1);
+            manual.getFilter()
+                .setMaximum("1");
+            manual.refresh();
+            check(
+                StockingInputLogic.same(manual.getDisplayed(359), mark),
+                "automatic rules pruned a manual selection for " + kind);
+            CachedInput input = new CachedInput(items, fluids, kind);
+            StockingFilter filter = input.getFilter();
+            filter.setTypeLimit(1);
+            filter.setPriority(StockingFilter.Priority.MOST);
+            input.setAutoPull(true);
+            check(input.getDisplayed(1) == null && input.getDisplayed(359) == null, "one-type cap leaked later slots");
+            check(
+                kind == StockingInputLogic.Kind.FLUIDS ? StockingInputLogic.same(input.getDisplayed(0), water)
+                    : BigAEStackValues.isInfinite(input.getDisplayed(0)),
+                "most-stock priority failed for " + kind);
+            filter.setMaximum(
+                huge.add(BigInteger.ONE)
+                    .toString());
+            input.changed();
+            check(
+                StockingInputLogic.same(input.getDisplayed(0), kind == StockingInputLogic.Kind.ITEMS ? apple : water),
+                "exact quantity ordering failed after excluding infinite stock for " + kind);
+            filter.setPriority(StockingFilter.Priority.LEAST);
+            input.changed();
+            check(
+                BigAEStackValues.get(input.getDisplayed(0))
+                    .equals(BigInteger.valueOf(kind == StockingInputLogic.Kind.FLUIDS ? 64 : 1)),
+                "least-stock priority failed for " + kind);
+            filter.setMinimum("64");
+            filter.setMaximum("64");
+            filter.setTypeLimit(360);
+            input.changed();
+            int count = 0;
+            for (int slot = 0; slot < 360; slot++) if (input.getDisplayed(slot) != null) {
+                check(
+                    BigAEStackValues.get(input.getDisplayed(slot))
+                        .equals(BigInteger.valueOf(64)),
+                    "inclusive stock range selected an out-of-range type");
+                count++;
+            }
+            check(
+                count == (kind == StockingInputLogic.Kind.ITEMS ? 2 : kind == StockingInputLogic.Kind.FLUIDS ? 1 : 3),
+                "stock boundary or input-kind filtering failed");
+            IAEStack<?>[] tied = new IAEStack<?>[count];
+            for (int i = 0; i < count; i++) tied[i] = input.getDisplayed(i)
+                .copy();
+            input.refresh();
+            for (int i = 0; i < count; i++) check(
+                StockingInputLogic.same(tied[i], input.getDisplayed(i)),
+                "equal-quantity types reordered across unchanged refreshes");
+            filter.setMinimum(huge.toString());
+            filter.setMaximum(huge.toString());
+            input.changed();
+            check(
+                kind == StockingInputLogic.Kind.FLUIDS ? input.getDisplayed(0) == null
+                    : StockingInputLogic.same(input.getDisplayed(0), apple) && input.getDisplayed(1) == null,
+                "large exact stock bounds were rounded or truncated");
+            filter.setMaximum(
+                huge.add(BigInteger.ONE)
+                    .toString());
+            filter.setTypeLimit(1);
+            filter.setPriority(StockingFilter.Priority.MOST);
+            input.changed();
+            NBTTagCompound saved = new NBTTagCompound();
+            input.save(saved);
+            CachedInput restored = new CachedInput(items, fluids, kind);
+            restored.load(saved);
+            restored.refresh();
+            check(
+                restored.isAutoPull() && restored.getFilter()
+                    .getTypeLimit() == 1
+                    && restored.getFilter()
+                        .getPriority() == StockingFilter.Priority.MOST
+                    && restored.getFilter()
+                        .getMaximumText()
+                        .equals(
+                            huge.add(BigInteger.ONE)
+                                .toString())
+                    && StockingInputLogic.same(input.getDisplayed(0), restored.getDisplayed(0)),
+                "automatic pull settings lost after save/reload");
+            check(
+                restored.pasteConfiguration(input.copyConfiguration()),
+                "new pull settings failed configuration copy");
+            check(
+                StockingInputLogic.same(input.getDisplayed(0), restored.getDisplayed(0)),
+                "configuration copy changed selected type");
+            restored.load(new NBTTagCompound());
+            check(
+                restored.getFilter()
+                    .isDefault() && !restored.isAutoPull(),
+                "pasting legacy defaults retained stale pull settings");
+        }
+        check(
+            BigAEStackValues.get(items.stored.findPrecise(apple))
+                .equals(huge)
+                && BigAEStackValues.get(fluids.stored.findPrecise(water))
+                    .equals(huge.add(BigInteger.ONE))
+                && BigAEStackValues.isInfinite(items.stored.findPrecise(paper)),
+            "selection modified shared ME inventory");
+        check(items.scans == 1 && fluids.scans == 1, "new selection rules bypassed shared ME cache");
     }
 
     private static final class CachedInput extends StockingInputLogic {
