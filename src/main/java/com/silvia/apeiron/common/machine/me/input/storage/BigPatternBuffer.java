@@ -16,6 +16,7 @@ import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
+import appeng.util.item.AEItemStack;
 import gregtech.api.objects.GTDualInputPattern;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.IDualInputInventoryWithPattern;
@@ -247,6 +248,26 @@ public final class BigPatternBuffer implements IDualInputInventoryWithPattern {
             if (sameType(stored, type)) return BigAEStackValues.get(stored);
         }
         return BigInteger.ZERO;
+    }
+
+    /** A native item processor needs room for one changed NBT type while the remaining batch stays untouched. */
+    public boolean canEditOneItem(IAEItemStack type) {
+        reconcile();
+        BigInteger count = getAmountBig(type);
+        return count.signum() > 0 && (count.equals(BigInteger.ONE) || items.size() < ITEM_SLOTS);
+    }
+
+    /** Commit a detached single-item view, including charge/durability changes, without mutating AE's shared NBT. */
+    public void replaceOneItem(IAEItemStack original, ItemStack replacement) {
+        reconcile();
+        if (replacement != null && replacement.stackSize != 0 && replacement.stackSize != 1)
+            throw new IllegalArgumentException("Item processor must return at most one item");
+        if (!canEditOneItem(original)) throw new IllegalStateException("No room for a changed item type");
+        IAEItemStack changed = replacement == null || replacement.stackSize == 0 ? null
+            : AEItemStack.create(replacement.copy());
+        removeBig(original, BigInteger.ONE);
+        // Recipe locks restrict incoming ingredients, not changes to a material already owned by the buffer.
+        if (changed != null) merge(items, changed, BigInteger.ONE);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })

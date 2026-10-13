@@ -72,6 +72,8 @@
     "gregtech.lanthanides.BeamCrafterParticleStateMixin",
     "gregtech.lanthanides.SourceChamberInputMixin",
     "gregtech.input.BigDualInputProcessingMixin",
+    "gregtech.input.EnergyInfuserPatternInputMixin",
+    "gregtech.energy.EnergyInfuserWirelessMixin",
     "gregtech.input.BigInputHatchElementMixin",
     "gregtech.input.LegacyBigInputHatchElementMixin",
     "gregtech.input.BigInputRegistrationMixin",

@@ -30,6 +30,8 @@
 | `gregtech.lanthanides.BeamCrafterParticleStateMixin` | 公共 | Inject:3 |
 | `gregtech.lanthanides.SourceChamberInputMixin` | 公共 | Inject:1, Redirect:2 |
 | `gregtech.input.BigDualInputProcessingMixin` | 公共 | Inject:3 |
+| `gregtech.input.EnergyInfuserPatternInputMixin` | 公共 | WrapMethod:3, Redirect:2 |
+| `gregtech.energy.EnergyInfuserWirelessMixin` | 公共 | WrapMethod:2, Redirect:3 |
 | `gregtech.input.BigInputHatchElementMixin` | 公共 | Inject:1 |
 | `gregtech.input.LegacyBigInputHatchElementMixin` | 公共 | Inject:1 |
 | `gregtech.input.BigInputRegistrationMixin` | 公共 | Inject:1 |
