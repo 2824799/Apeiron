@@ -110,7 +110,12 @@ public abstract class ProcessingLogicBigParallelMixin {
         MTEInfiniteEnergyHatch hatch = InfiniteEnergyHatches.find(controller);
         if (hatch == null || InfiniteEnergyHatches.isNativeWirelessController(controller)) return nativeHelper;
         BigRecipeOutputProvider provider = this instanceof BigRecipeOutputProvider
-            && ((BigRecipeOutputProvider) this).hasExactRecipeOutputs() ? (BigRecipeOutputProvider) this : null;
+            && ((BigRecipeOutputProvider) this).hasExactRecipeOutputs()
+                ? (BigRecipeOutputProvider) this
+                : controller instanceof BigRecipeOutputProvider
+                    && ((BigRecipeOutputProvider) controller).hasExactRecipeOutputs()
+                        ? (BigRecipeOutputProvider) controller
+                        : null;
         BigRecipeInputProvider inputProvider = this instanceof BigRecipeInputProvider
             && ((BigRecipeInputProvider) this).hasExactRecipeInputs() ? (BigRecipeInputProvider) this : null;
         GTRecipe inputRecipe = inputProvider == null ? recipe : inputProvider.getExactInputRecipe(recipe);

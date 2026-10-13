@@ -6,7 +6,7 @@ import java.util.List;
 import appeng.api.storage.data.IAEStack;
 import gregtech.api.util.GTRecipe;
 
-/** Explicit opt-in for specialized output rules around the common exact recipe transaction. */
+/** Processing logic or controller opt-in for specialized outputs around the common exact recipe transaction. */
 public interface BigRecipeOutputProvider {
 
     boolean hasExactRecipeOutputs();

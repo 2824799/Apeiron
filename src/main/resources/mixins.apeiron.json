@@ -62,6 +62,7 @@
     "ae.terminal.core.PatternBufferQuickMoveMixin",
     "tst.compat.TstPatternEncodeGuardMixin",
     "tst.energy.WaterPurifierRecipeAccessor",
+    "tst.energy.StoneBreakerEnergyMixin",
     "gregtech.lanthanides.TargetChamberInputMixin",
     "gregtech.lanthanides.MEBeamlineOutputRegistrationMixin",
     "gregtech.lanthanides.MEBeamlineOutputElementMixin",

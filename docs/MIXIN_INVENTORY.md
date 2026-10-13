@@ -20,6 +20,7 @@
 | `ae.terminal.core.PatternBufferQuickMoveMixin` | 公共 | Inject:1 |
 | `tst.compat.TstPatternEncodeGuardMixin` | 公共 | Inject:1 |
 | `tst.energy.WaterPurifierRecipeAccessor` | 公共 | Accessor:1 |
+| `tst.energy.StoneBreakerEnergyMixin` | 公共 |  |
 | `gregtech.lanthanides.TargetChamberInputMixin` | 公共 | Inject:4, Redirect:1 |
 | `gregtech.lanthanides.MEBeamlineOutputRegistrationMixin` | 公共 | Inject:2 |
 | `gregtech.lanthanides.MEBeamlineOutputElementMixin` | 公共 | Inject:1 |
