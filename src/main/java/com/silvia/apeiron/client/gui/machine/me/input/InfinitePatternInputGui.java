@@ -501,16 +501,24 @@ public final class InfinitePatternInputGui extends MTEHatchBaseGui<MTEInfinitePa
 
     private final class GuardedSlot extends ModularSlot {
 
+        private final int inventorySlot;
         private final boolean pattern;
 
         private GuardedSlot(int slot, boolean pattern) {
             super(machine.getInventoryHandler(), slot);
+            inventorySlot = slot;
             this.pattern = pattern;
         }
 
         @Override
         public boolean isItemValid(ItemStack stack) {
-            return accessible.getAsBoolean() && super.isItemValid(stack);
+            if (!accessible.getAsBoolean()) return false;
+            if (!pattern) return super.isItemValid(stack);
+            // Pattern slots have a fixed one-item limit. ModularUI's generic simulation temporarily empties the
+            // real slot, firing content changes and invalidating the entire insertion probe during quick move.
+            return stack != null && isCanPut()
+                && getFilter().test(stack)
+                && machine.isItemValidForSlot(inventorySlot, stack);
         }
 
         @Override

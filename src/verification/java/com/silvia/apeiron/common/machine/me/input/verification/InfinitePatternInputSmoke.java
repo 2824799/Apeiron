@@ -6,14 +6,21 @@ import java.util.Arrays;
 import java.util.List;
 
 import net.minecraft.init.Items;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.world.World;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.cleanroommc.modularui.screen.ModularContainer;
+import com.cleanroommc.modularui.utils.item.ItemStackHandler;
+import com.cleanroommc.modularui.widgets.slot.ModularSlot;
+import com.cleanroommc.modularui.widgets.slot.SlotGroup;
 import com.silvia.apeiron.Apeiron;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.client.gui.machine.me.input.InfinitePatternInputGui;
 import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputMirror;
@@ -52,6 +59,8 @@ public final class InfinitePatternInputSmoke {
 
     private static final class Assembly extends MTEInfinitePatternInputAssembly {
 
+        private int patternLookups;
+
         private Assembly() {
             super("apeiron.verification.pattern_input", 10, new String[0], null);
             setBaseMetaTileEntity(tile(4));
@@ -60,6 +69,79 @@ public final class InfinitePatternInputSmoke {
         @Override
         public boolean isActive() {
             return true;
+        }
+
+        @Override
+        public ICraftingPatternDetails getPatternDetails(int slot) {
+            patternLookups++;
+            return super.getPatternDetails(slot);
+        }
+    }
+
+    /** Count real AE ultimate-pattern decodes without replacing the helper or its item/fluid NBT work. */
+    private static final class CountingPatternItem extends Item implements ICraftingPatternItem {
+
+        private int decodes;
+        private final Item nativeItem = AEApi.instance()
+            .definitions()
+            .items()
+            .encodedUltimatePattern()
+            .maybeStack(1)
+            .get()
+            .getItem();
+
+        private ItemStack wrap(ItemStack nativePattern) {
+            ItemStack result = new ItemStack(this, nativePattern.stackSize, nativePattern.getItemDamage());
+            result.setTagCompound(
+                (NBTTagCompound) nativePattern.getTagCompound()
+                    .copy());
+            return result;
+        }
+
+        @Override
+        public ICraftingPatternDetails getPatternForItem(ItemStack stack, World world) {
+            decodes++;
+            if (stack.getTagCompound()
+                .getBoolean("verificationBroken")) {
+                stack.getTagCompound()
+                    .setBoolean("decoderAnnotation", true);
+                return null;
+            }
+            ItemStack nativePattern = new ItemStack(nativeItem, stack.stackSize, stack.getItemDamage());
+            nativePattern.setTagCompound(stack.getTagCompound());
+            return ((ICraftingPatternItem) nativeItem).getPatternForItem(nativePattern, world);
+        }
+    }
+
+    /** Exercise the native transfer loop and the actual GUI's guarded slots, without a player or network. */
+    private static final class QuickMoveContainer extends ModularContainer {
+
+        private final List<ModularSlot> slots = new java.util.ArrayList<>();
+        private final ModularSlot playerSlot = new ModularSlot(new ItemStackHandler(1), 0)
+            .slotGroup(new SlotGroup("verification_player", 1));
+
+        private QuickMoveContainer(Assembly source) {
+            try {
+                InfinitePatternInputGui gui = new InfinitePatternInputGui(source);
+                Class<?> guarded = Class.forName(InfinitePatternInputGui.class.getName() + "$GuardedSlot");
+                java.lang.reflect.Constructor<?> constructor = guarded
+                    .getDeclaredConstructor(InfinitePatternInputGui.class, int.class, boolean.class);
+                constructor.setAccessible(true);
+                SlotGroup group = new SlotGroup("verification_patterns", 10);
+                for (int slot = 0; slot < 360; slot++)
+                    getShiftClickSlots().add(((ModularSlot) constructor.newInstance(gui, slot, true)).slotGroup(group));
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Could not initialize pattern quick-move fixture", error);
+            }
+        }
+
+        private ItemStack move(ItemStack stack) {
+            return transferItem(playerSlot, stack);
+        }
+
+        @Override
+        public List<ModularSlot> getShiftClickSlots() {
+            return slots;
         }
     }
 
@@ -122,6 +204,7 @@ public final class InfinitePatternInputSmoke {
         verifyOptimization();
         verifyBatchDispatch();
         verifyDuplicatePatterns();
+        verifyInsertionCache();
         Assembly source = new Assembly();
         verifyTerminalRepresentation(source);
         check(
@@ -712,6 +795,154 @@ public final class InfinitePatternInputSmoke {
         check(!restored.isItemValidForSlot(1, reordered), "duplicate validation did not survive reload");
         Apeiron.LOG.info(
             "Pattern duplicate verification passed: AE/GUI/mirror insertion, bookkeeping ignored, exact mixed recipes, amounts, ingredient NBT, settings, multipliers, catalysts and reload");
+    }
+
+    private static void verifyInsertionCache() {
+        Assembly source = new Assembly();
+        CountingPatternItem item = new CountingPatternItem();
+        for (int slot = 0; slot < 359; slot++) {
+            source.getPatterns()
+                .setInventorySlotContents(slot, item.wrap(largePattern(slot)));
+            check(source.getPatternDetails(slot) != null, "performance fixture did not decode");
+        }
+        check(item.decodes == 359, "adding a pattern reparsed unchanged occupied slots");
+        ICraftingPatternDetails retained = source.getPatternDetails(0);
+        ItemStack duplicate = item.wrap(largePattern(0));
+        duplicate.getTagCompound()
+            .setLong("encodedAt", 123456789L);
+        duplicate.getTagCompound()
+            .setString("author", "Another encoder");
+        int before = item.decodes, lookups = source.patternLookups;
+        for (int slot = 0; slot < 360; slot++)
+            check(source.isItemValidForSlot(slot, duplicate) == (slot == 0), "duplicate quick-move probe changed");
+        check(item.decodes == before + 1, "quick move decoded one candidate repeatedly");
+        check(source.patternLookups == lookups + 360, "quick move repeated its full duplicate scan per slot");
+        for (int slot = 0; slot < 360; slot++) check(
+            !source.getInventoryHandler()
+                .isItemValid(slot, duplicate) || slot == 0,
+            "GUI duplicate bypass");
+        check(
+            !source.getPatterns()
+                .isItemValidForSlot(359, duplicate),
+            "AE duplicate bypass");
+        check(
+            !new Mirror(source).getInputSource()
+                .isItemValidForSlot(359, duplicate),
+            "mirror duplicate bypass");
+        check(item.decodes == before + 1 && source.patternLookups == lookups + 360, "entry points missed shared cache");
+        QuickMoveContainer container = new QuickMoveContainer(source);
+        ItemStack rejected = container.move(duplicate.copy());
+        check(
+            rejected != null && rejected.stackSize == 1 && source.mInventory[359] == null,
+            "native quick move accepted duplicate");
+        check(
+            item.decodes == before + 1 && source.patternLookups == lookups + 360,
+            "native quick move repeated cached work: decodes=" + (item.decodes - before)
+                + ", lookups="
+                + (source.patternLookups - lookups));
+
+        ItemStack next = item.wrap(largePattern(359));
+        before = item.decodes;
+        lookups = source.patternLookups;
+        for (int slot = 0; slot < 360; slot++) check(source.isItemValidForSlot(slot, next), "unique recipe rejected");
+        check(item.decodes == before + 1 && source.patternLookups == lookups + 360, "unique insertion rescanned slots");
+        ItemStack remainder = container.move(next.copy());
+        check(
+            (remainder == null || remainder.stackSize == 0) && source.mInventory[359] != null,
+            "native quick move missed empty slot");
+        source.getPatterns()
+            .markDirty();
+        check(source.getPatternDetails(359) != null, "validated recipe was not advertised");
+        check(item.decodes == before + 1, "inserted candidate was decoded again instead of promoted");
+        check(source.getPatternDetails(0) == retained, "insertion discarded unrelated advertised pattern identity");
+        check(!source.isItemValidForSlot(358, next), "newly inserted pattern missing from duplicate check");
+        source.getPatterns()
+            .setInventorySlotContents(359, null);
+        check(source.isItemValidForSlot(358, next), "removed pattern retained duplicate match");
+
+        source.setMultiplierBig(359, HUGE);
+        before = item.decodes;
+        check(source.isItemValidForSlot(359, duplicate), "different multiplier matched unscaled recipe");
+        check(item.decodes == before + 1, "candidate switch did not decode exactly once");
+        source.setMultiplierBig(359, BigInteger.ONE);
+        check(!source.isItemValidForSlot(359, duplicate), "multiplier reset retained stale matches");
+        source.scaleMultipliers(false, true);
+        check(!source.isItemValidForSlot(359, duplicate), "bulk multiplier reset changed duplicates");
+        check(item.decodes == before + 1, "multiplier edits reparsed stored recipes");
+        source.mInventory[source.catalystSlotStart(359)] = new ItemStack(Items.gold_ingot);
+        source.onContentsChanged(source.catalystSlotStart(359));
+        check(source.isItemValidForSlot(359, duplicate), "catalyst change retained stale validity");
+        source.mInventory[source.catalystSlotStart(359)] = null;
+        source.onContentsChanged(source.catalystSlotStart(359));
+        check(!source.isItemValidForSlot(359, duplicate), "catalyst removal bypassed duplicate rejection");
+
+        duplicate.setTagCompound(
+            (NBTTagCompound) largePattern(400).getTagCompound()
+                .copy());
+        check(source.isItemValidForSlot(359, duplicate), "in-place candidate edit reused old recipe");
+        source.mInventory[20].setTagCompound(
+            (NBTTagCompound) duplicate.getTagCompound()
+                .copy());
+        source.getPatterns()
+            .markDirty();
+        check(!source.isItemValidForSlot(359, duplicate), "in-place stored edit retained old recipe");
+        check(
+            source.getPatternDetails(0) != null && item.decodes == before + 2,
+            "in-place edit reparsed unrelated slots");
+
+        ItemStack broken = item.wrap(largePattern(500));
+        broken.getTagCompound()
+            .setBoolean("verificationBroken", true);
+        NBTTagCompound original = (NBTTagCompound) broken.getTagCompound()
+            .copy();
+        before = item.decodes;
+        for (int slot = 0; slot < 360; slot++)
+            check(!source.isItemValidForSlot(slot, broken), "broken recipe accepted");
+        check(item.decodes == before + 1 && original.equals(broken.getTagCompound()), "broken probe cache was mutated");
+        source.getPatterns()
+            .setInventorySlotContents(359, broken);
+        for (int attempt = 0; attempt < 5; attempt++)
+            check(source.getPatternDetails(359) == null, "broken stored recipe accepted");
+        check(item.decodes == before + 1, "invalid stored recipe was repeatedly decoded");
+        source.refreshPatterns();
+        check(
+            source.getPatternDetails(359) == null && item.decodes == before + 2,
+            "explicit refresh missed invalid recipe");
+        check(original.equals(broken.getTagCompound()), "stored decoder mutated physical pattern");
+
+        // Reload a warmed real-item assembly: neither null results nor old recipes may survive loading another state.
+        Assembly savedSource = new Assembly();
+        savedSource.getPatterns()
+            .setInventorySlotContents(0, largePattern(700));
+        NBTTagCompound saved = new NBTTagCompound();
+        savedSource.saveNBTData(saved);
+        Assembly restored = new Assembly();
+        restored.getPatterns()
+            .setInventorySlotContents(0, largePattern(701));
+        check(restored.isItemValidForSlot(1, largePattern(700)), "reload fixture unexpectedly duplicates");
+        restored.loadNBTData(saved);
+        check(!restored.isItemValidForSlot(1, largePattern(700)), "reload retained insertion or stored decode cache");
+        check(restored.isItemValidForSlot(1, largePattern(701)), "reload retained removed recipe");
+        Apeiron.LOG.info(
+            "Pattern insertion cache verification passed: 359 occupied ultimate patterns, one candidate decode and one scan per multiplier, GUI/AE/mirror probes, incremental insertion/removal, catalysts, in-place edits, invalid recipes and reload");
+    }
+
+    private static ItemStack largePattern(int variant) {
+        IAEStack<?>[] inputs = new IAEStack<?>[32];
+        for (int index = 0; index < 31; index++) {
+            ItemStack input = new ItemStack(Items.dye, 1, index);
+            input.setTagCompound(new NBTTagCompound());
+            input.getTagCompound()
+                .setInteger("variant", variant);
+            inputs[index] = BigAEStackValues
+                .copyWithSize(AEItemStack.create(input), HUGE.add(BigInteger.valueOf(index)));
+        }
+        inputs[31] = BigAEStackValues.copyWithSize(AEFluidStack.create(new FluidStack(FluidRegistry.WATER, 1)), HUGE);
+        ItemStack output = new ItemStack(Items.emerald);
+        output.setTagCompound(new NBTTagCompound());
+        output.getTagCompound()
+            .setInteger("variant", variant);
+        return processingPattern(inputs, new IAEStack<?>[] { AEItemStack.create(output) });
     }
 
     private static ItemStack processingPattern(IAEStack<?>[] inputs, IAEStack<?>[] outputs) {

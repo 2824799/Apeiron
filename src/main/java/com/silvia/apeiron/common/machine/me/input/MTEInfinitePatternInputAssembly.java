@@ -5,6 +5,7 @@ package com.silvia.apeiron.common.machine.me.input;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -37,7 +38,7 @@ import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.api.machine.me.input.BigDualInputHatch;
 import com.silvia.apeiron.client.gui.machine.me.input.InfinitePatternInputGui;
 import com.silvia.apeiron.common.machine.me.input.pattern.MultipliedPatternDetails;
-import com.silvia.apeiron.common.machine.me.input.pattern.PatternRecipeComparison;
+import com.silvia.apeiron.common.machine.me.input.pattern.PatternInsertionCache;
 import com.silvia.apeiron.common.machine.me.input.storage.BigPatternBuffer;
 import com.silvia.apeiron.common.machine.registration.ApeironMachines;
 import com.silvia.apeiron.math.AdaptiveInteger;
@@ -101,8 +102,12 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     private static final int INVENTORY_SIZE = PATTERN_CATALYST_START + PATTERN_COUNT * CATALYST_SLOTS;
     private static final String STATE_KEY = "ApeironPatternInput";
     private final BigInteger[] multipliers = new BigInteger[PATTERN_COUNT];
+    private final ICraftingPatternDetails[] baseDetails = new ICraftingPatternDetails[PATTERN_COUNT];
+    private final ItemStack[] decodedStacks = new ItemStack[PATTERN_COUNT];
+    private final boolean[] decodedPatterns = new boolean[PATTERN_COUNT];
     private final ICraftingPatternDetails[] details = new ICraftingPatternDetails[PATTERN_COUNT];
     private final Map<ICraftingPatternDetails, Integer> detailSlots = new HashMap<>();
+    private final PatternInsertionCache insertionCache = new PatternInsertionCache();
     private final List<BigPatternBuffer> buffers = new ArrayList<>();
     private final Map<Object, Integer> watcherReferences = new java.util.IdentityHashMap<>();
     private final IInventory patternInventory = new PatternInventory();
@@ -271,19 +276,36 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
         if (value.signum() <= 0) throw new IllegalArgumentException("Pattern multiplier must be positive");
         if (multipliers[index].equals(value)) return;
         multipliers[index] = value;
-        refreshPatterns();
+        invalidatePatternDetails(index);
+        patternsChanged();
     }
 
     public void scaleMultipliers(boolean halve, boolean reset) {
         for (int i = 0; i < PATTERN_COUNT; i++) multipliers[i] = reset ? BigInteger.ONE
             : halve ? multipliers[i].divide(BigInteger.valueOf(2))
                 .max(BigInteger.ONE) : multipliers[i].shiftLeft(1);
-        refreshPatterns();
+        Arrays.fill(details, null);
+        detailSlots.clear();
+        patternsChanged();
     }
 
     public void refreshPatterns() {
+        Arrays.fill(baseDetails, null);
+        Arrays.fill(decodedStacks, null);
+        Arrays.fill(decodedPatterns, false);
         Arrays.fill(details, null);
         detailSlots.clear();
+        insertionCache.clear();
+        patternsChanged();
+    }
+
+    private void invalidatePatternDetails(int slot) {
+        if (details[slot] != null) detailSlots.remove(details[slot]);
+        details[slot] = null;
+    }
+
+    private void patternsChanged() {
+        insertionCache.invalidateMatches();
         patternDirty = true;
         markDirty();
         notifyWatchers();
@@ -320,8 +342,13 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
 
     @Override
     public void onContentsChanged(int slot) {
-        if (slot < PATTERN_COUNT) refreshPatterns();
-        else {
+        if (slot >= 0 && slot < PATTERN_COUNT) {
+            invalidatePatternDetails(slot);
+            baseDetails[slot] = null;
+            decodedStacks[slot] = null;
+            decodedPatterns[slot] = false;
+            patternsChanged();
+        } else {
             updateManualSelectors();
             markDirty();
             notifyWatchers();
@@ -344,10 +371,13 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     public ICraftingPatternDetails getPatternDetails(int index) {
         checkPatternSlot(index);
         if (details[index] != null) return details[index];
-        ItemStack pattern = mInventory[index];
-        if (pattern == null || !(pattern.getItem() instanceof ICraftingPatternItem)) return null;
-        World world = getBaseMetaTileEntity() == null ? null : getBaseMetaTileEntity().getWorld();
-        ICraftingPatternDetails base = ((ICraftingPatternItem) pattern.getItem()).getPatternForItem(pattern, world);
+        if (!decodedPatterns[index]) {
+            World world = getBaseMetaTileEntity() == null ? null : getBaseMetaTileEntity().getWorld();
+            decodedStacks[index] = mInventory[index] == null ? null : mInventory[index].copy();
+            baseDetails[index] = insertionCache.decodeStored(mInventory[index], world);
+            decodedPatterns[index] = true;
+        }
+        ICraftingPatternDetails base = baseDetails[index];
         if (base == null) return null;
         details[index] = multipliers[index].equals(BigInteger.ONE) ? base
             : new MultipliedPatternDetails(base, multipliers[index]);
@@ -733,25 +763,20 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     @Override
     public void setCustomName(String name) {
         customName = name == null ? "" : name;
-        refreshPatterns();
+        patternsChanged();
     }
 
     @Override
     public boolean isItemValidForSlot(int slot, ItemStack stack) {
         if (stack == null || slot < 0 || slot >= INVENTORY_SIZE) return false;
         if (slot >= PATTERN_COUNT) return true;
-        if (!(stack.getItem() instanceof ICraftingPatternItem item)) return false;
+        if (!(stack.getItem() instanceof ICraftingPatternItem)) return false;
         World world = getBaseMetaTileEntity() == null ? null : getBaseMetaTileEntity().getWorld();
-        // Some decoders mark a broken item in NBT. Validation must not mutate the player's stack.
-        ICraftingPatternDetails candidate = item.getPatternForItem(stack.copy(), world);
-        if (candidate == null) return false;
-        if (!multipliers[slot].equals(BigInteger.ONE))
-            candidate = new MultipliedPatternDetails(candidate, multipliers[slot]);
-        for (int other = 0; other < PATTERN_COUNT; other++) {
-            if (other == slot || mInventory[other] == null) continue;
-            if (PatternRecipeComparison.sameRecipe(candidate, getPatternDetails(other))
-                && sameManualSelectors(slot, other)) return false;
-        }
+        BitSet matches = insertionCache
+            .matchingSlots(stack, world, multipliers[slot], PATTERN_COUNT, this::getPatternDetails);
+        if (matches == null) return false;
+        for (int other = matches.nextSetBit(0); other >= 0; other = matches.nextSetBit(other + 1))
+            if (other != slot && sameManualSelectors(slot, other)) return false;
         return true;
     }
 
@@ -1076,7 +1101,15 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
 
         @Override
         public void markDirty() {
-            refreshPatterns();
+            // Most callers already notified each slot; also handle an inventory user editing an ItemStack in place.
+            for (int slot = 0; slot < PATTERN_COUNT; slot++)
+                if (decodedPatterns[slot] && !ItemStack.areItemStacksEqual(decodedStacks[slot], mInventory[slot])) {
+                    invalidatePatternDetails(slot);
+                    baseDetails[slot] = null;
+                    decodedStacks[slot] = null;
+                    decodedPatterns[slot] = false;
+                }
+            patternsChanged();
         }
 
         @Override
