@@ -188,6 +188,7 @@
 | `gregtech.spaceelevator.SpaceElevatorOutputBigMixin` | 公共 | Inject:1 |
 | `gregtech.energy.ItemProcessingDispatchMixin` | 公共 | Redirect:1 |
 | `gregtech.energy.GodforgeRecipePredictionMixin` | 公共 | Inject:1 |
+| `gregtech.energy.LegacyGodforgeRecipePredictionMixin` | 公共 | ModifyExpressionValue:1 |
 | `gregtech.input.NativeInputWatcherMixin` | 公共 | Inject:2 |
 | `gregtech.output.ModernMEOutputHatchMixin` | 公共 |  |
 | `gregtech.output.NativeMEOutputCapacityMixin` | 公共 | Inject:2 |

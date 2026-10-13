@@ -85,7 +85,8 @@ public final class SpaceElevatorWailaSnapshot {
     }
 
     private static BigInteger nativePower(TileEntityModuleBase module) {
-        return BigInteger.valueOf(module.getEUtForDamageCalc())
+        // The native getter returns lEUt, but older GT versions only expose the shared long field.
+        return BigInteger.valueOf(module.lEUt)
             .negate()
             .max(BigInteger.ZERO)
             .multiply(BigInteger.valueOf(module.eAmpereFlow))

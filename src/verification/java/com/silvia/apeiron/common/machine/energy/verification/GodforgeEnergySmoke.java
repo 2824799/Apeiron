@@ -265,6 +265,27 @@ public final class GodforgeEnergySmoke {
                 && main.getRecipeMilestonePercentage() > 1,
             "big milestones lost main controller progress");
 
+        MTEBaseModule unfunded = module(kind, owner, upgrades);
+        MTEInfinitePatternInputAssembly unspent = attach(unfunded, owner, ultimate);
+        addItem(unspent, BigInteger.ONE);
+        state(unfunded).setParallelSettingBig(BigInteger.ONE);
+        state(unfunded).setVoltageSetting(128);
+        state(unfunded).setTargetDuration(1);
+        BigInteger tooLittle = perRecipe.subtract(BigInteger.ONE);
+        WirelessNetworkManager.setUserEU(owner, tooLittle);
+        check(
+            !attempt(unfunded, unspent).wasSuccessful() && !state(unfunded).isRunning()
+                && unspent.getBuffers()
+                    .get(0)
+                    .getItemAmountBig()
+                    .equals(BigInteger.ONE)
+                && WirelessNetworkManager.getUserEU(owner)
+                    .equals(tooLittle)
+                && output(unfunded).getProvider()
+                    .getCachedAmountBig()
+                    .signum() == 0,
+            "deferred estimate bypassed actual funds or spent rejected inputs");
+
         if (kind != 0 || ultimate) return; // Molten/plasma and ultimate hatches allow unlimited tier skips.
         MTEBaseModule low = module(kind, owner, upgrades);
         MTEInfinitePatternInputAssembly rejected = attach(low, owner, ultimate);

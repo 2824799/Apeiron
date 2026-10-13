@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Slice;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.api.machine.parallel.BigGodforgeExoticModule;
@@ -32,6 +33,10 @@ public abstract class GodforgeExoticRecipeMixin extends ProcessingLogic
 
     @Redirect(
         method = "validateRecipe",
+        slice = @Slice(
+            from = @At(
+                value = "FIELD",
+                target = "Lgregtech/api/util/GTRecipe;mFluidInputs:[Lnet/minecraftforge/fluids/FluidStack;")),
         at = @At(value = "FIELD", target = "Lnet/minecraftforge/fluids/FluidStack;amount:I", ordinal = 0),
         require = 1)
     private int apeiron$availableInput(FluidStack input, GTRecipe recipe) {

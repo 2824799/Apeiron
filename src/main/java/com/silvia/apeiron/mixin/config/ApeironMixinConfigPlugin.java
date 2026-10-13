@@ -38,6 +38,14 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
         if (feature == com.silvia.apeiron.config.MixinFeature.MESSTECH)
             return com.silvia.apeiron.compat.MessTechContracts.supports(name, targetClassName);
         switch (name) {
+            case "LegacyGodforgeRecipePredictionMixin":
+                return !DependencyCapabilities
+                    .hasClass("tectech.thing.metaTileEntity.multi.godforge.MTEBaseModule$GorgeModuleProcessingLogic")
+                    && DependencyCapabilities.invokes(
+                        targetClassName,
+                        "validateRecipe",
+                        "gregtech/common/misc/WirelessNetworkManager",
+                        "getUserEU");
             case "SolarFactoryOutputAccessor":
                 return DependencyCapabilities.hasMethod(targetClassName, "calculateNewOutput", null);
             case "SolarFactoryProcessingMixin":

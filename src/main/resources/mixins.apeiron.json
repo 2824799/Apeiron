@@ -227,6 +227,7 @@
     "gregtech.spaceelevator.SpaceElevatorOutputBigMixin",
     "gregtech.energy.ItemProcessingDispatchMixin",
     "gregtech.energy.GodforgeRecipePredictionMixin",
+    "gregtech.energy.LegacyGodforgeRecipePredictionMixin",
     "gregtech.input.NativeInputWatcherMixin",
     "gregtech.output.ModernMEOutputHatchMixin",
     "gregtech.output.NativeMEOutputCapacityMixin",
