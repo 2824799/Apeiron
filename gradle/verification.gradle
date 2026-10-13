@@ -45,11 +45,16 @@ tasks.named('compileProductionVerificationJava', JavaCompile) {
 }
 
 // Validate the final distribution artifact, not just the development classes used by runtime matrices.
+// Some inspected mod classes use Java 17 bytecode, beyond the game's bundled ASM reader.
+configurations.create('releaseMappingInspector')
+dependencies {
+    releaseMappingInspector 'org.ow2.asm:asm-tree:9.8'
+}
 def releaseMappings = tasks.register('releaseMappingCheck', JavaExec) {
     group = 'verification'
     description = 'Verify Minecraft injection anchor mappings in the reobfuscated distribution jar.'
     dependsOn tasks.named('verificationClasses'), tasks.named('reobfJar'), tasks.named('generateForgeSrgMappings')
-    classpath = sourceSets.verification.runtimeClasspath
+    classpath = configurations.releaseMappingInspector + sourceSets.verification.runtimeClasspath
     mainClass = 'com.silvia.apeiron.verification.ReleaseMappingCheck'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
     def projectDirectory = layout.projectDirectory.asFile

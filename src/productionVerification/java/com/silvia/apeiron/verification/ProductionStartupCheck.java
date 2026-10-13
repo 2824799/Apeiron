@@ -43,6 +43,7 @@ public final class ProductionStartupCheck {
         if (!Boolean.FALSE.equals(Launch.blackboard.get("fml.deobfuscatedEnvironment")))
             throw new IllegalStateException("Release verification requires an installed, obfuscated game environment");
         ClassLoader loader = getClass().getClassLoader();
+        boolean checkInterfaceRows = false;
         Class<?> pluginClass = Class.forName("com.silvia.apeiron.mixin.config.ApeironMixinConfigPlugin", true, loader);
         Object plugin = pluginClass.getConstructor()
             .newInstance();
@@ -79,14 +80,57 @@ public final class ProductionStartupCheck {
                                 .invoke(plugin, name, mixin)) continue;
                             Class.forName(name, false, loader)
                                 .getDeclaredMethods();
+                            if (mixin.endsWith(".GuiInterfaceTerminalRowsMixin")) checkInterfaceRows = true;
                             checked++;
                         }
                     }
                 }
             }
+        if (checkInterfaceRows) verifyInterfaceTerminalButton(loader);
         FMLCommonHandler.instance()
             .bus()
             .register(this);
+    }
+
+    /** Invoke the shipped GUI's SRG button handler; development-only launches use a different method name. */
+    private static void verifyInterfaceTerminalButton(ClassLoader loader) throws Exception {
+        Class<?> mode = Class.forName("com.silvia.apeiron.client.gui.InterfaceTerminalFilterMode", true, loader);
+        Object original = mode.getMethod("current")
+            .invoke(null);
+        Object all = java.lang.Enum.valueOf(mode.asSubclass(java.lang.Enum.class), "ALL");
+        try {
+            mode.getMethod("select")
+                .invoke(all);
+            Class<?> guiClass = Class.forName("appeng.client.gui.implementations.GuiInterfaceTerminal", true, loader);
+            Object container = Class.forName("appeng.container.ContainerNull", true, loader)
+                .getConstructor()
+                .newInstance();
+            Object gui = guiClass.getConstructor(Class.forName("net.minecraft.inventory.Container", false, loader))
+                .newInstance(container);
+            java.lang.reflect.Field field = guiClass.getDeclaredField("guiButtonHideFull");
+            field.setAccessible(true);
+            Object button = field.get(gui);
+            if (!button.getClass()
+                .getName()
+                .equals("com.silvia.apeiron.client.gui.InterfaceTerminalFilterButton"))
+                throw new IllegalStateException("Production interface terminal did not install the three-state filter");
+            java.lang.reflect.Method action = guiClass
+                .getDeclaredMethod("func_146284_a", Class.forName("net.minecraft.client.gui.GuiButton", false, loader));
+            action.setAccessible(true);
+            for (String expected : new String[] { "FREE_INTERFACES", "FREE_ROWS", "ALL" }) {
+                action.invoke(gui, button);
+                if (!((Enum<?>) mode.getMethod("current")
+                    .invoke(null)).name()
+                        .equals(expected))
+                    throw new IllegalStateException(
+                        "Production interface terminal filter did not cycle to " + expected);
+            }
+            System.out.println(
+                "Production interface terminal filter verification passed: native SRG handler and all three modes");
+        } finally {
+            mode.getMethod("select")
+                .invoke(original);
+        }
     }
 
     @SubscribeEvent

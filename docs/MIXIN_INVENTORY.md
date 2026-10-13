@@ -209,6 +209,9 @@
 | `ae.stack.AEBaseCellContentsMixin` | 客户端 | Redirect:2 |
 | `ae.replenisher.GuiSuperMEReplenisherBigMixin` | 客户端 | Overwrite:1 |
 | `ae.terminal.core.GuiMEMonitorableMixin` | 客户端 | Inject:1 |
+| `ae.terminal.core.GuiInterfaceTerminalRowsMixin` | 客户端 | Inject:2, Redirect:2, ModifyVariable:1 |
+| `ae.terminal.core.InterfaceTerminalEntryRowsMixin` | 客户端 | Inject:1, Redirect:1, ModifyVariable:1 |
+| `ae.terminal.core.InterfaceTerminalSectionRowsMixin` | 客户端 | Redirect:1 |
 | `ae.terminal.core.GuiAmountMixin` | 客户端 | Inject:5 |
 | `ae.terminal.core.GuiCraftAmountMixin` | 客户端 | ModifyArg:1 |
 | `ae.terminal.level.GuiLevelEmitterBigMixin` | 客户端 | Redirect:1 |

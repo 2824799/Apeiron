@@ -50,6 +50,9 @@ public final class CompatibilitySmoke {
             com.silvia.apeiron.common.machine.tst.verification.TstGeneratedEnergySmoke.verify();
         }
         com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
+        if (cpw.mods.fml.common.FMLCommonHandler.instance()
+            .getSide()
+            .isClient()) com.silvia.apeiron.ae.smoke.InterfaceTerminalRowsSmoke.verify();
         com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.PcbFactoryEnergySmoke.verify();
