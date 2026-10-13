@@ -59,6 +59,28 @@ public final class WirelessPowerPanelSmoke {
 
         private Panel(MTEMultiBlockBase machine, boolean client) throws ReflectiveOperationException {
             sync = new PanelSyncManager(new ModularSyncManager(client), true);
+            if (machine.getClass()
+                .getName()
+                .startsWith("com.science.gtnl.")) {
+                Class<?> guiType = Class.forName("com.science.gtnl.common.gui.modularui.FOGModuleGui");
+                boolean extractor = machine.getClass()
+                    .getSimpleName()
+                    .equals("FOGExtractorModule");
+                Object gui = extractor ? Class.forName("com.science.gtnl.common.gui.modularui.FOGExtractorModuleGui")
+                    .getConstructor(machine.getClass())
+                    .newInstance(machine)
+                    : guiType.getConstructor(tectech.thing.metaTileEntity.multi.godforge.MTEBaseModule.class)
+                        .newInstance(machine);
+                java.lang.reflect.Field field = gregtech.common.gui.modularui.multiblock.godforge.MTEBaseModuleGui.class
+                    .getDeclaredField("hypervisor");
+                field.setAccessible(true);
+                SyncHypervisor hypervisor = (SyncHypervisor) field.get(gui);
+                hypervisor.setModularPanel(Panels.MAIN, new ModularPanel("testGtnlParent"));
+                Method open = guiType.getDeclaredMethod("createVoltageConfigPanel", PanelSyncManager.class);
+                open.setAccessible(true);
+                panel = (ModularPanel) open.invoke(gui, sync);
+                return;
+            }
             if (machine instanceof MTESmeltingModule) {
                 SyncHypervisor hypervisor = new SyncHypervisor(Modules.SMELTING, Panels.MAIN_SMELTING);
                 hypervisor.setModule(Modules.SMELTING, (MTESmeltingModule) machine);
@@ -91,105 +113,118 @@ public final class WirelessPowerPanelSmoke {
 
     public static void verify() {
         try {
-            for (boolean godforge : new boolean[] { false, true })
-                for (boolean ultimate : new boolean[] { false, true }) {
-                    MTEMultiBlockBase server = godforge ? module() : controller(),
-                        client = godforge ? module() : controller();
-                    ApeironMachineTile tile = new ApeironMachineTile();
-                    tile.setInitialValuesAsNBT(
-                        null,
-                        (short) ApeironConfig.getMachineId(
-                            ultimate ? ApeironMachines.ULTIMATE_ENERGY_HATCH_OFFSET
-                                : ApeironMachines.INFINITE_ENERGY_HATCH_OFFSET));
-                    server.mEnergyHatches.add((MTEInfiniteEnergyHatch) tile.getMetaTileEntity());
-                    WirelessRecipeState state = ((BigWirelessController) server).getWirelessRecipeState();
-                    Panel sent = new Panel(server, false), received = new Panel(client, true);
-                    check(client.mEnergyHatches.isEmpty(), "client unexpectedly has server structure data");
-                    for (String name : new String[] { "apeiron_parallel", "apeiron_voltage", "apeiron_duration" }) {
-                        sent.field(name);
-                        received.field(name);
-                        copy(sent.value(name), received.value(name));
-                    }
-                    copy(
-                        sent.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class),
-                        received.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class));
-                    copy(
-                        sent.sync.findSyncHandler("apeiron_ultimateEnergy", BooleanSyncValue.class),
-                        received.sync.findSyncHandler("apeiron_ultimateEnergy", BooleanSyncValue.class));
-                    updateListeners(received.panel);
-                    check(
-                        visible(received.panel, received.field("apeiron_parallel"), true),
-                        "client parallel editor is hidden");
-                    check(
-                        visible(
-                            received.panel,
-                            received.field(ultimate ? "apeiron_duration" : "apeiron_voltage"),
-                            true),
-                        "client voltage/time editor is hidden");
-                    check(
-                        !visible(
-                            received.panel,
-                            received.field(ultimate ? "apeiron_voltage" : "apeiron_duration"),
-                            true),
-                        "wrong hatch editor is visible");
-                    check(
-                        ScientificInteger.nonNegative(
-                            received.value("apeiron_parallel")
-                                .getStringValue())
-                            .equals(BigInteger.valueOf(Integer.MAX_VALUE)),
-                        "default parallel cap not synchronized");
-                    submit(sent, received, "apeiron_parallel", "1e60");
-                    check(
-                        state.getParallelSettingBig()
-                            .equals(BigInteger.TEN.pow(60)),
-                        "scientific parallel input was clamped");
-                    submit(sent, received, "apeiron_parallel", "0");
-                    check(
-                        state.getLimit()
-                            .isUnlimited(),
-                        "manual zero did not enable unlimited parallel");
-                    submit(
-                        sent,
-                        received,
-                        ultimate ? "apeiron_duration" : "apeiron_voltage",
-                        ultimate ? "1" : "3.2768E4");
-                    check(
-                        ultimate ? state.getTargetDuration() == 1 : state.getVoltageSetting() == 32768,
-                        "server ignored voltage/time edit");
-                    if (ultimate) {
-                        long previousVoltage = state.getVoltageSetting();
-                        submit(sent, received, "apeiron_voltage", "6.5536e4");
-                        check(
-                            state.getVoltageSetting() == previousVoltage,
-                            "ultimate hatch accepted a stale voltage edit");
-                    }
-                    if (godforge) {
-                        check(configuredHeight(received.panel) == 148, "godforge power panel is too small");
-                    } else verifyLegacy(server, client, ultimate);
-                    server.mEnergyHatches.clear();
-                    sent.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class)
-                        .updateCacheFromSource(false);
-                    copy(
-                        sent.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class),
-                        received.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class));
-                    updateListeners(received.panel);
-                    check(
-                        !visible(received.panel, received.field("apeiron_parallel"), true),
-                        "removed hatch retained wireless editor");
-                    if (godforge)
-                        check(configuredHeight(received.panel) == 98, "native godforge panel did not restore its size");
-                    BigInteger old = state.getParallelSettingBig();
-                    sendText(sent.value("apeiron_parallel"), "99");
-                    check(
-                        state.getParallelSettingBig()
-                            .equals(old),
-                        "removed hatch accepted wireless configuration");
+            int kinds = cpw.mods.fml.common.Loader.isModLoaded("sciencenotleisure") ? 4 : 2;
+            for (int kind = 0; kind < kinds; kind++) for (boolean ultimate : new boolean[] { false, true }) {
+                boolean godforge = kind != 0;
+                MTEMultiBlockBase server = machine(kind), client = machine(kind);
+                ApeironMachineTile tile = new ApeironMachineTile();
+                tile.setInitialValuesAsNBT(
+                    null,
+                    (short) ApeironConfig.getMachineId(
+                        ultimate ? ApeironMachines.ULTIMATE_ENERGY_HATCH_OFFSET
+                            : ApeironMachines.INFINITE_ENERGY_HATCH_OFFSET));
+                server.mEnergyHatches.add((MTEInfiniteEnergyHatch) tile.getMetaTileEntity());
+                WirelessRecipeState state = ((BigWirelessController) server).getWirelessRecipeState();
+                Panel sent = new Panel(server, false), received = new Panel(client, true);
+                check(client.mEnergyHatches.isEmpty(), "client unexpectedly has server structure data");
+                for (String name : new String[] { "apeiron_parallel", "apeiron_voltage", "apeiron_duration" }) {
+                    sent.field(name);
+                    received.field(name);
+                    copy(sent.value(name), received.value(name));
                 }
+                copy(
+                    sent.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class),
+                    received.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class));
+                copy(
+                    sent.sync.findSyncHandler("apeiron_ultimateEnergy", BooleanSyncValue.class),
+                    received.sync.findSyncHandler("apeiron_ultimateEnergy", BooleanSyncValue.class));
+                updateListeners(received.panel);
+                check(
+                    visible(received.panel, received.field("apeiron_parallel"), true),
+                    "client parallel editor is hidden");
+                check(
+                    visible(received.panel, received.field(ultimate ? "apeiron_duration" : "apeiron_voltage"), true),
+                    "client voltage/time editor is hidden");
+                check(
+                    !visible(received.panel, received.field(ultimate ? "apeiron_voltage" : "apeiron_duration"), true),
+                    "wrong hatch editor is visible");
+                check(
+                    ScientificInteger.nonNegative(
+                        received.value("apeiron_parallel")
+                            .getStringValue())
+                        .equals(BigInteger.valueOf(Integer.MAX_VALUE)),
+                    "default parallel cap not synchronized");
+                submit(sent, received, "apeiron_parallel", "1e60");
+                check(
+                    state.getParallelSettingBig()
+                        .equals(BigInteger.TEN.pow(60)),
+                    "scientific parallel input was clamped");
+                submit(sent, received, "apeiron_parallel", "0");
+                check(
+                    state.getLimit()
+                        .isUnlimited(),
+                    "manual zero did not enable unlimited parallel");
+                submit(sent, received, ultimate ? "apeiron_duration" : "apeiron_voltage", ultimate ? "1" : "3.2768E4");
+                check(
+                    ultimate ? state.getTargetDuration() == 1 : state.getVoltageSetting() == 32768,
+                    "server ignored voltage/time edit");
+                if (!ultimate) {
+                    submit(sent, received, "apeiron_voltage", "9.223372036854775807E18");
+                    String maximum = received.field("apeiron_voltage")
+                        .getValidator()
+                        .apply("9.223372036854776E18");
+                    check(
+                        ScientificInteger.nonNegative(maximum)
+                            .equals(BigInteger.valueOf(Long.MAX_VALUE)),
+                        "maximum voltage validator did not normalize safely");
+                    sendText(sent.value("apeiron_voltage"), maximum);
+                    copy(sent.value("apeiron_voltage"), received.value("apeiron_voltage"));
+                    check(state.getVoltageSetting() == Long.MAX_VALUE, "maximum voltage input did not clamp safely");
+                }
+                if (ultimate) {
+                    long previousVoltage = state.getVoltageSetting();
+                    submit(sent, received, "apeiron_voltage", "6.5536e4");
+                    check(state.getVoltageSetting() == previousVoltage, "ultimate hatch accepted a stale voltage edit");
+                }
+                if (godforge) {
+                    check(configuredHeight(received.panel) == 148, "godforge power panel is too small");
+                } else verifyLegacy(server, client, ultimate);
+                server.mEnergyHatches.clear();
+                sent.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class)
+                    .updateCacheFromSource(false);
+                copy(
+                    sent.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class),
+                    received.sync.findSyncHandler("apeiron_energyInstalled", BooleanSyncValue.class));
+                updateListeners(received.panel);
+                check(
+                    !visible(received.panel, received.field("apeiron_parallel"), true),
+                    "removed hatch retained wireless editor");
+                if (godforge)
+                    check(configuredHeight(received.panel) == 98, "native godforge panel did not restore its size");
+                BigInteger old = state.getParallelSettingBig();
+                sendText(sent.value("apeiron_parallel"), "99");
+                check(
+                    state.getParallelSettingBig()
+                        .equals(old),
+                    "removed hatch accepted wireless configuration");
+            }
         } catch (ReflectiveOperationException | java.io.IOException error) {
             throw new IllegalStateException("Wireless power panel verification failed", error);
         }
         Apeiron.LOG.info(
             "Wireless power panel verification passed: client without hatch lists, both MUI versions, installed mode packets, exact parallel and voltage/time edits");
+    }
+
+    private static MTEMultiBlockBase machine(int kind) throws ReflectiveOperationException {
+        if (kind == 0) return controller();
+        if (kind == 1) return module();
+        String name = kind == 2 ? "FOGAlloyBlastSmelterModule" : "FOGExtractorModule";
+        MTEMultiBlockBase machine = (MTEMultiBlockBase) Class
+            .forName("com.science.gtnl.common.machine.multiblock." + name)
+            .getConstructor(String.class)
+            .newInstance("apeiron.verify.gtnl.power_panel");
+        machine.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        return machine;
     }
 
     /** Detached panel fixtures have not run screen layout; inspect the requested pixel height. */

@@ -14,6 +14,8 @@
 | `messtech.MessMinerMixin` | 公共 | Inject:1 |
 | `messtech.MessApiaryMixin` | 公共 | Inject:1 |
 | `gtnl.GtnlProcessingLogicBigMixin` | 公共 | Inject:3, Redirect:2 |
+| `gtnl.GtnlGodforgeRecipeMixin` | 公共 | ModifyExpressionValue:1, Redirect:1 |
+| `gtnl.GtnlGodforgeGuiMixin` | 公共 | Inject:4 |
 | `gtnl.GtnlWirelessMachineMixin` | 公共 | Inject:3 |
 | `gtnl.GtnlWirelessBatchMixin` | 公共 | Inject:2 |
 | `gtnl.GtnlWirelessStepMixin` | 公共 | Redirect:3, Inject:1 |
@@ -152,6 +154,9 @@
 | `ae.terminal.pattern.PatternHelperBigMixin` | 公共 | Inject:1 |
 | `gregtech.energy.ProcessingLogicAccessor` | 公共 | Invoker:4 |
 | `gregtech.energy.ProcessingLogicBigParallelMixin` | 公共 | Inject:3, Redirect:2 |
+| `gregtech.plasmamixer.PlasmaMixerControllerMixin` | 公共 | Inject:4 |
+| `gregtech.plasmamixer.PlasmaMixerProcessingMixin` | 公共 | Inject:1 |
+| `gregtech.plasmamixer.PlasmaMixerGuiMixin` | 公共 | Inject:2 |
 | `gregtech.energy.SolarFactoryOutputAccessor` | 公共 | Invoker:1 |
 | `gregtech.energy.SolarFactoryProcessingMixin` | 公共 | Inject:1 |
 | `gregtech.quantum.QuantumEnhancementMixin` | 公共 |  |

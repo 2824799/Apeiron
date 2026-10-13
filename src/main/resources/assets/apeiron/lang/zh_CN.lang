@@ -56,6 +56,7 @@ apeiron.machine.energy.voltage_label=运行电压
 apeiron.machine.energy.voltage_hint=输入正整数电压，如 1E10；调高电压可能导致有损超频
 apeiron.machine.energy.duration_label=完成时间（Tick）
 apeiron.machine.energy.duration_hint=最低 1 Tick，默认 128 Tick；缩短时间不增加总耗电
+apeiron.machine.plasma_mixer.duration_hint=最低 1 Tick，默认 1 Tick；调整时间不改变原配方的总耗电
 apeiron.machine.energy.parallel_status=并行上限：%s，当前并行：%s
 apeiron.machine.pattern_input.page=第 %s 页
 apeiron.machine.pattern_input.manual_transfer=左键存入／取出；右键单个或取半；Shift 取出到背包

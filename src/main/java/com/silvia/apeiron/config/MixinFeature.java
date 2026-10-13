@@ -10,6 +10,7 @@ public enum MixinFeature {
     MESSTECH("mixins.messtech", "enableEnergyIntegration"),
     BEAMLINE("mixins.gregtech", "enableBeamlineInputs"),
     QUANTUM("mixins.gregtech", "enableQuantumEnhancement"),
+    PLASMA_MIXER("mixins.gregtech", "enableTranscendentPlasmaMixerEnhancement"),
     SPACE_ELEVATOR("mixins.gregtech", "enableSpaceElevatorIntegration"),
     EYE_ENHANCEMENT("mixins.tectech", "enableEyeOfHarmonyEnhancement"),
     PROGRAMMABLE_HATCHES("mixins.programmablehatches", "enablePatternOptimization"),
@@ -42,6 +43,10 @@ public enum MixinFeature {
 
     private String playerDescription() {
         switch (this) {
+            case PLASMA_MIXER:
+                return "超维度等离子搅拌机增强：默认工作时间 1 Tick，并行默认 2,147,483,647。\n"
+                    + "控制器可设置更大的并行数，填 0 表示取消设置上限；实际批量由材料、无线电网余额和输出容量决定。\n"
+                    + "保留原配方的整批无线扣电及耗电倍率，工作时间变化不减少总耗电；大数材料和产物需使用对应输入输出设备。";
             case MESSTECH:
                 return "MessTech 加工机器适配：安装 Apeiron 能源仓后使用其并行、电压或完成时间设置，保留机器自身的配方条件、速度和耗电减免。\n"
                     + "独立线程及太空模块继续按各自的任务规则加工；未安装能源仓时保留原有行为。";
@@ -103,6 +108,7 @@ public enum MixinFeature {
         if (local.startsWith("messtech.")) return MESSTECH;
         if (local.startsWith("gregtech.lanthanides.")) return BEAMLINE;
         if (local.startsWith("gregtech.quantum.")) return QUANTUM;
+        if (local.startsWith("gregtech.plasmamixer.")) return PLASMA_MIXER;
         if (local.startsWith("gregtech.spaceelevator.")) return SPACE_ELEVATOR;
         if (local.equals("gregtech.energy.NativeMachineWailaMixin") || local.startsWith("compat.omniocular."))
             return WAILA_DISPLAY;

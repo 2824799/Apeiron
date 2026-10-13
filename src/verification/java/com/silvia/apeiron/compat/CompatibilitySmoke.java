@@ -58,6 +58,7 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.PcbFactoryEnergySmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.SolarFactoryEnergySmoke.verify();
+        com.silvia.apeiron.common.machine.energy.verification.PlasmaMixerSmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.PurificationWaterSmoke.verify();
         com.silvia.apeiron.common.machine.quantum.verification.QuantumEnhancementSmoke.verify();
         com.silvia.apeiron.common.machine.tectech.verification.EyeOfHarmonyEnhancementSmoke.verify();

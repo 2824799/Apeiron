@@ -56,6 +56,7 @@ apeiron.machine.energy.voltage_label=Running voltage
 apeiron.machine.energy.voltage_hint=Enter positive voltage, e.g. 1E10. Higher voltage may cause lossy overclocking
 apeiron.machine.energy.duration_label=Completion time (ticks)
 apeiron.machine.energy.duration_hint=Minimum 1 tick, default 128. Shorter time does not raise total energy use
+apeiron.machine.plasma_mixer.duration_hint=Minimum and default: 1 tick. Working time does not change the original recipe's total energy cost
 apeiron.machine.energy.parallel_status=Parallel cap: %s, current parallel: %s
 apeiron.machine.pattern_input.page=Page %s
 apeiron.machine.pattern_input.manual_transfer=Left click inserts or takes; right click takes one or half; Shift takes to inventory

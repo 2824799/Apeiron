@@ -61,7 +61,7 @@ public final class GodforgeEnergySmoke {
 
     private GodforgeEnergySmoke() {}
 
-    private static RecipeMap<?> map() {
+    static RecipeMap<?> map() {
         return RecipeMapBuilder.of("apeiron.verify.godforge." + maps++)
             .maxIO(1, 1, 0, 1)
             .build();
@@ -122,6 +122,7 @@ public final class GodforgeEnergySmoke {
             for (boolean ultimate : new boolean[] { false, true })
                 for (boolean magmatter : new boolean[] { false, true }) verifyExotic(ultimate, magmatter);
             verifyConfiguredExotic();
+            if (cpw.mods.fml.common.Loader.isModLoaded("sciencenotleisure")) GtnlGodforgeEnergySmoke.verify();
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Godforge energy verification failed", error);
         } finally {
@@ -148,8 +149,7 @@ public final class GodforgeEnergySmoke {
         return module;
     }
 
-    private static void configure(MTEBaseModule module, UUID owner, boolean upgrades)
-        throws ReflectiveOperationException {
+    static void configure(MTEBaseModule module, UUID owner, boolean upgrades) throws ReflectiveOperationException {
         module.setBaseMetaTileEntity(new BaseMetaTileEntity());
         field(MTEBaseModule.class, "userUUID").set(module, owner);
         module.setCalculatedMaxParallel(64);
@@ -164,7 +164,7 @@ public final class GodforgeEnergySmoke {
         module.mWrench = module.mScrewdriver = module.mSoftMallet = module.mHardHammer = module.mSolderingTool = module.mCrowbar = true;
     }
 
-    private static MTEInfinitePatternInputAssembly attach(MTEBaseModule module, UUID owner, Boolean ultimate) {
+    static MTEInfinitePatternInputAssembly attach(MTEBaseModule module, UUID owner, Boolean ultimate) {
         if (ultimate != null) check(
             module.addClassicToMachineList(
                 tile(
@@ -644,7 +644,7 @@ public final class GodforgeEnergySmoke {
         }
     }
 
-    private static void finish(MTEBaseModule module, UUID owner) {
+    static void finish(MTEBaseModule module, UUID owner) {
         WirelessRecipeState state = state(module);
         for (int tick = 0; tick < state.getDuration(); tick++)
             check(module.onRunningTick(null), "module wireless debit failed");
@@ -660,16 +660,16 @@ public final class GodforgeEnergySmoke {
             "module retained completed outputs");
     }
 
-    private static MTEInfiniteMEOutputAssembly output(MTEBaseModule module) {
+    static MTEInfiniteMEOutputAssembly output(MTEBaseModule module) {
         return (MTEInfiniteMEOutputAssembly) module.getOutputBusses()
             .get(0);
     }
 
-    private static WirelessRecipeState state(MTEBaseModule module) {
+    static WirelessRecipeState state(MTEBaseModule module) {
         return ((BigWirelessController) module).getWirelessRecipeState();
     }
 
-    private static void addItem(MTEInfinitePatternInputAssembly input, BigInteger count) {
+    static void addItem(MTEInfinitePatternInputAssembly input, BigInteger count) {
         check(
             input.addToBufferBig(
                 0,
@@ -677,7 +677,7 @@ public final class GodforgeEnergySmoke {
             "module input setup");
     }
 
-    private static CheckRecipeResult attempt(MTEBaseModule module, MTEInfinitePatternInputAssembly input) {
+    static CheckRecipeResult attempt(MTEBaseModule module, MTEInfinitePatternInputAssembly input) {
         input.beginRecipeProcessing();
         try {
             return module.checkProcessing();
@@ -686,7 +686,7 @@ public final class GodforgeEnergySmoke {
         }
     }
 
-    private static void process(MTEBaseModule module, MTEInfinitePatternInputAssembly input) {
+    static void process(MTEBaseModule module, MTEInfinitePatternInputAssembly input) {
         CheckRecipeResult result = attempt(module, input);
         check(
             result.wasSuccessful(),

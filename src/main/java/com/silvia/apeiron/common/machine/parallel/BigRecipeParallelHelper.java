@@ -1,7 +1,6 @@
 package com.silvia.apeiron.common.machine.parallel;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
@@ -11,15 +10,11 @@ import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.api.machine.parallel.ParallelLimit;
 import com.silvia.apeiron.common.machine.energy.MTEInfiniteEnergyHatch;
 import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
-import com.silvia.apeiron.math.RecipeOutputCounts;
 
 import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
-import appeng.util.item.AEFluidStack;
-import appeng.util.item.AEItemStack;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
-import gregtech.api.objects.XSTR;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTRecipe;
@@ -176,30 +171,7 @@ public final class BigRecipeParallelHelper extends ParallelHelper
 
     private List<IAEStack<?>> unmodifiedOutputs(BigInteger count, boolean capacity) {
         if (outputCalculator != null) return outputCalculator.apply(count);
-        List<IAEStack<?>> values = new ArrayList<>();
-        for (int i = 0; i < Math.min(recipe.mOutputs.length, controller.getItemOutputLimit()); i++)
-            if (recipe.mOutputs[i] != null && outputChance(recipe.getOutputChance(i)) > 0) values.add(
-                BigAEStackValues.copyWithSize(
-                    AEItemStack.create(recipe.mOutputs[i]),
-                    outputCount(count, outputChance(recipe.getOutputChance(i)), capacity)
-                        .multiply(BigInteger.valueOf(recipe.mOutputs[i].stackSize))));
-        for (int i = 0; i < Math.min(recipe.mFluidOutputs.length, controller.getFluidOutputLimit()); i++)
-            if (recipe.mFluidOutputs[i] != null && outputChance(recipe.getFluidOutputChance(i)) > 0) values.add(
-                BigAEStackValues.copyWithSize(
-                    AEFluidStack.create(recipe.mFluidOutputs[i]),
-                    outputCount(count, outputChance(recipe.getFluidOutputChance(i)), capacity)
-                        .multiply(BigInteger.valueOf(recipe.mFluidOutputs[i].amount))));
-        return values;
-    }
-
-    private int outputChance(int chance) {
-        // Use the same multiplication and int conversion as native ParallelHelper, including >100% output.
-        return (int) (chance * chanceMultiplier);
-    }
-
-    private static BigInteger outputCount(BigInteger count, int chance, boolean capacity) {
-        return capacity ? RecipeOutputCounts.maximum(count, chance)
-            : RecipeOutputCounts.roll(count, chance, XSTR.XSTR_INSTANCE);
+        return BigRecipeOutputs.calculate(controller, recipe, count, chanceMultiplier, capacity);
     }
 
     private boolean outputsFit(BigInteger count) {
