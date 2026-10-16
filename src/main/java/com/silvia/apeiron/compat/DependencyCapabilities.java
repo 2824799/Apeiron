@@ -37,6 +37,16 @@ public final class DependencyCapabilities {
         return inspect(name) != null;
     }
 
+    /** Inspect only declarations; inherited state can require a different Mixin binding. */
+    public static boolean hasDeclaredField(String owner, String name, String descriptor) {
+        ClassNode node = inspect(owner);
+        if (node == null) return false;
+        for (org.spongepowered.asm.lib.tree.FieldNode field : node.fields) {
+            if (field.name.equals(name) && (descriptor == null || field.desc.equals(descriptor))) return true;
+        }
+        return false;
+    }
+
     public static boolean hasMethod(String owner, String name, String descriptor) {
         ClassNode node = inspect(owner);
         if (node == null) return false;

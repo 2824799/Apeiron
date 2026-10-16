@@ -14,6 +14,8 @@
 | `messtech.MessMinerMixin` | 公共 | Inject:1 |
 | `messtech.MessApiaryMixin` | 公共 | Inject:1 |
 | `gtnl.GtnlProcessingLogicBigMixin` | 公共 | Inject:3, Redirect:2 |
+| `gtnl.TstParallelSelectionMixin` | 公共 | Inject:1 |
+| `gtnl.TstParallelCompatibilityMixin` | 公共 | Inject:2 |
 | `gtnl.GtnlGodforgeRecipeMixin` | 公共 | ModifyExpressionValue:1, Redirect:1 |
 | `gtnl.GtnlGodforgeGuiMixin` | 公共 | Inject:4 |
 | `gtnl.GtnlWirelessMachineMixin` | 公共 | Inject:3 |
@@ -58,6 +60,7 @@
 | `tst.output.ItemStackLongBigMixin` | 公共 |  |
 | `tst.output.FluidStackLongBigMixin` | 公共 |  |
 | `tst.output.ParallelOutputBigMixin` | 公共 | Inject:1 |
+| `tst.output.ModernParallelOutputBigMixin` | 公共 | Inject:1 |
 | `tst.output.ItemStacksGiverBigMixin` | 公共 | Inject:3 |
 | `tst.output.MultiMachineOutputBigMixin` | 公共 | Inject:14 |
 | `tst.output.LegacyTstOutputQueueMixin` | 公共 | Inject:1 |

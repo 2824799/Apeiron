@@ -67,6 +67,9 @@ public final class TstOutputSmoke {
         }
         try {
             verifyHelper();
+            verifyHelperCallbacks();
+            if (cpw.mods.fml.common.Loader.isModLoaded("sciencenotleisure"))
+                com.silvia.apeiron.common.integration.gtnl.parallel.GtnlTstParallelSmoke.verify();
             verifyController();
             verifySeparateOutputs();
             verifyWirelessAccumulator();
@@ -80,6 +83,17 @@ public final class TstOutputSmoke {
     }
 
     private static void verifyHelper() throws ReflectiveOperationException {
+        final String target = GTCM_ParallelHelper.class.getName();
+        final var plugin = new com.silvia.apeiron.mixin.config.ApeironMixinConfigPlugin();
+        final String prefix = "com.silvia.apeiron.mixin.tst.output.";
+        final boolean declared = com.silvia.apeiron.compat.DependencyCapabilities
+            .hasDeclaredField(target, "recipe", "Lgregtech/api/util/GTRecipe;");
+        check(
+            plugin.shouldApplyMixin(target, prefix + "ParallelOutputBigMixin") == declared,
+            "legacy helper selection");
+        check(
+            plugin.shouldApplyMixin(target, prefix + "ModernParallelOutputBigMixin") != declared,
+            "inherited helper selection");
         final GTCM_ParallelHelper helper = new GTCM_ParallelHelper();
         final ItemStack[] items = { new ItemStack(Items.diamond, Integer.MAX_VALUE),
             new ItemStack(Items.diamond, Integer.MAX_VALUE), new ItemStack(Items.diamond, Integer.MAX_VALUE) };
@@ -154,6 +168,82 @@ public final class TstOutputSmoke {
                         .equals(expected),
                 "output transfer changed source list");
         }
+    }
+
+    private static void verifyHelperCallbacks() throws ReflectiveOperationException {
+        final GTCM_ParallelHelper helper = new GTCM_ParallelHelper();
+        final int parallel = Integer.MAX_VALUE;
+        field(helper, "currentParallel").setInt(helper, parallel);
+        field(helper, "built").setBoolean(helper, true);
+        field(helper, "calculateOutputsAsLong").setBoolean(helper, true);
+        final int[] calls = { 0, 0 };
+        field(helper, "customItemOutputCalculation")
+            .set(helper, (java.util.function.Function<Integer, ItemStack[]>) n -> {
+                check(n == parallel, "item callback parallel");
+                calls[0]++;
+                return new ItemStack[] { new ItemStack(Items.diamond, 17), null, new ItemStack(Items.diamond, 19) };
+            });
+        field(helper, "customFluidOutputCalculation")
+            .set(helper, (java.util.function.Function<Integer, FluidStack[]>) n -> {
+                check(n == parallel, "fluid callback parallel");
+                calls[1]++;
+                return new FluidStack[] { new FluidStack(FluidRegistry.WATER, 23), null };
+            });
+        final Method calculate = method(GTCM_ParallelHelper.class, "calculateLongOutputs");
+        calculate.invoke(helper);
+        calculate.invoke(helper);
+        check(calls[0] == 2 && calls[1] == 2, "native output callbacks were bypassed");
+        check(
+            helper.getLongItemOutputs()
+                .size() == 1 && BigTstOutputLists
+                    .amount(
+                        helper.getLongItemOutputs()
+                            .get(0))
+                    .equals(BigInteger.valueOf(36)),
+            "custom item output was multiplied again or accumulated across calculations");
+        check(
+            helper.getLongFluidOutputs()
+                .size() == 1 && BigTstOutputLists
+                    .amount(
+                        helper.getLongFluidOutputs()
+                            .get(0))
+                    .equals(BigInteger.valueOf(23)),
+            "custom fluid output was multiplied again or accumulated across calculations");
+        field(helper, "customItemOutputCalculation").set(helper, null);
+        field(helper, "customFluidOutputCalculation").set(helper, null);
+        field(helper, "currentParallel").setInt(helper, 2_000_000);
+        final GTRecipe chanceRecipe = new GTRecipe(
+            false,
+            new ItemStack[0],
+            new ItemStack[] { new ItemStack(Items.diamond, 3) },
+            null,
+            null,
+            new int[] { 5000 },
+            null,
+            null,
+            new FluidStack[0],
+            new FluidStack[0],
+            20,
+            1,
+            0);
+        field(helper, "recipe").set(helper, chanceRecipe);
+        calculate.invoke(helper);
+        check(
+            BigTstOutputLists.amount(
+                helper.getLongItemOutputs()
+                    .get(0))
+                .equals(BigInteger.valueOf(3_000_000)),
+            "native output chance changed: amount=" + BigTstOutputLists.amount(
+                helper.getLongItemOutputs()
+                    .get(0))
+                + " chance="
+                + chanceRecipe.getOutputChance(0)
+                + " output="
+                + chanceRecipe.getOutput(0).stackSize);
+        check(
+            helper.getLongFluidOutputs()
+                .isEmpty(),
+            "previous callback fluid output leaked into the next recipe");
     }
 
     private static void verifyController() {
@@ -348,10 +438,14 @@ public final class TstOutputSmoke {
     }
 
     private static Field field(Object instance, String name) throws ReflectiveOperationException {
-        final Field field = instance.getClass()
-            .getDeclaredField(name);
-        field.setAccessible(true);
-        return field;
+        for (Class<?> type = instance.getClass(); type != null; type = type.getSuperclass()) {
+            try {
+                final Field field = type.getDeclaredField(name);
+                field.setAccessible(true);
+                return field;
+            } catch (NoSuchFieldException ignored) {}
+        }
+        throw new NoSuchFieldException(name);
     }
 
     private static Method method(Class<?> owner, String name, Class<?>... parameters)

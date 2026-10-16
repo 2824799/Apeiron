@@ -38,6 +38,20 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
         if (feature == com.silvia.apeiron.config.MixinFeature.MESSTECH)
             return com.silvia.apeiron.compat.MessTechContracts.supports(name, targetClassName);
         switch (name) {
+            case "TstParallelSelectionMixin":
+            case "TstParallelCompatibilityMixin":
+                final String helper = "com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.processingLogics.GTCM_ParallelHelper";
+                return DependencyCapabilities.hasClass(helper)
+                    && !DependencyCapabilities.hasDeclaredField(helper, "recipe", "Lgregtech/api/util/GTRecipe;")
+                    && DependencyCapabilities.hasDeclaredField(
+                        "com.science.gtnl.mixins.late.overpowered.MixinGTCM_ParallelHelper",
+                        "recipe",
+                        "Lgregtech/api/util/GTRecipe;");
+            case "ParallelOutputBigMixin":
+            case "ModernParallelOutputBigMixin":
+                return DependencyCapabilities
+                    .hasDeclaredField(targetClassName, "recipe", "Lgregtech/api/util/GTRecipe;")
+                    == name.equals("ParallelOutputBigMixin");
             case "GtnlGodforgeRecipeMixin":
                 return DependencyCapabilities.invokes(
                     targetClassName,

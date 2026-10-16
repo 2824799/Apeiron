@@ -21,9 +21,9 @@ import com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.GTCM_Mul
 import com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.GTCM_MultiMachineBase.ItemStackLong;
 import com.silvia.apeiron.api.machine.tst.BigTstParallelOutputs;
 import com.silvia.apeiron.common.machine.tst.output.BigTstOutputLists;
+import com.silvia.apeiron.common.machine.tst.output.BigTstParallelOutputCalculation;
 
 import gregtech.api.enums.GTValues;
-import gregtech.api.objects.XSTR;
 import gregtech.api.util.GTRecipe;
 
 @Pseudo
@@ -57,41 +57,8 @@ public abstract class ParallelOutputBigMixin implements BigTstParallelOutputs {
         fluidOutputs = GTValues.emptyFluidStackArray;
         longItemOutputs.clear();
         longFluidOutputs.clear();
-        if (customItemOutputCalculation != null) {
-            final ItemStack[] outputs = customItemOutputCalculation.apply(currentParallel);
-            if (outputs != null) for (ItemStack output : outputs) {
-                if (output != null) mergeItemOutputBig(output, BigInteger.valueOf(output.stackSize));
-            }
-        } else if (recipe.mOutputs != null) {
-            for (int i = 0; i < recipe.mOutputs.length; i++) {
-                final ItemStack type = recipe.getOutput(i);
-                if (type == null) continue;
-                final int chance = recipe.getOutputChance(i);
-                long parallels = currentParallel;
-                if (chance < 10000) {
-                    parallels = (long) currentParallel * chance / 10000;
-                    final long remainder = (long) currentParallel * chance % 10000;
-                    if (remainder > 0 && remainder > XSTR.XSTR_INSTANCE.nextInt(10000)) parallels++;
-                }
-                mergeItemOutputBig(
-                    type,
-                    BigInteger.valueOf(parallels)
-                        .multiply(BigInteger.valueOf(type.stackSize)));
-            }
-        }
-        if (customFluidOutputCalculation != null) {
-            final FluidStack[] outputs = customFluidOutputCalculation.apply(currentParallel);
-            if (outputs != null) for (FluidStack output : outputs) {
-                if (output != null) mergeFluidOutputBig(output, BigInteger.valueOf(output.amount));
-            }
-        } else if (recipe.mFluidOutputs != null) {
-            for (FluidStack type : recipe.mFluidOutputs) {
-                if (type != null) mergeFluidOutputBig(
-                    type,
-                    BigInteger.valueOf(type.amount)
-                        .multiply(BigInteger.valueOf(currentParallel)));
-            }
-        }
+        BigTstParallelOutputCalculation
+            .calculate(recipe, currentParallel, customItemOutputCalculation, customFluidOutputCalculation, this);
         ci.cancel();
     }
 
