@@ -587,7 +587,7 @@ public final class InfinitePatternInputSmoke {
             "Infinite pattern inputs: 360 patterns, exact AE tables, multipliers, two mirrors, native consumption, catalysts and persistence verification passed");
     }
 
-    private static void verifyBatchDispatch() {
+    public static void verifyBatchDispatch() {
         Assembly machine = new Assembly();
         machine.getPatterns()
             .setInventorySlotContents(0, pattern());

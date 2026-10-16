@@ -67,6 +67,7 @@
     "gtnl.GtnlWirelessStepMixin",
     "ae.terminal.core.PatternBufferQuickMoveMixin",
     "tst.compat.TstPatternEncodeGuardMixin",
+    "tst.crafting.MegaCraftingCenterBatchMixin",
     "tst.energy.WaterPurifierRecipeAccessor",
     "tst.energy.StoneBreakerEnergyMixin",
     "tst.energy.DspLauncherEnergyMixin",

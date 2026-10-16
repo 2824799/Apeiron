@@ -8,7 +8,6 @@ import java.util.List;
 import net.minecraft.inventory.InventoryCrafting;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
@@ -25,7 +24,7 @@ public final class PatternBatchDispatch {
     private PatternBatchDispatch() {}
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public static BigInteger dispatch(MTEInfinitePatternInputAssembly machine, ICraftingPatternDetails pattern,
+    public static BigInteger dispatch(PatternBatchMedium machine, ICraftingPatternDetails pattern,
         InventoryCrafting table, MECraftingInventory inventory, BigInteger limit, IEnergyGrid energy) {
         IAEStack<?>[] declared = pattern.getAEInputs();
         List<IAEStack<?>> inputs = new ArrayList<>();
@@ -66,7 +65,7 @@ public final class PatternBatchDispatch {
                 .equals(BigAEStackValues.get(supplied))) return BigInteger.ZERO;
         }
         BigInteger batches = limit.max(BigInteger.ONE);
-        BigDecimal cost = BigDecimal.ONE;
+        BigDecimal cost = BigDecimal.ZERO;
         for (IAEStack input : inputs) {
             BigInteger perBatch = BigAEStackValues.get(input);
             IAEStack available = inventory.extractItems(
@@ -78,9 +77,9 @@ public final class PatternBatchDispatch {
                     .add(BigInteger.ONE));
             cost = cost.add(new BigDecimal(perBatch).divide(BigDecimal.valueOf(input.getAmountPerUnit())));
         }
-        // The native CPU already reserved the first operation's power. Bound only extra operations here.
+        // Native code debits the first operation after this callback; the available balance includes it.
         double balance = energy.extractAEPower(Double.MAX_VALUE, Actionable.SIMULATE, PowerMultiplier.CONFIG);
-        if (Double.isFinite(balance)) {
+        if (cost.signum() > 0 && Double.isFinite(balance)) {
             BigInteger powered = BigDecimal.valueOf(Math.max(0, balance))
                 .divideToIntegralValue(cost)
                 .toBigInteger();

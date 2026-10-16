@@ -15,9 +15,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.silvia.apeiron.ae.crafting.core.BigTaskProgress;
 import com.silvia.apeiron.ae.crafting.core.PatternBatchDispatch;
+import com.silvia.apeiron.ae.crafting.core.PatternBatchMedium;
 import com.silvia.apeiron.ae.crafting.core.UnlimitedCraftingCPU;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
-import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 
 import appeng.api.networking.crafting.ICraftingMedium;
 import appeng.api.networking.crafting.ICraftingPatternDetails;
@@ -57,7 +57,7 @@ public abstract class PatternBatchDispatchMixin {
             target = "Lappeng/api/networking/crafting/ICraftingMedium;pushPattern(Lappeng/api/networking/crafting/ICraftingPatternDetails;Lnet/minecraft/inventory/InventoryCrafting;)Z"))
     private boolean apeiron$batch(ICraftingMedium medium, ICraftingPatternDetails details, InventoryCrafting table,
         @Local(argsOnly = true) IEnergyGrid energy) {
-        if (!(medium instanceof MTEInfinitePatternInputAssembly) || details.isCraftable() || details.isInputOnly())
+        if (!(medium instanceof PatternBatchMedium) || details.isCraftable() || details.isInputOnly())
             return medium.pushPattern(details, table);
         CraftingCPUCluster.TaskProgress progress = tasks.get(details);
         if (progress == null) return false;
@@ -65,7 +65,7 @@ public abstract class PatternBatchDispatchMixin {
         BigInteger limit = ((BigTaskProgress) progress).getValueBig();
         if (!unlimited) limit = limit.min(BigInteger.valueOf(Math.max(1, remainingOperations)));
         BigInteger pushed = PatternBatchDispatch
-            .dispatch((MTEInfinitePatternInputAssembly) medium, details, table, inventory, limit, energy);
+            .dispatch((PatternBatchMedium) medium, details, table, inventory, limit, energy);
         if (pushed.signum() == 0) return false;
         BigInteger extra = pushed.subtract(BigInteger.ONE);
         if (extra.signum() > 0) {
@@ -94,7 +94,7 @@ public abstract class PatternBatchDispatchMixin {
             target = "Lappeng/me/cluster/implementations/CraftingCPUCluster;accelerator:I",
             opcode = Opcodes.GETFIELD))
     private int apeiron$workBudget(CraftingCPUCluster cpu) {
-        if (((UnlimitedCraftingCPU) cpu).isCraftingParallelUnlimited()) return 16383;
+        if (((UnlimitedCraftingCPU) cpu).isCraftingParallelUnlimited()) return 1_048_575;
         return Math.min(cpu.getCoProcessors(), Integer.MAX_VALUE - 1);
     }
 }

@@ -92,9 +92,9 @@ import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
 @IMetaTileEntity.SkipGenerateDescription
-public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
-    implements BigDualInputHatch, ICraftingProvider, IGridProxyable, IActionHost, IPowerChannelState,
-    IInterfaceViewable, ICustomNameObject, com.silvia.apeiron.compat.HatchWatcherHost {
+public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements BigDualInputHatch, ICraftingProvider,
+    IGridProxyable, IActionHost, IPowerChannelState, IInterfaceViewable, ICustomNameObject,
+    com.silvia.apeiron.compat.HatchWatcherHost, com.silvia.apeiron.ae.crafting.core.PatternBatchMedium {
 
     public static final int PATTERN_COUNT = 360;
     public static final int PATTERN_COLUMNS = 10;
@@ -480,6 +480,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     }
 
     /** Inserts all exact inputs atomically. Caller owns the requested number of complete batches. */
+    @Override
     public boolean pushPatternBig(ICraftingPatternDetails pattern, List<IAEStack<?>> input, BigInteger batches,
         boolean simulate) {
         if (batches.signum() <= 0 || !isActive() || processing) return false;

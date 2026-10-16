@@ -50,6 +50,7 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke.verify();
         OutputCompatibilitySmoke.verify();
         if (cpw.mods.fml.common.Loader.isModLoaded("TwistSpaceTechnology")) {
+            com.silvia.apeiron.ae.smoke.AEPatternBatchDispatchSmoke.verify();
             com.silvia.apeiron.common.machine.tst.verification.TstOutputSmoke.verify();
             com.silvia.apeiron.common.machine.tst.verification.TstGeneratedEnergySmoke.verify();
             com.silvia.apeiron.common.machine.tst.verification.TstStoneBreakerEnergySmoke.verify();

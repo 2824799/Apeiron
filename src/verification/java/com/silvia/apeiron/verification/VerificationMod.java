@@ -15,7 +15,10 @@ public final class VerificationMod {
 
     @Mod.EventHandler
     public void verify(FMLPostInitializationEvent event) {
-        if ("1".equals(System.getenv("APEIRON_VERIFY_CRAFTING_TASKS_ONLY"))) {
+        if ("1".equals(System.getenv("APEIRON_VERIFY_PATTERN_BATCH_ONLY"))) {
+            com.silvia.apeiron.ae.smoke.AEPatternBatchDispatchSmoke.verify();
+            com.silvia.apeiron.Apeiron.LOG.info("Apeiron targeted pattern batch verification passed");
+        } else if ("1".equals(System.getenv("APEIRON_VERIFY_CRAFTING_TASKS_ONLY"))) {
             com.silvia.apeiron.ae.smoke.AECraftingTaskOrderingSmoke.verify();
             com.silvia.apeiron.ae.smoke.AECraftingCPUSmoke.verify();
             com.silvia.apeiron.ae.smoke.AECraftingPlanningSmoke.verify();
