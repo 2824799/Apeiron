@@ -202,10 +202,14 @@ public final class InfinitePatternInputSmoke {
                 .contains(MTEInfinitePatternInputAssembly.class),
             "terminal registration missing");
         verifyOptimization();
+        verifyMultiplierLifecycle();
         verifyBatchDispatch();
         verifyDuplicatePatterns();
         verifyInsertionCache();
         Assembly source = new Assembly();
+        if (cpw.mods.fml.common.FMLCommonHandler.instance()
+            .getSide()
+            .isClient()) PatternMultiplierGuiSmoke.verify(source);
         verifyTerminalRepresentation(source);
         check(
             source.getPatterns()
@@ -607,6 +611,135 @@ public final class InfinitePatternInputSmoke {
         }
     }
 
+    private static void verifyMultiplierLifecycle() {
+        Assembly source = new Assembly();
+        net.minecraft.inventory.IInventory patterns = source.getPatterns();
+        patterns.setInventorySlotContents(0, pattern());
+        source.setMultiplierBig(0, HUGE);
+        ICraftingPatternDetails oldTask = source.getPatternDetails(0);
+        check(patterns.decrStackSize(0, 1) != null, "terminal extraction lost physical pattern");
+        check(
+            source.getMultiplierBig(0)
+                .equals(BigInteger.ONE),
+            "terminal extraction retained multiplier");
+        patterns.setInventorySlotContents(0, pattern());
+        check(
+            !(source.getPatternDetails(0) instanceof MultipliedPatternDetails),
+            "reinserted pattern inherited multiplier");
+        check(
+            ((MultipliedPatternDetails) oldTask).getMultiplierBig()
+                .equals(HUGE),
+            "removal changed in-flight task multiplier");
+
+        source.setMultiplierBig(0, HUGE);
+        ItemStack replacement = pattern();
+        replacement.getTagCompound()
+            .setString("author", "Replacement encoder");
+        patterns.setInventorySlotContents(0, replacement);
+        check(
+            source.getMultiplierBig(0)
+                .equals(BigInteger.ONE),
+            "terminal replacement retained multiplier");
+        source.setMultiplierBig(0, HUGE);
+        patterns.setInventorySlotContents(0, replacement.copy());
+        check(
+            source.getMultiplierBig(0)
+                .equals(BigInteger.ONE),
+            "identical replacement retained multiplier");
+
+        source.setMultiplierBig(0, HUGE);
+        source.getInventoryHandler()
+            .extractItem(0, 1, true);
+        check(
+            source.getMultiplierBig(0)
+                .equals(HUGE),
+            "simulated GUI extraction reset multiplier");
+        source.getInventoryHandler()
+            .extractItem(0, 1, false);
+        check(
+            source.getMultiplierBig(0)
+                .equals(BigInteger.ONE),
+            "GUI extraction retained multiplier");
+        source.getInventoryHandler()
+            .setStackInSlot(0, pattern());
+        source.setMultiplierBig(0, HUGE);
+        source.getInventoryHandler()
+            .setStackInSlot(0, replacement.copy());
+        check(
+            source.getMultiplierBig(0)
+                .equals(BigInteger.ONE),
+            "GUI replacement retained multiplier");
+
+        source.setMultiplierBig(0, HUGE);
+        source.refreshPatterns();
+        patterns.markDirty();
+        check(
+            source.getMultiplierBig(0)
+                .equals(HUGE),
+            "unchanged inventory refresh reset multiplier");
+        patterns.getStackInSlot(0)
+            .getTagCompound()
+            .setString("author", "Edited in place");
+        patterns.markDirty();
+        check(
+            source.getMultiplierBig(0)
+                .equals(BigInteger.ONE),
+            "in-place edit after refresh retained multiplier");
+
+        source.setMultiplierBig(0, HUGE);
+        source.mInventory[source.catalystSlotStart(0)] = new ItemStack(Items.gold_ingot);
+        source.onContentsChanged(source.catalystSlotStart(0));
+        check(
+            source.getMultiplierBig(0)
+                .equals(HUGE),
+            "catalyst edit reset pattern multiplier");
+        NBTTagCompound saved = new NBTTagCompound();
+        source.saveNBTData(saved);
+        Assembly restored = new Assembly();
+        restored.loadNBTData(saved);
+        restored.getPatterns()
+            .markDirty();
+        check(
+            restored.getMultiplierBig(0)
+                .equals(HUGE),
+            "reload reset occupied pattern multiplier");
+        check(restored.getPatternDetails(0) instanceof MultipliedPatternDetails, "reload lost advertised multiplier");
+        Mirror mirror = new Mirror(restored);
+        mirror.getInputSource()
+            .getPatterns()
+            .getStackInSlotOnClosing(0);
+        check(
+            restored.getMultiplierBig(0)
+                .equals(BigInteger.ONE),
+            "mirror removal retained multiplier");
+
+        source.scaleMultipliers(false, false);
+        source.getInventoryHandler()
+            .setStackInSlot(1, pattern());
+        check(
+            source.getMultiplierBig(1)
+                .equals(BigInteger.ONE),
+            "new pattern inherited bulk multiplier from empty slot");
+        source.setMultiplierBig(1, HUGE);
+        source.setInventorySlotContents(1, null);
+        check(
+            source.getMultiplierBig(1)
+                .equals(BigInteger.ONE),
+            "native GT removal retained multiplier");
+        source.getPatterns()
+            .setInventorySlotContents(1, pattern());
+        source.setMultiplierBig(1, HUGE);
+        source.mInventory[1] = null;
+        source.getPatterns()
+            .markDirty();
+        check(
+            source.getMultiplierBig(1)
+                .equals(BigInteger.ONE),
+            "in-place removal retained multiplier");
+        Apeiron.LOG.info(
+            "Pattern multiplier lifecycle verification passed: GUI/AE/mirror/GT removal and replacement, simulations, bulk edits, in-place edits, reload, catalysts and in-flight tasks");
+    }
+
     private static void verifyWatchers(Assembly source, Mirror mirror) {
         int[] calls = { 0 };
         Object watcher = new WatcherProbe(calls);
@@ -750,7 +883,10 @@ public final class InfinitePatternInputSmoke {
             check(source.isItemValidForSlot(1, variant), "different substitution setting was rejected");
         }
         source.setMultiplierBig(1, BigInteger.valueOf(2));
-        check(source.isItemValidForSlot(1, duplicate), "different effective multiplier was rejected");
+        check(!source.isItemValidForSlot(1, duplicate), "empty slot multiplier bypassed insertion duplicate check");
+        source.setMultiplierBig(0, BigInteger.valueOf(2));
+        check(source.isItemValidForSlot(1, duplicate), "different stored effective multiplier was rejected");
+        source.setMultiplierBig(0, BigInteger.ONE);
         source.setMultiplierBig(1, BigInteger.ONE);
         source.mInventory[source.catalystSlotStart(1)] = new ItemStack(Items.gold_ingot);
         check(source.isItemValidForSlot(1, duplicate), "different per-pattern catalyst was rejected");
@@ -862,7 +998,7 @@ public final class InfinitePatternInputSmoke {
 
         source.setMultiplierBig(359, HUGE);
         before = item.decodes;
-        check(source.isItemValidForSlot(359, duplicate), "different multiplier matched unscaled recipe");
+        check(!source.isItemValidForSlot(359, duplicate), "empty slot multiplier bypassed cached duplicates");
         check(item.decodes == before + 1, "candidate switch did not decode exactly once");
         source.setMultiplierBig(359, BigInteger.ONE);
         check(!source.isItemValidForSlot(359, duplicate), "multiplier reset retained stale matches");

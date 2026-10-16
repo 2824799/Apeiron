@@ -102,6 +102,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     private static final int INVENTORY_SIZE = PATTERN_CATALYST_START + PATTERN_COUNT * CATALYST_SLOTS;
     private static final String STATE_KEY = "ApeironPatternInput";
     private final BigInteger[] multipliers = new BigInteger[PATTERN_COUNT];
+    private final ItemStack[] multiplierPatterns = new ItemStack[PATTERN_COUNT];
     private final ICraftingPatternDetails[] baseDetails = new ICraftingPatternDetails[PATTERN_COUNT];
     private final ItemStack[] decodedStacks = new ItemStack[PATTERN_COUNT];
     private final boolean[] decodedPatterns = new boolean[PATTERN_COUNT];
@@ -276,14 +277,18 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
         if (value.signum() <= 0) throw new IllegalArgumentException("Pattern multiplier must be positive");
         if (multipliers[index].equals(value)) return;
         multipliers[index] = value;
+        rememberMultiplierPattern(index);
         invalidatePatternDetails(index);
         patternsChanged();
     }
 
     public void scaleMultipliers(boolean halve, boolean reset) {
-        for (int i = 0; i < PATTERN_COUNT; i++) multipliers[i] = reset ? BigInteger.ONE
-            : halve ? multipliers[i].divide(BigInteger.valueOf(2))
-                .max(BigInteger.ONE) : multipliers[i].shiftLeft(1);
+        for (int i = 0; i < PATTERN_COUNT; i++) {
+            multipliers[i] = reset ? BigInteger.ONE
+                : halve ? multipliers[i].divide(BigInteger.valueOf(2))
+                    .max(BigInteger.ONE) : multipliers[i].shiftLeft(1);
+            rememberMultiplierPattern(i);
+        }
         Arrays.fill(details, null);
         detailSlots.clear();
         patternsChanged();
@@ -302,6 +307,20 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     private void invalidatePatternDetails(int slot) {
         if (details[slot] != null) detailSlots.remove(details[slot]);
         details[slot] = null;
+    }
+
+    private void rememberMultiplierPattern(int slot) {
+        multiplierPatterns[slot] = multipliers[slot].equals(BigInteger.ONE) || mInventory[slot] == null ? null
+            : mInventory[slot].copy();
+    }
+
+    private void patternContentsChanged(int slot) {
+        multipliers[slot] = BigInteger.ONE;
+        multiplierPatterns[slot] = null;
+        invalidatePatternDetails(slot);
+        baseDetails[slot] = null;
+        decodedStacks[slot] = null;
+        decodedPatterns[slot] = false;
     }
 
     private void patternsChanged() {
@@ -343,10 +362,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     @Override
     public void onContentsChanged(int slot) {
         if (slot >= 0 && slot < PATTERN_COUNT) {
-            invalidatePatternDetails(slot);
-            baseDetails[slot] = null;
-            decodedStacks[slot] = null;
-            decodedPatterns[slot] = false;
+            patternContentsChanged(slot);
             patternsChanged();
         } else {
             updateManualSelectors();
@@ -773,7 +789,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
         if (!(stack.getItem() instanceof ICraftingPatternItem)) return false;
         World world = getBaseMetaTileEntity() == null ? null : getBaseMetaTileEntity().getWorld();
         BitSet matches = insertionCache
-            .matchingSlots(stack, world, multipliers[slot], PATTERN_COUNT, this::getPatternDetails);
+            .matchingSlots(stack, world, BigInteger.ONE, PATTERN_COUNT, this::getPatternDetails);
         if (matches == null) return false;
         for (int other = matches.nextSetBit(0); other >= 0; other = matches.nextSetBit(other + 1))
             if (other != slot && sameManualSelectors(slot, other)) return false;
@@ -896,6 +912,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
                     .toBigInteger()
                     .max(BigInteger.ONE);
         }
+        for (int slot = 0; slot < PATTERN_COUNT; slot++) rememberMultiplierPattern(slot);
         NBTTagList contents = state.getTagList("buffers", 10);
         if (contents.tagCount() > BUFFER_COUNT) throw new IllegalArgumentException("Too many saved input buffers");
         for (int i = 0; i < BUFFER_COUNT; i++) buffers.get(i)
@@ -1103,12 +1120,10 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
         public void markDirty() {
             // Most callers already notified each slot; also handle an inventory user editing an ItemStack in place.
             for (int slot = 0; slot < PATTERN_COUNT; slot++)
-                if (decodedPatterns[slot] && !ItemStack.areItemStacksEqual(decodedStacks[slot], mInventory[slot])) {
-                    invalidatePatternDetails(slot);
-                    baseDetails[slot] = null;
-                    decodedStacks[slot] = null;
-                    decodedPatterns[slot] = false;
-                }
+                if (decodedPatterns[slot] && !ItemStack.areItemStacksEqual(decodedStacks[slot], mInventory[slot])
+                    || multiplierPatterns[slot] != null
+                        && !ItemStack.areItemStacksEqual(multiplierPatterns[slot], mInventory[slot]))
+                    patternContentsChanged(slot);
             patternsChanged();
         }
 

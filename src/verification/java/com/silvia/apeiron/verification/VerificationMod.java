@@ -15,7 +15,10 @@ public final class VerificationMod {
 
     @Mod.EventHandler
     public void verify(FMLPostInitializationEvent event) {
-        CompatibilitySmoke.verify();
+        if ("1".equals(System.getenv("APEIRON_VERIFY_PATTERN_INPUT_ONLY"))) {
+            com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
+            com.silvia.apeiron.Apeiron.LOG.info("Apeiron targeted pattern input verification passed");
+        } else CompatibilitySmoke.verify();
         if ("1".equals(System.getenv("APEIRON_VERIFY_EXIT"))) cpw.mods.fml.common.FMLCommonHandler.instance()
             .exitJava(0, false);
     }

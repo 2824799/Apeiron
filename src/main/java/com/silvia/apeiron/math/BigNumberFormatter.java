@@ -2,6 +2,7 @@ package com.silvia.apeiron.math;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -12,8 +13,38 @@ public final class BigNumberFormatter {
     private static final BigInteger LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
     private static final BigInteger LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
     private static final String[] BYTE_UNITS = { "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB", "BB" };
+    private static final String[] MULTIPLIER_UNITS = { "", "k", "M", "G", "T" };
 
     private BigNumberFormatter() {}
+
+    /** Three significant digits, with the unit on a second line to fit an 18-pixel pattern slot. */
+    public static String formatSlotMultiplier(BigInteger value) {
+        if (value.signum() <= 0) throw new IllegalArgumentException("Pattern multiplier must be positive");
+        int exponent = value.toString()
+            .length() - 1;
+        if (exponent < 3) return value.toString();
+        int unit = exponent / 3;
+        if (unit < MULTIPLIER_UNITS.length) {
+            BigDecimal scaled = new BigDecimal(value).movePointLeft(unit * 3)
+                .round(new MathContext(3, RoundingMode.HALF_UP));
+            if (scaled.compareTo(BigDecimal.valueOf(1000)) >= 0) {
+                scaled = scaled.movePointLeft(3);
+                unit++;
+            }
+            if (unit < MULTIPLIER_UNITS.length) return scaled.stripTrailingZeros()
+                .toPlainString() + "\n"
+                + MULTIPLIER_UNITS[unit];
+        }
+        BigDecimal mantissa = new BigDecimal(value).movePointLeft(exponent)
+            .round(new MathContext(3, RoundingMode.HALF_UP));
+        if (mantissa.compareTo(BigDecimal.TEN) >= 0) {
+            mantissa = BigDecimal.ONE;
+            exponent++;
+        }
+        return mantissa.stripTrailingZeros()
+            .toPlainString() + "\nE"
+            + exponent;
+    }
 
     /**
      * Uses one decimal place and an uppercase E for values outside the legacy long range.

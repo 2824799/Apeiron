@@ -181,17 +181,23 @@ public final class InfinitePatternInputGui extends MTEHatchBaseGui<MTEInfinitePa
         slot.tooltip(
             t -> t.addLine(IKey.lang("apeiron.machine.pattern_input.pattern_slot", index + 1))
                 .addLine(IKey.lang("apeiron.machine.pattern_input.pattern_catalysts"))
-                .addLine(IKey.lang("apeiron.machine.pattern_input.duplicate_rule")));
+                .addLine(IKey.lang("apeiron.machine.pattern_input.duplicate_rule"))
+                .addLine(IKey.lang("apeiron.machine.pattern_input.multiplier_reset")));
         ButtonWidget<?> factor = new ButtonWidget<>().background(GTGuiTextures.BUTTON_STANDARD)
-            .overlay(
-                IKey.dynamic(
-                    () -> (factors[index].getValue()
-                        .toString()
-                        .length() <= 3 ? factors[index].getStringValue() : "×…"))
-                    .scale(0.7f))
+            .overlay((context, x, y, width, height, theme) -> {
+                String label = BigNumberFormatter.formatSlotMultiplier(factors[index].getValue());
+                int textWidth = 1;
+                for (String line : label.split("\n")) textWidth = Math
+                    .max(textWidth, net.minecraft.client.Minecraft.getMinecraft().fontRenderer.getStringWidth(line));
+                IKey.str(label)
+                    .scale(Math.min(0.7f, (width - 2f) / textWidth))
+                    .draw(context, x + 1, y, width - 2, height, theme);
+            })
             .tooltip(
                 t -> t.addLine(IKey.lang("apeiron.machine.pattern_input.pattern_slot", index + 1))
-                    .addLine(IKey.dynamic(() -> "× " + BigNumberFormatter.formatExact(factors[index].getValue()))))
+                    .addLine(IKey.dynamic(() -> "× " + BigNumberFormatter.formatExact(factors[index].getValue())))
+                    .addLine(IKey.lang("apeiron.machine.pattern_input.multiplier_units"))
+                    .addLine(IKey.lang("apeiron.machine.pattern_input.multiplier_reset")))
             .onMousePressed(button -> {
                 if (button == 0) {
                     multiplier.togglePanel();
