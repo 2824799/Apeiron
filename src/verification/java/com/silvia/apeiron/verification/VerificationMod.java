@@ -15,7 +15,10 @@ public final class VerificationMod {
 
     @Mod.EventHandler
     public void verify(FMLPostInitializationEvent event) {
-        if ("1".equals(System.getenv("APEIRON_VERIFY_PATTERN_INPUT_ONLY"))) {
+        if ("1".equals(System.getenv("APEIRON_VERIFY_DSP_ONLY"))) {
+            com.silvia.apeiron.common.machine.tst.verification.DysonSphereMachineSmoke.verify();
+            com.silvia.apeiron.Apeiron.LOG.info("Apeiron targeted DSP verification passed");
+        } else if ("1".equals(System.getenv("APEIRON_VERIFY_PATTERN_INPUT_ONLY"))) {
             com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
             com.silvia.apeiron.Apeiron.LOG.info("Apeiron targeted pattern input verification passed");
         } else CompatibilitySmoke.verify();

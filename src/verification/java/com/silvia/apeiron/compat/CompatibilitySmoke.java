@@ -49,6 +49,7 @@ public final class CompatibilitySmoke {
             com.silvia.apeiron.common.machine.tst.verification.TstOutputSmoke.verify();
             com.silvia.apeiron.common.machine.tst.verification.TstGeneratedEnergySmoke.verify();
             com.silvia.apeiron.common.machine.tst.verification.TstStoneBreakerEnergySmoke.verify();
+            com.silvia.apeiron.common.machine.tst.verification.DysonSphereMachineSmoke.verify();
         }
         com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
         com.silvia.apeiron.common.machine.tectech.verification.EnergyInfuserPatternSmoke.verify();
