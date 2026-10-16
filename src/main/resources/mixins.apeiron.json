@@ -139,6 +139,7 @@
     "ae.crafting.core.PacketCraftRequestMixin",
     "ae.crafting.core.CraftingTaskProgressMixin",
     "ae.crafting.core.CraftingCPUClusterMixin",
+    "ae.crafting.core.CraftingCPUTaskOrderingMixin",
     "ae.crafting.core.CraftingCpuEntryMixin",
     "ae.crafting.core.CraftingCPUStatusMixin",
     "ae.crafting.core.CraftingTimingRecordMixin",

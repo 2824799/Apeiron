@@ -24,14 +24,17 @@ public final class MultipliedPatternDetails implements ICraftingPatternDetails {
     private final ICraftingPatternDetails original;
     private final BigInteger multiplier;
     private final NBTTagCompound identity;
+    private final int hash;
 
     public MultipliedPatternDetails(ICraftingPatternDetails original, BigInteger multiplier) {
         if (original == null || multiplier.signum() <= 0)
             throw new IllegalArgumentException("Invalid multiplied pattern");
         this.original = original;
         this.multiplier = multiplier;
-        identity = original.getPattern()
-            .writeToNBT(new NBTTagCompound());
+        identity = (NBTTagCompound) original.getPattern()
+            .writeToNBT(new NBTTagCompound())
+            .copy();
+        hash = 31 * identity.hashCode() + multiplier.hashCode();
     }
 
     public BigInteger getMultiplierBig() {
@@ -162,6 +165,6 @@ public final class MultipliedPatternDetails implements ICraftingPatternDetails {
 
     @Override
     public int hashCode() {
-        return 31 * identity.hashCode() + multiplier.hashCode();
+        return hash;
     }
 }

@@ -32,6 +32,7 @@ public final class CompatibilitySmoke {
         com.silvia.apeiron.ae.smoke.InfiniteCapabilitiesSmoke.verify();
         com.silvia.apeiron.ae.smoke.AESecurityInventorySmoke.verify();
         com.silvia.apeiron.ae.smoke.AECraftingCPUSmoke.verify();
+        com.silvia.apeiron.ae.smoke.AECraftingTaskOrderingSmoke.verify();
         com.silvia.apeiron.ae.smoke.AECraftingPlanningSmoke.verify();
         com.silvia.apeiron.ae.smoke.AESelfRecursiveCraftingSmoke.verify();
         com.silvia.apeiron.ae.smoke.AECraftingTreeSmoke.verify();

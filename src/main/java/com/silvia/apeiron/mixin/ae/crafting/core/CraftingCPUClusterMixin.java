@@ -31,6 +31,7 @@ import com.silvia.apeiron.ae.terminal.BigGuiNumberCapture;
 import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigValueCodec;
 
+import appeng.api.implementations.ICraftingPatternItem;
 import appeng.api.networking.crafting.CraftingItemList;
 import appeng.api.networking.crafting.ICraftingGrid;
 import appeng.api.networking.crafting.ICraftingJob;
@@ -49,6 +50,7 @@ import appeng.me.diagnostics.CraftingDiagnosticSessionId;
 import appeng.tile.crafting.TileCraftingMonitorTile;
 import appeng.tile.crafting.TileCraftingTile;
 import appeng.util.Platform;
+import appeng.util.item.AEItemStack;
 
 /** Keeps CPU task counts and pending-output multiplication exact. */
 @Mixin(value = CraftingCPUCluster.class, remap = false)
@@ -136,6 +138,9 @@ public abstract class CraftingCPUClusterMixin
 
     @Shadow
     public abstract appeng.api.networking.IGrid getGrid();
+
+    @Shadow
+    protected abstract net.minecraft.world.World getWorld();
 
     @Shadow
     protected CraftingDiagnosticSessionId currentPlanningDiagnosticSessionId;
@@ -497,12 +502,19 @@ public abstract class CraftingCPUClusterMixin
             this.apeiron$availableStorage = BigInteger.valueOf(this.availableStorage);
         }
         final NBTTagList serialized = data.getTagList("tasks", 10);
-        int index = 0;
-        for (final CraftingCPUCluster.TaskProgress progress : this.tasks.values()) {
-            if (index >= serialized.tagCount()) break;
-            final NBTTagCompound tag = serialized.getCompoundTagAt(index++);
+        for (int index = 0; index < serialized.tagCount(); index++) {
+            final NBTTagCompound tag = serialized.getCompoundTagAt(index);
             if (tag.hasKey("ApeironCraftingProgress", 7)) {
-                ((BigTaskProgress) progress).setValueBig(new BigInteger(tag.getByteArray("ApeironCraftingProgress")));
+                // Native pattern hashes can change after decoding in another JVM. Match the saved
+                // pattern, not its index in a TreeMap that may now have a different iteration order.
+                final IAEItemStack item = AEItemStack.loadItemStackFromNBT(tag);
+                if (item == null || !(item.getItem() instanceof ICraftingPatternItem)) continue;
+                final ICraftingPatternDetails details = ((ICraftingPatternItem) item.getItem())
+                    .getPatternForItem(item.getItemStack(), getWorld());
+                if (details == null) continue;
+                final CraftingCPUCluster.TaskProgress progress = this.tasks.get(details);
+                if (progress != null) ((BigTaskProgress) progress)
+                    .setValueBig(new BigInteger(tag.getByteArray("ApeironCraftingProgress")));
             }
         }
     }

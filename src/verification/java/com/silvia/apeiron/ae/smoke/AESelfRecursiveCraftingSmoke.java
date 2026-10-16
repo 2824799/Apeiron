@@ -6,6 +6,7 @@ import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 
 import net.minecraft.init.Items;
@@ -191,6 +192,120 @@ public final class AESelfRecursiveCraftingSmoke {
             "oversized return left CPU inventory stranded");
     }
 
+    static void verifyCollidingExecution(ICraftingPatternDetails left, ICraftingPatternDetails right)
+        throws ReflectiveOperationException {
+        for (boolean reload : new boolean[] { false, true }) {
+            Fixture fixture = new Fixture(1, 2, false);
+            IAEStack<?>[] finalInputs = new IAEStack<?>[] {
+                BigAEStackValues.copyWithSize(
+                    left.getCondensedAEOutputs()[0],
+                    BigAEStackValues.get(left.getCondensedAEOutputs()[0])
+                        .multiply(BigInteger.valueOf(2))),
+                BigAEStackValues.copyWithSize(
+                    right.getCondensedAEOutputs()[0],
+                    BigAEStackValues.get(right.getCondensedAEOutputs()[0])
+                        .multiply(BigInteger.valueOf(3))) };
+            ItemStack encoded = pattern(1, 2, false).getPattern();
+            NBTTagList inputs = new NBTTagList();
+            for (IAEStack<?> input : finalInputs) {
+                NBTTagCompound tag = new NBTTagCompound();
+                input.writeToNBT(tag);
+                inputs.appendTag(tag);
+            }
+            encoded.getTagCompound()
+                .setTag("in", inputs);
+            NBTTagList output = new NBTTagList();
+            NBTTagCompound result = new NBTTagCompound();
+            stack(Items.diamond, 1).writeToNBT(result);
+            output.appendTag(result);
+            encoded.getTagCompound()
+                .setTag("out", output);
+            ICraftingPatternDetails finalPattern = new UltimatePatternHelper(encoded);
+            for (int i = 0; i < 2; i++) {
+                ICraftingPatternDetails recipe = i == 0 ? left : right;
+                int crafts = i == 0 ? 2 : 3;
+                fixture.cpu.addCrafting(recipe, crafts);
+                for (IAEStack<?> input : recipe.getCondensedAEInputs()) fixture.cpu.addStorage(
+                    BigAEStackValues.copyWithSize(
+                        input,
+                        BigAEStackValues.get(input)
+                            .multiply(BigInteger.valueOf(crafts))));
+            }
+            fixture.cpu.addCrafting(finalPattern, 1);
+            fixture.cpu.addStorage(stack(Items.gold_ingot, 3));
+            outputs(fixture.cpu).init(stack(Items.diamond, 1));
+            field("isComplete").setBoolean(fixture.cpu, false);
+            if (reload) {
+                fixture.execute(1);
+                NBTTagCompound saved = new NBTTagCompound();
+                fixture.cpu.writeToNBT(saved);
+                fixture.cpu = newCPU(fixture.grid);
+                fixture.cpu.readFromNBT(saved);
+            }
+            fixture.execute(reload ? 5 : 6);
+            fixture.tick();
+            check(completed(fixture.cpu) && !fixture.cpu.isBusy(), "colliding recipe chain did not complete");
+            check(fixture.count(Items.diamond) == 2, "colliding recipes produced the wrong final quantity");
+            check(fixture.count(Items.gold_ingot) == 3, "completed collision job did not return leftovers");
+            check(
+                fixture.cpu.getInventory()
+                    .isEmpty(),
+                "completed collision job retained inventory");
+            fixture.submit(1, null);
+            Object comparator = field("priorityComparator").get(fixture.cpu);
+            Field collisionOrder = comparator.getClass()
+                .getDeclaredField("collisionOrder");
+            collisionOrder.setAccessible(true);
+            check(
+                ((Map<?, ?>) collisionOrder.get(comparator)).isEmpty(),
+                "next job retained the previous collision cache");
+            fixture.execute(1);
+            fixture.tick();
+            check(
+                completed(fixture.cpu) && fixture.cpu.getInventory()
+                    .isEmpty(),
+                "CPU could not complete its next job");
+        }
+    }
+
+    static void verifyCollidingRollback(ICraftingPatternDetails left, ICraftingPatternDetails right) {
+        Fixture fixture = new Fixture(1, 2, false);
+        BigCraftingCPU cpu = (BigCraftingCPU) (Object) fixture.cpu;
+        BigInteger leftCount = BigInteger.TEN.pow(60)
+            .add(BigInteger.valueOf(17));
+        BigInteger rightCount = BigInteger.TEN.pow(65)
+            .add(BigInteger.valueOf(31));
+        cpu.addCraftingBig(left, leftCount);
+        cpu.addCraftingBig(right, rightCount);
+        appeng.api.networking.crafting.ICraftingJob<?> rejected = (appeng.api.networking.crafting.ICraftingJob<?>) Proxy
+            .newProxyInstance(
+                appeng.api.networking.crafting.ICraftingJob.class.getClassLoader(),
+                new Class<?>[] { appeng.api.networking.crafting.ICraftingJob.class },
+                (proxy, method, args) -> {
+                    if (method.getName()
+                        .equals("getCraftingMode")) return CraftingMode.STANDARD;
+                    if (method.getName()
+                        .equals("startCrafting")) {
+                        cpu.addCraftingBig(left, BigInteger.ONE);
+                        throw new appeng.crafting.CraftBranchFailure(stack(Items.diamond, 1), 1);
+                    }
+                    throw new AssertionError("unexpected rollback job call: " + method.getName());
+                });
+        check(
+            fixture.cpu.mergeJob(fixture.grid, rejected, new BaseActionSource(), null) == null,
+            "failed merge unexpectedly accepted a job");
+        check(
+            cpu.getTaskEntriesBig()
+                .size() == 2
+                && ((com.silvia.apeiron.ae.crafting.core.BigTaskProgress) cpu.getTaskEntriesBig()
+                    .get(left)).getValueBig()
+                        .equals(leftCount)
+                && ((com.silvia.apeiron.ae.crafting.core.BigTaskProgress) cpu.getTaskEntriesBig()
+                    .get(right)).getValueBig()
+                        .equals(rightCount),
+            "native merge rollback lost a collision task or truncated its exact count");
+    }
+
     private static IAEItemStack stack(Item item, long amount) {
         IAEItemStack result = AEItemStack.create(new ItemStack(item));
         result.setStackSize(amount);
@@ -313,6 +428,22 @@ public final class AESelfRecursiveCraftingSmoke {
                     if (method.getName()
                         .equals("pushPattern")) {
                         MEInventoryCrafting inputs = (MEInventoryCrafting) args[1];
+                        ICraftingPatternDetails dispatched = (ICraftingPatternDetails) args[0];
+                        if (!dispatched.equals(pattern)) {
+                            IAEStack<?>[] expected = dispatched.getAEInputs();
+                            for (int i = 0; i < expected.length; i++) if (expected[i] != null) {
+                                IAEStack<?> actual = inputs.getAEStackInSlot(i);
+                                check(
+                                    actual != null && actual.isSameType(expected[i])
+                                        && BigAEStackValues.get(actual)
+                                            .equals(BigAEStackValues.get(expected[i])),
+                                    "collision task consumed the wrong recipe or amount");
+                            }
+                            executions++;
+                            for (IAEStack<?> producedStack : dispatched.getCondensedAEOutputs())
+                                returned.add(producedStack.copy());
+                            return true;
+                        }
                         check(
                             inputs.getAEStackInSlot(0)
                                 .getStackSize() == seed,
@@ -427,7 +558,7 @@ public final class AESelfRecursiveCraftingSmoke {
     }
 
     /** Build the actual cluster: older AE releases make it final and keep its fields private. */
-    private static CraftingCPUCluster newCPU(IGrid grid) {
+    static CraftingCPUCluster newCPU(IGrid grid) {
         IGridNode node = (IGridNode) Proxy.newProxyInstance(
             IGridNode.class.getClassLoader(),
             new Class<?>[] { IGridNode.class },

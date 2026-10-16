@@ -38,6 +38,10 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
         if (feature == com.silvia.apeiron.config.MixinFeature.MESSTECH)
             return com.silvia.apeiron.compat.MessTechContracts.supports(name, targetClassName);
         switch (name) {
+            case "CraftingCPUTaskOrderingMixin":
+                return DependencyCapabilities
+                    .hasDeclaredField(targetClassName, "priorityComparator", "Ljava/util/Comparator;")
+                    && DependencyCapabilities.hasDeclaredField(targetClassName, "workableTasks", "Ljava/util/Map;");
             case "TstParallelSelectionMixin":
             case "TstParallelCompatibilityMixin":
                 final String helper = "com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.processingLogics.GTCM_ParallelHelper";
