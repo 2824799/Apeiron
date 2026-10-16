@@ -16,7 +16,8 @@ public final class VerificationMod {
     @Mod.EventHandler
     public void verify(FMLPostInitializationEvent event) {
         if ("1".equals(System.getenv("APEIRON_VERIFY_MACHINE_BLOCKS_ONLY"))) {
-            com.silvia.apeiron.common.machine.block.verification.MachineDropsSmoke.verify();
+            com.silvia.apeiron.common.machine.me.output.verification.BoundlessMEOutputSmoke.verify();
+            com.silvia.apeiron.common.machine.me.output.verification.MEBeamlineOutputSmoke.verify();
             if (cpw.mods.fml.common.FMLCommonHandler.instance()
                 .getSide()
                 .isClient()) com.silvia.apeiron.common.machine.block.verification.MachineBlockTooltipSmoke.verify();

@@ -42,6 +42,9 @@ public final class CompatibilitySmoke {
         if (cpw.mods.fml.common.Loader.isModLoaded("aeinfinitycell"))
             com.silvia.apeiron.common.integration.aeinfinitycell.verification.InfinityCellSmoke.verify();
         com.silvia.apeiron.common.machine.me.output.verification.BoundlessMEOutputSmoke.verify();
+        if (cpw.mods.fml.common.FMLCommonHandler.instance()
+            .getSide()
+            .isClient()) com.silvia.apeiron.common.machine.block.verification.MachineBlockTooltipSmoke.verify();
         com.silvia.apeiron.common.machine.me.output.verification.MEBeamlineOutputSmoke.verify();
         com.silvia.apeiron.common.machine.me.output.verification.InfiniteMEOutputAssemblySmoke.verify();
         OutputCompatibilitySmoke.verify();

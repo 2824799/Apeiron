@@ -20,6 +20,7 @@ import appeng.api.AEApi;
 import appeng.api.implementations.items.IStorageCell;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.util.item.AEItemStack;
+import gregtech.api.GregTechAPI;
 import gregtech.api.metatileentity.BaseMetaTileEntity;
 import gregtech.common.tileentities.machines.multi.beamcrafting.LHCModule;
 import gregtech.common.tileentities.machines.multi.beamcrafting.MTEBeamMultiBase;
@@ -232,13 +233,14 @@ public final class MEBeamlineOutputSmoke {
         expected = expected.add(BigInteger.valueOf(97));
         ItemStack dropped = tile.getDrops()
             .get(0);
-        check(dropped.getItem() == Item.getItemFromBlock(ApeironMachines.block), "drop registry");
+        check(dropped.getItem() == Item.getItemFromBlock(GregTechAPI.sBlockMachines), "drop did not migrate to GT");
         check(
             dropped.hasTagCompound() && dropped.getTagCompound()
                 .hasKey(MTEBeamlineMEOutputHatch.PENDING_TAG),
             "drop lost filtered queue");
-        MTEBeamlineMEOutputHatch replaced = (MTEBeamlineMEOutputHatch) tile(dropped.getTagCompound())
-            .getMetaTileEntity();
+        BaseMetaTileEntity replacement = new BaseMetaTileEntity();
+        replacement.setInitialValuesAsNBT(dropped.getTagCompound(), (short) dropped.getItemDamage());
+        MTEBeamlineMEOutputHatch replaced = (MTEBeamlineMEOutputHatch) replacement.getMetaTileEntity();
         check(
             replaced.getStoredParticleAmount()
                 .equals(expected),

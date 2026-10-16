@@ -46,6 +46,7 @@ import appeng.util.item.AEItemStack;
 import appeng.util.item.AEItemStackType;
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.GregTechAPI;
+import gregtech.api.metatileentity.BaseMetaTileEntity;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -60,7 +61,7 @@ public final class BoundlessMEOutputSmoke {
 
     public static void verify() {
         com.silvia.apeiron.common.machine.block.verification.MachineDropsSmoke.verify();
-        check(GameRegistry.findBlock(Apeiron.MODID, "machines") == ApeironMachines.block, "own block registry");
+        check(GameRegistry.findBlock(Apeiron.MODID, "machines") == ApeironMachines.block, "legacy block registry");
         check(GregTechAPI.METATILEENTITIES[ApeironConfig.getMachineId(0)] == ApeironMachines.itemOutputBus, "item ID");
         check(
             GregTechAPI.METATILEENTITIES[ApeironConfig.getMachineId(1)] == ApeironMachines.fluidOutputHatch,
@@ -302,6 +303,9 @@ public final class BoundlessMEOutputSmoke {
         final List<ItemStack> entries = new java.util.ArrayList<>();
         ApeironMachines.block
             .getSubBlocks(Item.getItemFromBlock(ApeironMachines.block), ApeironMachines.CREATIVE_TAB, entries);
+        check(entries.isEmpty(), "legacy block still exposes creative entries");
+        ApeironMachines.CREATIVE_TAB.displayAllReleventItems(entries);
+        entries.removeIf(stack -> !ApeironMachines.isMachineStack(stack));
         final int[] expectedOffsets = { ApeironMachines.ITEM_OUTPUT_BUS_OFFSET,
             ApeironMachines.FLUID_OUTPUT_HATCH_OFFSET, ApeironMachines.MIXED_OUTPUT_ASSEMBLY_OFFSET,
             ApeironMachines.INFINITE_ENERGY_HATCH_OFFSET, ApeironMachines.PATTERN_INPUT_ASSEMBLY_OFFSET,
@@ -319,7 +323,7 @@ public final class BoundlessMEOutputSmoke {
                 entries.stream()
                     .anyMatch(
                         stack -> stack.getItemDamage() == id
-                            && stack.getItem() == Item.getItemFromBlock(ApeironMachines.block)),
+                            && stack.getItem() == Item.getItemFromBlock(GregTechAPI.sBlockMachines)),
                 "missing creative output ID " + id);
         }
     }
@@ -449,9 +453,9 @@ public final class BoundlessMEOutputSmoke {
     private static void verifyDrop(final ApeironMachineTile tile, final BigInteger stored, final int offset) {
         final ItemStack dropped = tile.getDrops()
             .get(0);
-        check(dropped.getItem() == Item.getItemFromBlock(ApeironMachines.block), "drop changed registry");
+        check(dropped.getItem() == Item.getItemFromBlock(GregTechAPI.sBlockMachines), "drop did not migrate to GT");
         check(dropped.getItemDamage() == ApeironConfig.getMachineId(offset), "drop changed metadata");
-        final ApeironMachineTile replaced = new ApeironMachineTile();
+        final BaseMetaTileEntity replaced = new BaseMetaTileEntity();
         replaced.setInitialValuesAsNBT(dropped.getTagCompound(), (short) dropped.getItemDamage());
         final BigMEOutputProvider<?> provider = offset == 0
             ? ((MTEBoundlessMEOutputBus) replaced.getMetaTileEntity()).getProvider()
