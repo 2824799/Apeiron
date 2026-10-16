@@ -22,9 +22,11 @@ import com.silvia.apeiron.api.machine.parallel.BigGodforgeExoticModule;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
 import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
 import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
+import com.silvia.apeiron.common.machine.energy.MachineRecipeDisplay;
 import com.silvia.apeiron.common.machine.energy.WirelessControllerEnergy;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
 import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
+import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
 import com.silvia.apeiron.common.machine.parallel.WirelessRecipeState;
 import com.silvia.apeiron.common.machine.registration.ApeironMachines;
 import com.silvia.apeiron.config.ApeironConfig;
@@ -164,8 +166,93 @@ public final class GodforgeEnergySmoke {
         WirelessNetworkManager.setUserEU(owner, BALANCE);
         process(module, input);
         check(module.getRecipeTally() == parallel, "native GT module parallel changed");
-        GtnlGodforgeEnergySmoke
-            .verifyNativeCompletion(module, BigInteger.valueOf(3L * parallel), BigInteger.ZERO, owner);
+        verifyNativeCompletion(module, BigInteger.valueOf(3L * parallel), BigInteger.ZERO, owner);
+    }
+
+    static void verifyNativeCompletion(MTEBaseModule module, BigInteger items, BigInteger fluids, UUID owner)
+        throws ReflectiveOperationException {
+        WirelessRecipeState state = state(module);
+        check(InfiniteEnergyHatches.find(module) == null && state.usesNativeEnergy(), "native power mode changed");
+        check(state.isRunning() && !state.hasPreparedRecipe(), "native outputs were not committed by controller");
+        check(
+            module.mOutputItems.length == 0 && module.mOutputFluids.length == 0,
+            "native outputs expanded into int chunks");
+        MTEInfiniteMEOutputAssembly port = output(module);
+        check(
+            port.getProvider()
+                .getCachedAmountBig()
+                .signum() == 0
+                && port.getFluidProvider()
+                    .getCachedAmountBig()
+                    .signum() == 0,
+            "native products delivered before completion");
+        BigInteger paidBalance = WirelessNetworkManager.getUserEU(owner);
+        check(
+            state.getTotalEUBig()
+                .equals(module.getPowerTally()) && state.getDuration() == module.mMaxProgresstime,
+            "native cost or duration changed");
+        check(
+            module.onRunningTick(null) && WirelessNetworkManager.getUserEU(owner)
+                .equals(paidBalance),
+            "prepaid module charged twice");
+        BigMachineOutputQueue display = new BigMachineOutputQueue();
+        display.load(MachineRecipeDisplay.snapshot(module));
+        check(
+            display.getItemAmountBig()
+                .equals(items)
+                && display.getFluidAmountBig()
+                    .equals(fluids),
+            "native preview lost exact products");
+
+        NBTTagCompound saved = new NBTTagCompound();
+        module.saveNBTData(saved);
+        state.cancelRecipe();
+        module.loadNBTData(saved);
+        check(state.isRunning() && state.usesNativeEnergy(), "native in-flight reload changed power mode");
+        module.mOutputBusses.clear();
+        module.mOutputHatches.clear();
+        // Match the real controller: native arrays are delivered first, then outputAfterRecipe.
+        java.lang.reflect.Method complete = MTEMultiBlockBase.class.getDeclaredMethod("outputAfterRecipe");
+        complete.setAccessible(true);
+        complete.invoke(module);
+        complete.invoke(module);
+        check(
+            !state.isRunning() && state.pending()
+                .getItemAmountBig()
+                .equals(items)
+                && state.pending()
+                    .getFluidAmountBig()
+                    .equals(fluids),
+            "disconnected completion lost or duplicated products");
+        saved = new NBTTagCompound();
+        module.saveNBTData(saved);
+        module.loadNBTData(saved);
+        check(module.addClassicToMachineList(port.getBaseMetaTileEntity(), 0), "output reconnection failed");
+        WirelessControllerEnergy.complete(module);
+        WirelessControllerEnergy.complete(module);
+        check(
+            port.getProvider()
+                .getCachedAmountBig()
+                .equals(items),
+            "native module item output truncated");
+        check(
+            port.getFluidProvider()
+                .getCachedAmountBig()
+                .equals(fluids)
+                && state.pending()
+                    .isEmpty(),
+            "native module fluid output truncated");
+
+        BigMachineOutputQueue cancelled = new BigMachineOutputQueue();
+        cancelled.addItem(new ItemStack(Items.emerald), BigInteger.ONE);
+        state.startNativePowered(BigInteger.ONE, BigInteger.ZERO, 5, cancelled);
+        module.stopMachine(gregtech.api.util.shutdown.ShutDownReasonRegistry.STRUCTURE_INCOMPLETE);
+        complete.invoke(module);
+        check(
+            !state.isRunning() && port.getProvider()
+                .getCachedAmountBig()
+                .equals(items),
+            "stopped recipe produced unearned output");
     }
 
     private static void verifyNativeOutputPolicies() throws ReflectiveOperationException {
@@ -256,7 +343,7 @@ public final class GodforgeEnergySmoke {
             "native exotic inputs");
         WirelessNetworkManager.setUserEU(owner, BALANCE);
         process(module, input);
-        GtnlGodforgeEnergySmoke.verifyNativeCompletion(
+        verifyNativeCompletion(
             module,
             BigInteger.ZERO,
             BigInteger.valueOf(parallel)
