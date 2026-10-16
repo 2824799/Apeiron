@@ -257,7 +257,8 @@ public final class InfiniteStorageInputGui extends MTEHatchBaseGui<MTEHatch> {
                             stack instanceof IAEFluidStack ? "apeiron.machine.stocking.fluid_amount"
                                 : "apeiron.machine.stocking.item_amount",
                             amount));
-                }));
+                })
+                .tooltipAutoUpdate(true));
         return result;
     }
 

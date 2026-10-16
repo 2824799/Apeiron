@@ -15,6 +15,8 @@ import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.stack.InfiniteAEStack;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
 import com.silvia.apeiron.ae.storage.BigMEInventory;
+import com.silvia.apeiron.client.gui.sync.ChunkedNbtSyncValue;
+import com.silvia.apeiron.common.machine.me.input.storage.BigPatternStackCodec;
 import com.silvia.apeiron.common.machine.me.stocking.StockingFilter;
 import com.silvia.apeiron.common.machine.me.stocking.StockingInputLogic;
 
@@ -144,8 +146,80 @@ public final class StockingNetworkCacheSmoke {
         first.refresh();
         check(first.getDisplayed(0) == null, "removed network inventory remained available in projection");
         verifyAutomaticStrategies();
+        verifyLiveSnapshots();
         Apeiron.LOG.info(
             "Stocking cache verification passed: shared scans, bounded selection, all three input kinds, exact stock ranges/priorities/type caps, live invalidation and detached recipe projections");
+    }
+
+    private static void verifyLiveSnapshots() {
+        for (StockingInputLogic.Kind kind : StockingInputLogic.Kind.values()) {
+            for (boolean automatic : new boolean[] { false, true }) {
+                CachedNetwork<IAEItemStack> items = new CachedNetwork<>(AEItemStackType.ITEM_STACK_TYPE);
+                CachedNetwork<IAEFluidStack> fluids = new CachedNetwork<>(AEFluidStackType.FLUID_STACK_TYPE);
+                IAEItemStack diamond = AEItemStack.create(new ItemStack(Items.diamond));
+                IAEFluidStack water = AEFluidStack.create(new FluidStack(FluidRegistry.WATER, 1));
+                BigInteger original = BigInteger.TEN.pow(60);
+                items.stored.addStorage(BigAEStackValues.copyWithSize(diamond, original));
+                fluids.stored.addStorage(BigAEStackValues.copyWithSize(water, original));
+                items.invalidate();
+                fluids.invalidate();
+                CachedInput input = new CachedInput(items, fluids, kind);
+                IAEStack<?> selected = kind == StockingInputLogic.Kind.FLUIDS ? water : diamond;
+                input.getFilter()
+                    .setRefreshTicks(1000);
+                if (automatic) input.setAutoPull(true);
+                else input.setMark(0, selected);
+                ChunkedNbtSyncValue sync = new ChunkedNbtSyncValue(input::snapshot, ignored -> {});
+                sync.updateCacheFromSource(false);
+                input.begin();
+                items.visited = fluids.visited = 0;
+                for (int tick = 1; tick <= 3; tick++) {
+                    CachedNetwork network = kind == StockingInputLogic.Kind.FLUIDS ? fluids : items;
+                    BigMEInventories.injectItemsBig(
+                        network.monitor,
+                        BigAEStackValues.copyWithSize(selected, BigInteger.ONE),
+                        Actionable.MODULATE,
+                        new BaseActionSource());
+                    input.tick(tick);
+                    check(sync.updateCacheFromSource(false), "GUI missed next-tick stock change for " + kind);
+                    NBTTagCompound cell = sync.getValue()
+                        .getTagList("slots", 10)
+                        .getCompoundTagAt(0);
+                    check(
+                        BigAEStackValues.get(BigPatternStackCodec.read(cell.getCompoundTag("available")))
+                            .equals(original.add(BigInteger.valueOf(tick))),
+                        "GUI amount stale or truncated");
+                    check(
+                        BigAEStackValues.get(input.stock(0))
+                            .equals(original)
+                            && BigAEStackValues.get(input.getDisplayed(0))
+                                .equals(original),
+                        "GUI polling changed an in-flight recipe or automatic selection: " + kind
+                            + "/"
+                            + automatic
+                            + ", recipe="
+                            + BigAEStackValues.get(input.stock(0))
+                            + ", displayed="
+                            + BigAEStackValues.get(input.getDisplayed(0)));
+                    check(!sync.updateCacheFromSource(false), "unchanged GUI snapshot triggered another update");
+                }
+                check(items.visited == 0 && fluids.visited == 0, "live quantities enumerated/sorted network types");
+                check(
+                    input.end()
+                        .wasSuccessful(),
+                    "GUI polling broke the recipe transaction");
+                input.connected = false;
+                NBTTagCompound unavailable = input.snapshot()
+                    .getTagList("slots", 10)
+                    .getCompoundTagAt(0);
+                check(
+                    !unavailable.hasKey("available") && unavailable.hasKey("mark"),
+                    "disconnected GUI kept stale quantities or lost its selection");
+                sync.dispose();
+            }
+        }
+        Apeiron.LOG.info(
+            "Stocking live display verification passed: all three kinds, manual/automatic selection, next-tick exact quantities, unchanged-packet suppression and isolated recipe projections");
     }
 
     private static void verifyAutomaticStrategies() {

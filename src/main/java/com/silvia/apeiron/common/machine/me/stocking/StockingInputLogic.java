@@ -535,14 +535,37 @@ public class StockingInputLogic {
         NBTTagList list = new NBTTagList();
         int first = Math.max(0, start);
         int last = Math.min(SLOT_COUNT, end);
+        IItemList<IAEItemStack> items = null;
+        IItemList<IAEFluidStack> fluids = null;
+        // An open GUI polls this each tick. Read only the selected types from AE's shared monitor cache;
+        // leave automatic selection timing and the in-flight recipe projection untouched.
+        if (active()) {
+            boolean needItems = false, needFluids = false;
+            for (int i = first; i < last; i++) {
+                IAEStack<?> marker = autoPull ? displayed[i] : marks[i];
+                needItems |= marker instanceof IAEItemStack;
+                needFluids |= marker instanceof IAEFluidStack;
+            }
+            try {
+                items = needItems ? readNetworkItems() : null;
+                fluids = needFluids ? readNetworkFluids() : null;
+            } catch (GridAccessException ignored) {
+                items = null;
+                fluids = null;
+            }
+        }
         for (int i = first; i < last; i++) {
             IAEStack<?> marker = autoPull ? displayed[i] : marks[i];
             if (marker == null && displayed[i] == null) continue;
+            IAEStack<?> available = marker instanceof IAEItemStack && items != null
+                ? items.findPrecise((IAEItemStack) marker)
+                : marker instanceof IAEFluidStack && fluids != null ? fluids.findPrecise((IAEFluidStack) marker) : null;
             NBTTagCompound cell = new NBTTagCompound();
             cell.setInteger("slot", i);
             if (marker != null) cell.setTag("mark", BigPatternStackCodec.write(marker));
-            if (displayed[i] != null) cell.setTag("available", BigPatternStackCodec.write(displayed[i]));
-            cell.setBoolean("infinite", BigAEStackValues.isInfinite(displayed[i]));
+            if (available != null && (BigAEStackValues.isInfinite(available) || BigAEStackValues.get(available)
+                .signum() > 0)) cell.setTag("available", BigPatternStackCodec.write(available));
+            cell.setBoolean("infinite", BigAEStackValues.isInfinite(available));
             list.appendTag(cell);
         }
         tag.setTag("slots", list);

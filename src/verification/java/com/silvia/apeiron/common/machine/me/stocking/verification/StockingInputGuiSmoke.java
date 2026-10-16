@@ -297,9 +297,31 @@ public final class StockingInputGuiSmoke {
             ((Widget<?>) top).getTooltip()
                 .buildTooltip();
             check(
+                ((Widget<?>) top).getTooltip()
+                    .isAutoUpdate(),
+                "hovered stock tooltip is cached indefinitely");
+            check(
                 !((Widget<?>) top).getTooltip()
                     .isEmpty(),
                 "stock tooltip is empty");
+            com.cleanroommc.modularui.drawable.text.RichText text = (com.cleanroommc.modularui.drawable.text.RichText) ((Widget<?>) top)
+                .getTooltip()
+                .getRichText();
+            String before = text.getAsStrings()
+                .toString();
+            BigInteger updated = BigAEStackValues.get(stacks[index])
+                .add(BigInteger.valueOf(37));
+            cells.getCompoundTagAt(index)
+                .setTag("available", BigPatternStackCodec.write(BigAEStackValues.copyWithSize(stacks[index], updated)));
+            read.invoke(panel.gui, snapshot);
+            ((Widget<?>) top).getTooltip()
+                .buildTooltip();
+            String after = text.getAsStrings()
+                .toString();
+            check(
+                !before.equals(after)
+                    && after.contains(com.silvia.apeiron.math.BigNumberFormatter.formatExact(updated)),
+                "same hovered widget did not show the next synchronized exact quantity");
         }
     }
 

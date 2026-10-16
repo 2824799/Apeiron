@@ -15,7 +15,13 @@ public final class VerificationMod {
 
     @Mod.EventHandler
     public void verify(FMLPostInitializationEvent event) {
-        if ("1".equals(System.getenv("APEIRON_VERIFY_DSP_ONLY"))) {
+        if ("1".equals(System.getenv("APEIRON_VERIFY_STOCKING_DISPLAY_ONLY"))) {
+            com.silvia.apeiron.common.machine.me.stocking.verification.StockingNetworkCacheSmoke.verify();
+            if (cpw.mods.fml.common.FMLCommonHandler.instance()
+                .getSide()
+                .isClient()) com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputGuiSmoke.verify();
+            com.silvia.apeiron.Apeiron.LOG.info("Apeiron targeted stocking display verification passed");
+        } else if ("1".equals(System.getenv("APEIRON_VERIFY_DSP_ONLY"))) {
             com.silvia.apeiron.common.machine.tst.verification.DysonSphereMachineSmoke.verify();
             com.silvia.apeiron.Apeiron.LOG.info("Apeiron targeted DSP verification passed");
         } else if ("1".equals(System.getenv("APEIRON_VERIFY_PATTERN_INPUT_ONLY"))) {
