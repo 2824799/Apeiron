@@ -79,11 +79,6 @@ public final class InfiniteStorageInputGui extends MTEHatchBaseGui<MTEHatch> {
     }
 
     @Override
-    protected boolean doesAddCircuitSlot() {
-        return false;
-    }
-
-    @Override
     protected boolean supportsFluidScreen() {
         return false;
     }

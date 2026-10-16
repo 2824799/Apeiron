@@ -187,6 +187,145 @@ public final class InfinitePatternInputSmoke {
             BigAEStackValues.copyWithSize(AEFluidStack.create(new FluidStack(FluidRegistry.WATER, 1)), amount));
     }
 
+    public static void verifyGlobalCircuit() {
+        Assembly source = new Assembly();
+        ItemStack circuit = gregtech.api.util.GTUtility.getIntegratedCircuit(7);
+        circuit.stackSize = 1;
+        source.setInventorySlotContents(source.getCircuitSlot(), circuit);
+        check(circuit.stackSize == 1, "global circuit modified a real item");
+        check(source.getStackInSlot(source.getCircuitSlot()).stackSize == 0, "global circuit became a real item");
+        ItemStack catalyst = new ItemStack(Items.gold_ingot).setStackDisplayName("Global mold");
+        source.setInventorySlotContents(MTEInfinitePatternInputAssembly.SHARED_CATALYST_START, catalyst);
+        source.updateCraftingIcon(new ItemStack(Items.diamond));
+        source.mRecipeMap = gregtech.api.recipe.RecipeMaps.cutterRecipes;
+        gregtech.common.tileentities.machines.MTEHatchCraftingInputME nativeInput = new gregtech.common.tileentities.machines.MTEHatchCraftingInputME(
+            "apeiron.verification.native_name",
+            10,
+            new String[0],
+            null,
+            true);
+        nativeInput.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        nativeInput.updateCraftingIcon(new ItemStack(Items.diamond));
+        nativeInput.mRecipeMap = source.mRecipeMap;
+        nativeInput.setInventorySlotContents(nativeInput.getCircuitSlot(), circuit);
+        nativeInput.setInventorySlotContents(nativeInput.getCircuitSlot() + 1, catalyst.copy());
+        check(
+            source.getRawName()
+                .equals(nativeInput.getRawName()),
+            "raw terminal name differs from native GT");
+        String suffix = source.getNameSuffix()
+            .getUnformattedText();
+        check(
+            suffix.equals(
+                nativeInput.getNameSuffix()
+                    .getUnformattedText()),
+            "mode/circuit/catalyst suffix differs from native GT");
+        String encodedSuffix = net.minecraft.util.IChatComponent.Serializer.func_150696_a(source.getNameSuffix());
+        check(
+            net.minecraft.util.IChatComponent.Serializer.func_150699_a(encodedSuffix)
+                .getUnformattedText()
+                .equals(suffix),
+            "terminal suffix lost client-localized components during serialization");
+        source.setInventorySlotContents(source.getCircuitSlot(), gregtech.api.util.GTUtility.getIntegratedCircuit(8));
+        check(
+            !encodedSuffix.equals(net.minecraft.util.IChatComponent.Serializer.func_150696_a(source.getNameSuffix())),
+            "circuit name did not update");
+        source.mRecipeMap = gregtech.api.recipe.RecipeMaps.compressorRecipes;
+        check(
+            !source.getNameSuffix()
+                .getUnformattedText()
+                .equals(suffix),
+            "mode name did not update");
+        source.setCustomName("Named machine");
+        check(
+            source.getNameSuffix() == null && source.getRawName()
+                .equals("Named machine"),
+            "custom name lost precedence");
+        source.setCustomName("");
+        source.setInventorySlotContents(0, pattern());
+        check(
+            source.pushPatternBig(source.getPatternDetails(0), input(BigInteger.valueOf(5)), BigInteger.ONE, false),
+            "circuit recipe dispatch failed");
+        BigPatternBuffer buffer = source.getBuffers()
+            .get(0);
+        ItemStack selector = gregtech.api.util.GTUtility.getIntegratedCircuit(8);
+        selector.stackSize = 0;
+        gregtech.api.util.GTRecipe recipe = new gregtech.api.util.GTRecipe(
+            false,
+            new ItemStack[] { new ItemStack(Items.diamond, 2), selector },
+            new ItemStack[] { new ItemStack(Items.emerald) },
+            null,
+            null,
+            null,
+            null,
+            null,
+            new FluidStack[0],
+            null,
+            20,
+            8,
+            0);
+        MTEElectricBlastFurnace controller = new MTEElectricBlastFurnace("apeiron.verification.circuit_recipe");
+        controller.setBaseMetaTileEntity(new BaseMetaTileEntity());
+        controller.mDualInputHatches.add(source);
+        source.beginRecipeProcessing();
+        check(
+            recipe.isRecipeInputEqual(false, new FluidStack[0], buffer.getItemInputs()),
+            "native recipe did not see the global circuit");
+        com.silvia.apeiron.common.machine.parallel.BigRecipeInputs exact = new com.silvia.apeiron.common.machine.parallel.BigRecipeInputs(
+            controller,
+            recipe,
+            buffer.getItemInputs(),
+            buffer.getFluidInputs());
+        exact.consume(BigInteger.valueOf(2));
+        source.endRecipeProcessing();
+        check(
+            buffer.getItemAmountBig()
+                .equals(BigInteger.ONE) && source.getStackInSlot(source.getCircuitSlot()).stackSize == 0,
+            "exact recipe consumed the ghost circuit or wrong materials");
+        source.setInventorySlotContents(source.getCircuitSlot(), null);
+        check(
+            !recipe.isRecipeInputEqual(false, new FluidStack[0], buffer.getItemInputs()),
+            "cleared circuit remained in buffered recipe");
+        source.getInventoryHandler()
+            .setStackInSlot(source.getCircuitSlot(), circuit);
+        check(
+            buffer.getSelectors()
+                .stream()
+                .anyMatch(item -> item.getItemDamage() == 7 && item.getItem() == circuit.getItem()),
+            "native GUI handler did not update existing buffer selectors");
+        NBTTagCompound saved = new NBTTagCompound();
+        source.saveNBTData(saved);
+        Assembly loaded = new Assembly();
+        loaded.loadNBTData(saved);
+        check(
+            loaded.getStackInSlot(loaded.getCircuitSlot())
+                .getItemDamage() == 7,
+            "world reload lost circuit");
+        NBTTagCompound itemState = new NBTTagCompound();
+        source.setItemNBT(itemState);
+        ItemStack block = source.getStackForm(1);
+        block.setTagCompound(itemState);
+        com.silvia.apeiron.common.machine.block.MachineItemNbt.normalize(block);
+        loaded.loadNBTData(block.getTagCompound());
+        check(
+            loaded.getStackInSlot(loaded.getCircuitSlot())
+                .getItemDamage() == 7,
+            "machine item normalization lost circuit");
+        Assembly circuitOnly = new Assembly();
+        circuitOnly.setInventorySlotContents(circuitOnly.getCircuitSlot(), circuit);
+        NBTTagCompound only = new NBTTagCompound();
+        circuitOnly.setItemNBT(only);
+        block.setTagCompound(only);
+        com.silvia.apeiron.common.machine.block.MachineItemNbt.normalize(block);
+        loaded.loadNBTData(block.getTagCompound());
+        check(
+            loaded.getStackInSlot(loaded.getCircuitSlot())
+                .getItemDamage() == 7,
+            "circuit-only machine item lost settings");
+        Apeiron.LOG.info(
+            "Global pattern circuit verification passed: native terminal suffix, mode/name updates, native/exact matching, buffer edits and world/item persistence");
+    }
+
     public static void verify() {
         check(
             GregTechAPI.METATILEENTITIES[ApeironConfig.getMachineId(4)] == ApeironMachines.patternInputAssembly,

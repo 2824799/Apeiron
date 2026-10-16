@@ -8,8 +8,11 @@ import net.minecraft.nbt.NBTTagCompound;
 import com.cleanroommc.modularui.factory.PosGuiData;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.UISettings;
+import com.cleanroommc.modularui.utils.item.IItemHandlerModifiable;
+import com.cleanroommc.modularui.utils.item.ItemStackHandler;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.silvia.apeiron.client.gui.machine.me.input.InfiniteStorageInputGui;
+import com.silvia.apeiron.common.machine.me.circuit.GlobalInputCircuit;
 import com.silvia.apeiron.common.machine.registration.ApeironMachines;
 
 import gregtech.api.interfaces.ITexture;
@@ -25,7 +28,45 @@ import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 public class MTEInfiniteStorageInputBus extends MTEHatchInputBusME
     implements StockingInputHost, com.silvia.apeiron.compat.HatchWatcherHost {
 
+    public static final int CIRCUIT_SLOT = StockingInputLogic.SLOT_COUNT;
     private final StockingInputLogic stocking;
+    private final IItemHandlerModifiable circuitInventory = new ItemStackHandler(CIRCUIT_SLOT + 1) {
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return slot == CIRCUIT_SLOT && getStockingInput() != null ? getStockingInput().getCircuit() : null;
+        }
+
+        @Override
+        public void setStackInSlot(int slot, ItemStack stack) {
+            if (slot == CIRCUIT_SLOT) getStockingInput().setCircuit(stack);
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return slot == CIRCUIT_SLOT && (stack == null || GlobalInputCircuit.normalize(stack) != null);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return null;
+        }
+    };
+
+    @Override
+    public IItemHandlerModifiable getInventoryHandler() {
+        return circuitInventory;
+    }
+
+    @Override
+    public int getCircuitSlot() {
+        return CIRCUIT_SLOT;
+    }
 
     public MTEInfiniteStorageInputBus(int id, String name, String localName) {
         this(id, name, localName, StockingInputLogic.Kind.ITEMS);
@@ -81,12 +122,13 @@ public class MTEInfiniteStorageInputBus extends MTEHatchInputBusME
 
     @Override
     public int getSizeInventory() {
-        return StockingInputLogic.SLOT_COUNT;
+        return CIRCUIT_SLOT + 1;
     }
 
     @Override
     public ItemStack getStackInSlot(int slot) {
-        return getStockingInput() == null ? null : getStockingInput().itemView(slot);
+        if (getStockingInput() == null) return null;
+        return slot == CIRCUIT_SLOT ? getStockingInput().getCircuit() : getStockingInput().itemView(slot);
     }
 
     @Override
@@ -127,12 +169,13 @@ public class MTEInfiniteStorageInputBus extends MTEHatchInputBusME
     }
 
     @Override
-    public void setInventorySlotContents(int slot, ItemStack stack) {} // Only phantom selections and recipe debits may
-                                                                       // change this input.
+    public void setInventorySlotContents(int slot, ItemStack stack) {
+        if (slot == CIRCUIT_SLOT) getStockingInput().setCircuit(stack);
+    }
 
     @Override
     public boolean allowSelectCircuit() {
-        return false;
+        return true;
     }
 
     @Override

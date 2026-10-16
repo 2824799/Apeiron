@@ -24,6 +24,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.IChatComponent;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -37,6 +38,7 @@ import com.silvia.apeiron.ae.automation.BigPoweredTransfers;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.api.machine.me.input.BigDualInputHatch;
 import com.silvia.apeiron.client.gui.machine.me.input.InfinitePatternInputGui;
+import com.silvia.apeiron.common.machine.me.circuit.GlobalInputCircuit;
 import com.silvia.apeiron.common.machine.me.input.pattern.MultipliedPatternDetails;
 import com.silvia.apeiron.common.machine.me.input.pattern.PatternInsertionCache;
 import com.silvia.apeiron.common.machine.me.input.storage.BigPatternBuffer;
@@ -48,6 +50,7 @@ import com.silvia.apeiron.math.BigValueCodec;
 import appeng.api.config.Actionable;
 import appeng.api.implementations.ICraftingPatternItem;
 import appeng.api.implementations.IPowerChannelState;
+import appeng.api.interfaces.IInterfaceNameProvider;
 import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.crafting.ICraftingPatternDetails;
@@ -84,6 +87,7 @@ import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTSplit;
 import gregtech.common.gui.modularui.util.MTEItemStackHandler;
 import gregtech.common.tileentities.machines.IDualInputInventory;
+import gregtech.crossmod.ae2.ChatComponentNonConsumedItemsSuffix;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
@@ -99,7 +103,8 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     public static final int CATALYST_SLOTS = 9;
     public static final int SHARED_CATALYST_START = PATTERN_COUNT;
     public static final int PATTERN_CATALYST_START = SHARED_CATALYST_START + CATALYST_SLOTS;
-    private static final int INVENTORY_SIZE = PATTERN_CATALYST_START + PATTERN_COUNT * CATALYST_SLOTS;
+    public static final int CIRCUIT_SLOT = PATTERN_CATALYST_START + PATTERN_COUNT * CATALYST_SLOTS;
+    private static final int INVENTORY_SIZE = CIRCUIT_SLOT + 1;
     private static final String STATE_KEY = "ApeironPatternInput";
     private final BigInteger[] multipliers = new BigInteger[PATTERN_COUNT];
     private final ItemStack[] multiplierPatterns = new ItemStack[PATTERN_COUNT];
@@ -114,6 +119,11 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     private final IInventory patternInventory = new PatternInventory();
     // Older GT handlers do not delegate item validation to their machine. Keep every GUI insertion guarded.
     private final IItemHandlerModifiable validatedInventoryHandler = new MTEItemStackHandler(mInventory, this) {
+
+        @Override
+        public void setStackInSlot(int slot, ItemStack stack) {
+            super.setStackInSlot(slot, slot == CIRCUIT_SLOT ? GlobalInputCircuit.normalize(stack) : stack);
+        }
 
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
@@ -178,7 +188,18 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
 
     @Override
     public boolean allowSelectCircuit() {
-        return false;
+        return true;
+    }
+
+    @Override
+    public int getCircuitSlot() {
+        return CIRCUIT_SLOT;
+    }
+
+    @Override
+    public void setInventorySlotContents(int slot, ItemStack stack) {
+        if (slot == CIRCUIT_SLOT) validatedInventoryHandler.setStackInSlot(slot, stack);
+        else super.setInventorySlotContents(slot, stack);
     }
 
     @Override
@@ -373,6 +394,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
 
     private List<ItemStack> manualSelectors(int index) {
         List<ItemStack> result = new ArrayList<>();
+        if (mInventory[CIRCUIT_SLOT] != null) result.add(mInventory[CIRCUIT_SLOT].copy());
         addCatalysts(result, SHARED_CATALYST_START);
         if (index >= 0 && index < PATTERN_COUNT) addCatalysts(result, catalystSlotStart(index));
         return result;
@@ -419,6 +441,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
 
     private List<ItemStack> catalysts(int index, List<IAEStack<?>> input, List<IAEStack<?>> consumables) {
         List<ItemStack> result = new ArrayList<>();
+        if (mInventory[CIRCUIT_SLOT] != null) result.add(mInventory[CIRCUIT_SLOT].copy());
         addCatalysts(result, SHARED_CATALYST_START);
         addCatalysts(result, catalystSlotStart(index));
         for (IAEStack<?> stack : input) {
@@ -754,16 +777,49 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     @Override
     public String getName() {
         if (hasCustomName()) return customName;
-        final String machines = watcherReferences.keySet()
+        IChatComponent suffix = getNameSuffix();
+        return terminalMachineName(false) + (suffix == null ? "" : suffix.getUnformattedText());
+    }
+
+    @Override
+    public String getRawName() {
+        return hasCustomName() ? customName : terminalMachineName(true);
+    }
+
+    private String terminalMachineName(boolean raw) {
+        // The icon is the native terminal representation; raw keys are translated by the viewing client.
+        ItemStack icon = getMachineCraftingIcon();
+        if (icon != null) return raw && !icon.hasDisplayName() ? icon.getUnlocalizedName() : icon.getDisplayName();
+        String machines = watcherReferences.keySet()
             .stream()
             .filter(watcher -> watcher instanceof MetaTileEntity)
             .map(watcher -> ((MetaTileEntity) watcher).getLocalName())
             .distinct()
             .sorted()
             .collect(java.util.stream.Collectors.joining(" / "));
-        if (!machines.isEmpty()) return machines;
-        final ItemStack icon = getMachineCraftingIcon();
-        return icon == null ? getLocalName() : icon.getDisplayName();
+        return machines.isEmpty() ? getLocalName() : machines;
+    }
+
+    @Override
+    public IChatComponent getNameSuffix() {
+        if (hasCustomName()) return null;
+        if (watcherReferences.size() == 1 && watcherReferences.keySet()
+            .iterator()
+            .next() instanceof gregtech.api.metatileentity.implementations.MTEMultiBlockBase controller)
+            mRecipeMap = controller.getRecipeMap();
+        IChatComponent suffix = getBaseMetaTileEntity() instanceof IInterfaceNameProvider provider
+            ? provider.getInterfaceNameSuffix()
+            : null;
+        List<ItemStack> catalysts = new ArrayList<>();
+        for (int i = 0; i < CATALYST_SLOTS; i++) {
+            ItemStack stack = mInventory[SHARED_CATALYST_START + i];
+            if (stack != null) catalysts.add(stack.copy());
+        }
+        if (!catalysts.isEmpty()) {
+            IChatComponent manual = new ChatComponentNonConsumedItemsSuffix(catalysts);
+            suffix = suffix == null ? manual : suffix.appendSibling(manual);
+        }
+        return suffix;
     }
 
     @Override
@@ -785,6 +841,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
     @Override
     public boolean isItemValidForSlot(int slot, ItemStack stack) {
         if (stack == null || slot < 0 || slot >= INVENTORY_SIZE) return false;
+        if (slot == CIRCUIT_SLOT) return GlobalInputCircuit.normalize(stack) != null;
         if (slot >= PATTERN_COUNT) return true;
         if (!(stack.getItem() instanceof ICraftingPatternItem)) return false;
         World world = getBaseMetaTileEntity() == null ? null : getBaseMetaTileEntity().getWorld();
@@ -840,6 +897,8 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
         state.setBoolean("terminalVisible", terminalVisible);
         BigValueCodec.writeNBT(state, "savedPushCalls", "savedPushCallsBig", new AdaptiveInteger(savedPushCalls));
         state.setString("name", customName);
+        if (mInventory[CIRCUIT_SLOT] != null)
+            state.setInteger("circuit", GlobalInputCircuit.config(mInventory[CIRCUIT_SLOT]));
         NBTTagList factors = new NBTTagList();
         for (int i = 0; i < PATTERN_COUNT; i++) if (!multipliers[i].equals(BigInteger.ONE)) {
             NBTTagCompound factor = new NBTTagCompound();
@@ -876,7 +935,8 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
         boolean contents = additionalConnection || multiplierView
             || !patternOptimization
             || !terminalVisible
-            || !customName.isEmpty();
+            || !customName.isEmpty()
+            || mInventory[CIRCUIT_SLOT] != null;
         for (BigInteger multiplier : multipliers) contents |= !multiplier.equals(BigInteger.ONE);
         for (ItemStack stack : mInventory) contents |= stack != null && stack.stackSize > 0;
         for (BigPatternBuffer buffer : buffers) {
@@ -903,6 +963,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus
                 if (slot >= 0 && slot < mInventory.length) mInventory[slot] = ItemStack.loadItemStackFromNBT(entry);
             }
         }
+        mInventory[CIRCUIT_SLOT] = GlobalInputCircuit.fromConfig(state.getInteger("circuit"));
         NBTTagList factors = state.getTagList("multipliers", 10);
         for (int i = 0; i < factors.tagCount(); i++) {
             NBTTagCompound factor = factors.getCompoundTagAt(i);

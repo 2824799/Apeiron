@@ -21,6 +21,7 @@ import com.glodblock.github.common.item.ItemFluidPacket;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.ae.stack.InfiniteAEStack;
 import com.silvia.apeiron.ae.storage.BigMEInventories;
+import com.silvia.apeiron.common.machine.me.circuit.GlobalInputCircuit;
 import com.silvia.apeiron.common.machine.me.input.storage.BigPatternStackCodec;
 
 import appeng.api.config.Actionable;
@@ -59,6 +60,22 @@ public class StockingInputLogic {
     private final List<IAEStack<?>> refunds = new ArrayList<>();
     private final Set<Object> watchers = Collections.newSetFromMap(new IdentityHashMap<>());
     private boolean autoPull, processing, projectionReady;
+    private ItemStack circuit;
+
+    public ItemStack getCircuit() {
+        return circuit == null ? null : circuit.copy();
+    }
+
+    public void setCircuit(ItemStack stack) {
+        if (processing || kind == Kind.FLUIDS) return;
+        circuit = GlobalInputCircuit.normalize(stack);
+        changed();
+    }
+
+    public ItemStack[] sharedItems() {
+        ItemStack selected = getCircuit();
+        return selected == null ? new ItemStack[0] : new ItemStack[] { selected };
+    }
 
     public StockingInputLogic(StockingInputHost host, Kind kind) {
         this.host = host;
@@ -575,6 +592,7 @@ public class StockingInputLogic {
     public void save(NBTTagCompound root) {
         NBTTagCompound tag = filter.save();
         tag.setBoolean("auto", autoPull);
+        if (circuit != null) tag.setInteger("circuit", GlobalInputCircuit.config(circuit));
         NBTTagList list = new NBTTagList();
         for (int i = 0; i < SLOT_COUNT; i++) if (marks[i] != null) {
             NBTTagCompound cell = BigPatternStackCodec.write(marks[i]);
@@ -595,6 +613,7 @@ public class StockingInputLogic {
             for (String key : saved.func_150296_c()) tag.setTag(key, saved.getTag(key));
         }
         if (autoPull) tag.setBoolean("auto", true);
+        if (circuit != null) tag.setInteger("circuit", GlobalInputCircuit.config(circuit));
         NBTTagList marksTag = new NBTTagList();
         for (int i = 0; i < SLOT_COUNT; i++) if (marks[i] != null) {
             NBTTagCompound cell = BigPatternStackCodec.write(marks[i]);
@@ -635,6 +654,7 @@ public class StockingInputLogic {
         NBTTagCompound tag = root.getCompoundTag("ApeironStockingInput");
         filter.load(tag);
         autoPull = tag.getBoolean("auto");
+        circuit = kind == Kind.FLUIDS ? null : GlobalInputCircuit.fromConfig(tag.getInteger("circuit"));
         Arrays.fill(marks, null);
         NBTTagList list = tag.getTagList("marks", 10);
         for (int i = 0; i < list.tagCount(); i++) {

@@ -81,7 +81,7 @@ public class MTEInfiniteStorageInputAssembly extends MTEInfiniteStorageInputBus 
 
     @Override
     public ItemStack[] getSharedItems() {
-        return new ItemStack[0];
+        return getStockingInput().sharedItems();
     }
 
     private final class FluidPort extends MTEInfiniteStorageInputHatch {

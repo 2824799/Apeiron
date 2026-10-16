@@ -15,7 +15,14 @@ public final class VerificationMod {
 
     @Mod.EventHandler
     public void verify(FMLPostInitializationEvent event) {
-        if ("1".equals(System.getenv("APEIRON_VERIFY_GODFORGE_ONLY"))) {
+        if ("1".equals(System.getenv("APEIRON_VERIFY_INPUT_CIRCUIT_ONLY"))) {
+            com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verifyGlobalCircuit();
+            com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verifyGlobalCircuits();
+            if (cpw.mods.fml.common.FMLCommonHandler.instance()
+                .getSide()
+                .isClient()) com.silvia.apeiron.common.machine.me.input.verification.InputCircuitGuiSmoke.verify();
+            com.silvia.apeiron.Apeiron.LOG.info("Apeiron targeted input circuit verification passed");
+        } else if ("1".equals(System.getenv("APEIRON_VERIFY_GODFORGE_ONLY"))) {
             com.silvia.apeiron.common.machine.energy.verification.GodforgeEnergySmoke.verify();
             com.silvia.apeiron.Apeiron.LOG.info("Apeiron targeted godforge verification passed");
         } else if ("1".equals(System.getenv("APEIRON_VERIFY_STOCKING_DISPLAY_ONLY"))) {

@@ -56,6 +56,7 @@ public final class MachineItemNbt {
                 || state.getBoolean("multiplierView")
                 || (state.hasKey("patternOptimization") && !state.getBoolean("patternOptimization"))
                 || (state.hasKey("terminalVisible") && !state.getBoolean("terminalVisible"))
+                || state.getInteger("circuit") > 0
                 || !state.getString("name")
                     .isEmpty();
             NBTTagList buffers = state.getTagList("buffers", 10);

@@ -96,11 +96,6 @@ public final class InfinitePatternInputGui extends MTEHatchBaseGui<MTEInfinitePa
     }
 
     @Override
-    protected boolean doesAddCircuitSlot() {
-        return false;
-    }
-
-    @Override
     protected void registerSyncValues(PanelSyncManager sync) {
         super.registerSyncValues(sync);
         multiplierView = new BooleanSyncValue(

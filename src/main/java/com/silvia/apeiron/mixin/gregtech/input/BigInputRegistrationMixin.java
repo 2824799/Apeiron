@@ -47,6 +47,8 @@ public abstract class BigInputRegistrationMixin {
         gregtech.common.tileentities.machines.IDualInputHatch hatch = (gregtech.common.tileentities.machines.IDualInputHatch) tile
             .getMetaTileEntity();
         MTEMultiBlockBase controller = (MTEMultiBlockBase) (Object) this;
+        if (hatch instanceof gregtech.api.metatileentity.implementations.MTEHatchInputBus input)
+            input.mRecipeMap = controller.getRecipeMap();
         if (controller.mDualInputHatches.contains(hatch)) {
             hatch.updateTexture(texture);
             hatch.updateCraftingIcon(controller.getMachineCraftingIcon());

@@ -143,6 +143,97 @@ public final class StockingInputsSmoke {
         return BigAEStackValues.set(result, amount);
     }
 
+    public static void verifyGlobalCircuits() {
+        for (boolean mixed : new boolean[] { false, true }) {
+            Network network = new Network();
+            network.store(item(), BigInteger.valueOf(8));
+            Input input = new Input(network, mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.ITEMS);
+            input.setMark(0, item());
+            MTEInfiniteStorageInputBus bus = mixed ? new Assembly(input) : new Bus(input);
+            ItemStack selected = gregtech.api.util.GTUtility.getIntegratedCircuit(3);
+            int originalCount = selected.stackSize;
+            bus.setInventorySlotContents(bus.getCircuitSlot(), selected);
+            check(
+                selected.stackSize == originalCount && bus.getStackInSlot(bus.getCircuitSlot()).stackSize == 0,
+                "stocking circuit modified a real item");
+            check(
+                bus.decrStackSize(bus.getCircuitSlot(), 1) == null && bus.getRealInventory().length == 0,
+                "virtual circuit could be extracted");
+            check(bus.getSizeInventory() == 361 && input.getMark(0) != null, "circuit displaced a stocking slot");
+            NBTTagCompound world = new NBTTagCompound();
+            bus.saveNBTData(world);
+            input.setCircuit(null);
+            bus.loadNBTData(world);
+            check(
+                input.getCircuit()
+                    .getItemDamage() == 3,
+                "world reload lost stocking circuit");
+            NBTTagCompound itemTag = new NBTTagCompound();
+            bus.setItemNBT(itemTag);
+            input.setCircuit(null);
+            input.load(itemTag);
+            check(
+                input.getCircuit()
+                    .getItemDamage() == 3,
+                "machine item lost stocking circuit");
+            NBTTagCompound copied = bus.getCopiedData(null);
+            input.setCircuit(null);
+            check(
+                bus.pasteCopiedData(null, copied) && input.getCircuit()
+                    .getItemDamage() == 3,
+                "data stick lost stocking circuit");
+            bus.getInventoryHandler()
+                .setStackInSlot(bus.getCircuitSlot(), gregtech.api.util.GTUtility.getIntegratedCircuit(4));
+            MTEMultiBlockBase controller = new MTEElectricBlastFurnace("apeiron.verification.stocking_circuit");
+            controller.setBaseMetaTileEntity(new BaseMetaTileEntity());
+            controller.mInputBusses.add(bus);
+            input.begin();
+            ItemStack[] items = controller.getStoredInputs()
+                .toArray(new ItemStack[0]);
+            ItemStack selector = gregtech.api.util.GTUtility.getIntegratedCircuit(4);
+            selector.stackSize = 0;
+            gregtech.api.util.GTRecipe recipe = new gregtech.api.util.GTRecipe(
+                false,
+                new ItemStack[] { new ItemStack(Items.diamond, 2), selector },
+                new ItemStack[] { new ItemStack(Items.emerald) },
+                null,
+                null,
+                null,
+                null,
+                null,
+                new FluidStack[0],
+                null,
+                20,
+                8,
+                0);
+            check(
+                recipe.isRecipeInputEqual(false, new FluidStack[0], items),
+                "native stocking input omitted ghost circuit");
+            com.silvia.apeiron.common.machine.parallel.BigRecipeInputs exact = new com.silvia.apeiron.common.machine.parallel.BigRecipeInputs(
+                controller,
+                recipe,
+                items,
+                new FluidStack[0]);
+            exact.consume(BigInteger.valueOf(2));
+            check(
+                input.end()
+                    .wasSuccessful()
+                    && network.count(item())
+                        .equals(BigInteger.valueOf(4)),
+                "circuit recipe did not debit ME exactly once");
+            check(
+                input.getCircuit()
+                    .getItemDamage() == 4 && input.getCircuit().stackSize == 0,
+                "recipe consumed stocking circuit");
+            bus.setInventorySlotContents(bus.getCircuitSlot(), null);
+            check(bus.getStackInSlot(bus.getCircuitSlot()) == null, "stocking circuit did not clear");
+            bus.setInventorySlotContents(bus.getCircuitSlot(), new ItemStack(Items.emerald));
+            check(bus.getStackInSlot(bus.getCircuitSlot()) == null, "stocking circuit accepted a real item");
+        }
+        Apeiron.LOG.info(
+            "Global stocking circuit verification passed: bus/assembly, 360 selections preserved, native/exact matching, no ME debit for selectors, world/item/data-stick persistence");
+    }
+
     public static void verify() {
         StockingNetworkCacheSmoke.verify();
         com.silvia.apeiron.common.network.verification.GuiSnapshotSmoke.verify();
