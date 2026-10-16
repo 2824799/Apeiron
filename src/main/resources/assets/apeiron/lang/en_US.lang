@@ -1,5 +1,6 @@
 # Player-facing names, descriptions and interface text.\n is a tooltip line break.
 apeiron.name=Apeiron
+apeiron.tooltip.added_by=Added by Apeiron
 itemGroup.apeiron=Apeiron
 gt.blockmachines.apeiron.boundless_me_output_bus.name=Infinite ME Output Bus
 gt.blockmachines.apeiron.boundless_me_output_hatch.name=Infinite ME Output Hatch

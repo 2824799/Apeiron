@@ -96,10 +96,7 @@ public class MTEInfiniteProgrammingCircuitProvider extends MTEHatch
 
     @Override
     public ItemStack getStackForm(long amount) {
-        return new ItemStack(
-            ApeironMachines.block,
-            (int) Math.min(Integer.MAX_VALUE, amount),
-            getBaseMetaTileEntity().getMetaTileID());
+        return ApeironMachines.getStackForm(this, amount);
     }
 
     @Override

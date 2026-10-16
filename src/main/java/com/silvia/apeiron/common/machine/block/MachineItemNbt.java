@@ -1,5 +1,6 @@
 package com.silvia.apeiron.common.machine.block;
 
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
@@ -16,6 +17,7 @@ import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
 import com.silvia.apeiron.common.machine.me.stocking.StockingFilter;
 import com.silvia.apeiron.common.machine.me.stocking.StockingInputHost;
 import com.silvia.apeiron.common.machine.me.stocking.StockingInputLogic;
+import com.silvia.apeiron.common.machine.registration.ApeironMachines;
 import com.silvia.apeiron.common.machine.tectech.MTEEyeOfHarmonyEnhancementModule;
 
 import gregtech.api.GregTechAPI;
@@ -25,6 +27,13 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 public final class MachineItemNbt {
 
     private MachineItemNbt() {}
+
+    /** In-place inventory conversion retains metadata, count and every non-obsolete NBT field. */
+    public static void migrate(ItemStack stack) {
+        if (!ApeironMachines.isMachineStack(stack)) return;
+        stack.func_150996_a(Item.getItemFromBlock(GregTechAPI.sBlockMachines));
+        normalize(stack);
+    }
 
     public static void normalize(ItemStack stack) {
         if (!stack.hasTagCompound()) return;

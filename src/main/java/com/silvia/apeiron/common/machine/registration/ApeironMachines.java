@@ -1,5 +1,7 @@
 package com.silvia.apeiron.common.machine.registration;
 
+import java.util.List;
+
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -24,6 +26,8 @@ import com.silvia.apeiron.common.machine.tectech.MTEEyeOfHarmonyEnhancementModul
 import com.silvia.apeiron.config.ApeironConfig;
 
 import cpw.mods.fml.common.registry.GameRegistry;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.GregTechAPI;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 
@@ -64,16 +68,60 @@ public final class ApeironMachines {
 
         @Override
         public Item getTabIconItem() {
-            return block == null ? Items.ender_pearl : Item.getItemFromBlock(block);
+            return itemOutputBus == null ? Items.ender_pearl : Item.getItemFromBlock(GregTechAPI.sBlockMachines);
         }
 
         @Override
         public ItemStack getIconItemStack() {
             return itemOutputBus == null ? new ItemStack(Items.ender_pearl) : itemOutputBus.getStackForm(1L);
         }
+
+        @Override
+        @SideOnly(Side.CLIENT)
+        public void displayAllReleventItems(List<ItemStack> stacks) {
+            super.displayAllReleventItems(stacks);
+            for (int id = ApeironConfig.getMachineIdStart(); id <= ApeironConfig.getMachineIdEnd(); id++) {
+                if (isApeironMachine(id)) stacks.add(GregTechAPI.METATILEENTITIES[id].getStackForm(1L));
+            }
+        }
     };
 
     private ApeironMachines() {}
+
+    /** All newly created machine items use GregTech's block; the old block only loads existing saves. */
+    public static ItemStack getStackForm(IMetaTileEntity machine, long amount) {
+        return new ItemStack(
+            GregTechAPI.sBlockMachines,
+            (int) Math.min(Integer.MAX_VALUE, amount),
+            machine.getBaseMetaTileEntity()
+                .getMetaTileID());
+    }
+
+    public static boolean isApeironMachine(int id) {
+        return id > 0 && id < GregTechAPI.METATILEENTITIES.length && owns(GregTechAPI.METATILEENTITIES[id]);
+    }
+
+    public static boolean isMachineStack(ItemStack stack) {
+        return stack != null && isApeironMachine(stack.getItemDamage())
+            && (stack.getItem() == Item.getItemFromBlock(GregTechAPI.sBlockMachines)
+                || (block != null && stack.getItem() == Item.getItemFromBlock(block)));
+    }
+
+    private static boolean owns(IMetaTileEntity machine) {
+        return machine != null && (machine == itemOutputBus || machine == fluidOutputHatch
+            || machine == mixedOutputAssembly
+            || machine == infiniteEnergyHatch
+            || machine == ultimateEnergyHatch
+            || machine == patternInputAssembly
+            || machine == patternInputMirror
+            || machine == circuitProvider
+            || machine == storageInputBus
+            || machine == storageInputHatch
+            || machine == storageInputAssembly
+            || machine == eyeOfHarmonyEnhancementModule
+            || machine == quantumEnhancementModule
+            || machine == meBeamlineOutputHatch);
+    }
 
     public static void registerBlock() {
         if (block == null) {
@@ -165,19 +213,7 @@ public final class ApeironMachines {
         }
         for (int id = ApeironConfig.getMachineIdStart(); id <= ApeironConfig.getMachineIdEnd(); id++) {
             final IMetaTileEntity existing = GregTechAPI.METATILEENTITIES[id];
-            if (registered && (existing == itemOutputBus || existing == fluidOutputHatch
-                || existing == mixedOutputAssembly
-                || existing == infiniteEnergyHatch
-                || existing == ultimateEnergyHatch
-                || existing == patternInputAssembly
-                || existing == patternInputMirror
-                || existing == circuitProvider
-                || existing == storageInputBus
-                || existing == storageInputHatch
-                || existing == storageInputAssembly
-                || existing == eyeOfHarmonyEnhancementModule
-                || existing == quantumEnhancementModule
-                || existing == meBeamlineOutputHatch)) continue;
+            if (registered && owns(existing)) continue;
             if (existing != null) {
                 throw new IllegalStateException(
                     "Apeiron's configured 100-ID reservation conflicts at ID " + id

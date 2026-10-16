@@ -3,6 +3,7 @@ package com.silvia.apeiron.common.machine.block.verification;
 import java.math.BigInteger;
 
 import net.minecraft.init.Items;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -23,6 +24,7 @@ import com.silvia.apeiron.config.ApeironConfig;
 
 import appeng.util.item.AEFluidStack;
 import appeng.util.item.AEItemStack;
+import gregtech.api.GregTechAPI;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.metatileentity.BaseMetaTileEntity;
 import gregtech.api.metatileentity.CommonMetaTileEntity;
@@ -36,6 +38,7 @@ public final class MachineDropsSmoke {
     private MachineDropsSmoke() {}
 
     public static void verify() {
+        verifyRegistration();
         for (int offset = 0; offset <= ApeironMachines.EYE_OF_HARMONY_ENHANCEMENT_OFFSET; offset++) {
             BaseMetaTileEntity nativeTile = tile(offset, false, null);
             NBTTagCompound item = new NBTTagCompound();
@@ -60,7 +63,43 @@ public final class MachineDropsSmoke {
         verifyStockingSettings();
         verifyUpgrades();
         Apeiron.LOG.info(
-            "Machine drop verification passed: all 12 empty machines stack; legacy tags cleaned; exact contents and upgrades preserved");
+            "Machine drop verification passed: GT machine items and legacy migration; exact contents, settings and upgrades preserved");
+    }
+
+    private static void verifyRegistration() {
+        int count = 0;
+        for (int id = ApeironConfig.getMachineIdStart(); id <= ApeironConfig.getMachineIdEnd(); id++) {
+            if (!ApeironMachines.isApeironMachine(id)) continue;
+            count++;
+            IMetaTileEntity registered = GregTechAPI.METATILEENTITIES[id];
+            ItemStack nativeItem = registered.getStackForm(2L);
+            check(
+                nativeItem.getItem() == Item.getItemFromBlock(GregTechAPI.sBlockMachines),
+                "stack factory still uses the legacy block at ID " + id);
+            check(nativeItem.getItemDamage() == id && nativeItem.stackSize == 2, "stack identity changed");
+            NBTTagCompound data = new NBTTagCompound();
+            data.setString("migrationPayload", "keep");
+            data.setBoolean("mLockUpgrade", true);
+            ItemStack old = new ItemStack(ApeironMachines.block, 2, id);
+            old.setTagCompound((NBTTagCompound) data.copy());
+            MachineItemNbt.migrate(old);
+            check(
+                old.getItem() == nativeItem.getItem() && old.getItemDamage() == id && old.stackSize == 2,
+                "legacy inventory migration changed identity or count");
+            check(data.equals(old.getTagCompound()), "legacy inventory migration lost native or unknown data");
+            check(registered == GregTechAPI.METATILEENTITIES[id], "migration replaced a registered machine");
+            for (boolean legacy : new boolean[] { false, true }) {
+                ItemStack drop = tile(id - ApeironConfig.getMachineIdStart(), legacy, null).getDrops()
+                    .get(0);
+                check(
+                    drop.getItem() == nativeItem.getItem() && drop.getItemDamage() == id,
+                    "native or legacy tile dropped the wrong block at ID " + id);
+            }
+        }
+        check(count == 14, "not every registered machine was verified");
+        ItemStack unrelated = new ItemStack(Items.diamond, 3, ApeironConfig.getMachineId(0));
+        MachineItemNbt.migrate(unrelated);
+        check(unrelated.getItem() == Items.diamond && unrelated.stackSize == 3, "converted an unrelated item");
     }
 
     private static BaseMetaTileEntity tile(int offset, boolean own, NBTTagCompound tag) {
@@ -212,8 +251,8 @@ public final class MachineDropsSmoke {
     }
 
     private static void verifyPhysicalInventory() {
-        for (int offset : new int[] { 0, 1, 2, 6 }) {
-            BaseMetaTileEntity source = tile(offset, true, null);
+        for (boolean legacy : new boolean[] { false, true }) for (int offset : new int[] { 0, 1, 2, 6 }) {
+            BaseMetaTileEntity source = tile(offset, legacy, null);
             CommonMetaTileEntity machine = (CommonMetaTileEntity) source.getMetaTileEntity();
             ItemStack sample = new ItemStack(Items.diamond, 193);
             NBTTagCompound payload = new NBTTagCompound();
@@ -223,7 +262,7 @@ public final class MachineDropsSmoke {
             ItemStack drop = source.getDrops()
                 .get(0);
             MachineItemNbt.normalize(drop);
-            IMetaTileEntity restored = tile(offset, true, drop.getTagCompound()).getMetaTileEntity();
+            IMetaTileEntity restored = tile(offset, false, drop.getTagCompound()).getMetaTileEntity();
             check(
                 ItemStack.areItemStacksEqual(sample, restored.getRealInventory()[0]),
                 "drop lost physical inventory at offset " + offset);
@@ -235,7 +274,7 @@ public final class MachineDropsSmoke {
     }
 
     private static void verifyRefunds() {
-        for (int offset : new int[] { 7, 8, 9 }) {
+        for (boolean legacy : new boolean[] { false, true }) for (int offset : new int[] { 7, 8, 9 }) {
             boolean fluid = offset == 8;
             NBTTagList refunds = new NBTTagList();
             refunds.appendTag(
@@ -248,11 +287,11 @@ public final class MachineDropsSmoke {
             state.setTag("refunds", refunds);
             NBTTagCompound tag = new NBTTagCompound();
             tag.setTag("ApeironStockingInput", state);
-            BaseMetaTileEntity source = tile(offset, true, tag);
+            BaseMetaTileEntity source = tile(offset, legacy, tag);
             ItemStack drop = source.getDrops()
                 .get(0);
             MachineItemNbt.normalize(drop);
-            StockingInputHost restored = (StockingInputHost) tile(offset, true, drop.getTagCompound())
+            StockingInputHost restored = (StockingInputHost) tile(offset, false, drop.getTagCompound())
                 .getMetaTileEntity();
             check(
                 restored.getStockingInput()

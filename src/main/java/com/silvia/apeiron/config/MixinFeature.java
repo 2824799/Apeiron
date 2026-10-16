@@ -6,6 +6,7 @@ import net.minecraftforge.common.config.Configuration;
 public enum MixinFeature {
 
     CORE(null, null),
+    MACHINE_BLOCKS(null, null),
     GTNL("mixins.sciencenotleisure", "enableWirelessIntegration"),
     MESSTECH("mixins.messtech", "enableEnergyIntegration"),
     BEAMLINE("mixins.gregtech", "enableBeamlineInputs"),
@@ -80,6 +81,8 @@ public enum MixinFeature {
     public boolean isEnabled() {
         boolean core = ApeironConfig.areAeMixinsEnabled();
         switch (this) {
+            case MACHINE_BLOCKS:
+                return true;
             case TST_PATTERN:
                 return ApeironConfig.isTstPatternEncodeGuardEnabled();
             case WAILA_DISPLAY:
@@ -110,6 +113,7 @@ public enum MixinFeature {
         if (local.startsWith("gregtech.quantum.")) return QUANTUM;
         if (local.startsWith("gregtech.plasmamixer.")) return PLASMA_MIXER;
         if (local.startsWith("gregtech.spaceelevator.")) return SPACE_ELEVATOR;
+        if (local.startsWith("gregtech.machine.")) return MACHINE_BLOCKS;
         if (local.equals("gregtech.energy.NativeMachineWailaMixin") || local.startsWith("compat.omniocular."))
             return WAILA_DISPLAY;
         if (local.startsWith("gregtech.")) return CORE;

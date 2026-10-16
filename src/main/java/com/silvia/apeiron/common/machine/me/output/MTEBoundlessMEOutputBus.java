@@ -95,11 +95,7 @@ public class MTEBoundlessMEOutputBus extends MTEHatchOutputBus implements IPower
 
     @Override
     public ItemStack getStackForm(final long amount) {
-        return new ItemStack(
-            ApeironMachines.block,
-            (int) Math.min(Integer.MAX_VALUE, amount),
-            this.getBaseMetaTileEntity()
-                .getMetaTileID());
+        return ApeironMachines.getStackForm(this, amount);
     }
 
     @Override

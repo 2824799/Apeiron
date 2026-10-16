@@ -92,11 +92,7 @@ public class MTEBoundlessMEOutputHatch extends MTEHatchOutput implements IPowerC
 
     @Override
     public ItemStack getStackForm(final long amount) {
-        return new ItemStack(
-            ApeironMachines.block,
-            (int) Math.min(Integer.MAX_VALUE, amount),
-            this.getBaseMetaTileEntity()
-                .getMetaTileID());
+        return ApeironMachines.getStackForm(this, amount);
     }
 
     @Override

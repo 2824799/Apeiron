@@ -23,7 +23,6 @@ import com.cleanroommc.modularui.screen.UISettings;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.silvia.apeiron.api.machine.me.input.BigDualInputHatch;
 import com.silvia.apeiron.client.gui.machine.me.input.InfinitePatternInputGui;
-import com.silvia.apeiron.common.machine.block.ApeironMachineTile;
 import com.silvia.apeiron.common.machine.registration.ApeironMachines;
 import com.silvia.apeiron.config.ApeironConfig;
 
@@ -32,6 +31,7 @@ import gregtech.api.enums.Textures.BlockIcons;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.metatileentity.BaseMetaTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.render.TextureFactory;
@@ -67,10 +67,7 @@ public class MTEInfinitePatternInputMirror extends MTEHatchInputBus
 
     @Override
     public ItemStack getStackForm(long amount) {
-        return new ItemStack(
-            ApeironMachines.block,
-            (int) Math.min(Integer.MAX_VALUE, amount),
-            getBaseMetaTileEntity().getMetaTileID());
+        return ApeironMachines.getStackForm(this, amount);
     }
 
     @Override
@@ -268,7 +265,7 @@ public class MTEInfinitePatternInputMirror extends MTEHatchInputBus
         if (source == null) {
             // Client-side remote chunks may be absent. Slot and quantity synchronization populate this view only.
             if (uiPreview == null) {
-                ApeironMachineTile tile = new ApeironMachineTile();
+                BaseMetaTileEntity tile = new BaseMetaTileEntity();
                 tile.setInitialValuesAsNBT(
                     null,
                     (short) ApeironConfig.getMachineId(ApeironMachines.PATTERN_INPUT_ASSEMBLY_OFFSET));

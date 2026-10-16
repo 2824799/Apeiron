@@ -1,15 +1,14 @@
 package com.silvia.apeiron.common.machine.block;
 
-import java.util.List;
-
 import net.minecraft.block.Block;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 
+import com.silvia.apeiron.common.machine.registration.ApeironMachines;
+
+import gregtech.api.GregTechAPI;
 import gregtech.common.blocks.ItemMachines;
 
 public final class ApeironMachineItem extends ItemMachines {
@@ -19,20 +18,11 @@ public final class ApeironMachineItem extends ItemMachines {
     }
 
     @Override
-    public void onUpdate(ItemStack stack, World world, Entity entity, int slot, boolean held) {
-        if (!world.isRemote) MachineItemNbt.normalize(stack);
-        super.onUpdate(stack, world, entity, slot, held);
-    }
-
-    @Override
-    public void addInformation(ItemStack stack, EntityPlayer player, List<String> tooltip, boolean advanced) {
-        super.addInformation(stack, player, tooltip, advanced);
-        if (!stack.hasTagCompound()) return;
-        NBTTagCompound contents = stack.getTagCompound()
-            .getCompoundTag("ApeironContents");
-        for (String key : new String[] { "items", "fluids", "patterns", "installed" }) {
-            if (contents.hasKey(key)) tooltip
-                .add(StatCollector.translateToLocalFormatted("apeiron.machine.stored." + key, contents.getString(key)));
-        }
+    public boolean placeBlockAt(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side,
+        float hitX, float hitY, float hitZ, int metadata) {
+        if (!ApeironMachines.isMachineStack(stack)) return false;
+        MachineItemNbt.migrate(stack);
+        ItemMachines nativeItem = (ItemMachines) Item.getItemFromBlock(GregTechAPI.sBlockMachines);
+        return nativeItem.placeBlockAt(stack, player, world, x, y, z, side, hitX, hitY, hitZ, metadata);
     }
 }

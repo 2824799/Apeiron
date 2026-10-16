@@ -46,6 +46,8 @@
     "ae.flow.PartThroughputMonitorMixin"
   ],
   "mixins": [
+    "gregtech.machine.MachineDropsMixin",
+    "gregtech.machine.MachineItemMixin",
     "messtech.MessControllerMixin",
     "messtech.MessNanoMixin",
     "messtech.MessThreadMixin",

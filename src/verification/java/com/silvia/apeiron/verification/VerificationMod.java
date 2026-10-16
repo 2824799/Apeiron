@@ -15,7 +15,13 @@ public final class VerificationMod {
 
     @Mod.EventHandler
     public void verify(FMLPostInitializationEvent event) {
-        if ("1".equals(System.getenv("APEIRON_VERIFY_INPUT_CIRCUIT_ONLY"))) {
+        if ("1".equals(System.getenv("APEIRON_VERIFY_MACHINE_BLOCKS_ONLY"))) {
+            com.silvia.apeiron.common.machine.block.verification.MachineDropsSmoke.verify();
+            if (cpw.mods.fml.common.FMLCommonHandler.instance()
+                .getSide()
+                .isClient()) com.silvia.apeiron.common.machine.block.verification.MachineBlockTooltipSmoke.verify();
+            com.silvia.apeiron.Apeiron.LOG.info("Apeiron targeted machine block migration verification passed");
+        } else if ("1".equals(System.getenv("APEIRON_VERIFY_INPUT_CIRCUIT_ONLY"))) {
             com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verifyGlobalCircuit();
             com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verifyGlobalCircuits();
             if (cpw.mods.fml.common.FMLCommonHandler.instance()
