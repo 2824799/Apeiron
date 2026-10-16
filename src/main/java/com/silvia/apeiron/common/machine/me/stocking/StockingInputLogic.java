@@ -269,7 +269,11 @@ public class StockingInputLogic {
 
     public ItemStack itemView(int slot) {
         if (slot < 0 || slot >= SLOT_COUNT || !active()) return null;
-        if (processing) return views[slot] instanceof ItemStack ? (ItemStack) views[slot] : null;
+        if (processing) {
+            // Keep exhausted views internally for the final debit, but never expose them as available inputs.
+            ItemStack view = views[slot] instanceof ItemStack ? (ItemStack) views[slot] : null;
+            return view != null && view.stackSize > 0 ? view : null;
+        }
         IAEStack<?> stock = displayed[slot];
         if (!(stock instanceof IAEItemStack)) return null;
         ItemStack view = ((IAEItemStack) stock).getItemStack();
@@ -277,7 +281,7 @@ public class StockingInputLogic {
             : BigAEStackValues.get(stock)
                 .min(BigInteger.valueOf(Integer.MAX_VALUE))
                 .intValue();
-        return view;
+        return view.stackSize > 0 ? view : null;
     }
 
     public ItemStack[] itemViews() {

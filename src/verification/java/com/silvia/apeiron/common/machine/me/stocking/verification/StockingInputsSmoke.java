@@ -46,6 +46,7 @@ import gregtech.api.enums.Materials;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.metatileentity.BaseMetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.TurbineStatCalculator;
 import gregtech.common.items.IDMetaTool01;
 import gregtech.common.items.MetaGeneratedTool01;
@@ -166,6 +167,8 @@ public final class StockingInputsSmoke {
                 new ItemStack(Items.diamond)),
             "virtual network view leaked into hopper extraction");
         verifyLegacyAndBigDebits();
+        if (Loader.isModLoaded("TwistSpaceTechnology")) verifyLauncherExhaustion();
+        verifyExhaustedProjections();
         verifyNativeExtraction();
         verifyTurbineConsumption();
         verifyBoilerConsumption();
@@ -233,6 +236,160 @@ public final class StockingInputsSmoke {
                         total.subtract(BigInteger.valueOf(7))
                             .subtract(huge)),
             "repeated end charged again");
+    }
+
+    private static void verifyExhaustedProjections() {
+        for (StockingInputLogic.Kind kind : StockingInputLogic.Kind.values()) {
+            Network network = new Network();
+            network.store(item(), BigInteger.ONE);
+            network.store(fluid(), BigInteger.ONE);
+            Input input = new Input(network, kind);
+            if (kind != StockingInputLogic.Kind.FLUIDS) input.setMark(0, item());
+            if (kind != StockingInputLogic.Kind.ITEMS) input.setMark(359, fluid());
+            input.begin();
+            if (kind != StockingInputLogic.Kind.FLUIDS) {
+                ItemStack view = input.itemView(0);
+                view.stackSize = 0;
+                check(
+                    input.itemView(0) == null && input.itemViews().length == 0,
+                    "empty in-session item remained readable");
+                check(input.viewIndex(view) == 0, "hiding an exhausted item discarded its pending debit");
+            }
+            if (kind != StockingInputLogic.Kind.ITEMS) input.fluidViews()[0].amount = 0;
+            check(
+                input.end()
+                    .wasSuccessful(),
+                "exhausting a projection rejected its final debit");
+            for (int retry = 0; retry < 3; retry++) {
+                check(
+                    input.itemView(0) == null && input.itemViews().length == 0 && input.fluidViews().length == 0,
+                    "empty idle projection remained readable");
+                input.begin();
+                check(
+                    input.itemView(0) == null && input.itemViews().length == 0 && input.fluidViews().length == 0,
+                    "empty projection reappeared in a new session");
+                check(
+                    input.end()
+                        .wasSuccessful(),
+                    "empty session reported an extraction error");
+            }
+            check(
+                kind == StockingInputLogic.Kind.FLUIDS || network.count(item())
+                    .signum() == 0,
+                "final item was not debited");
+            check(
+                kind == StockingInputLogic.Kind.ITEMS || network.count(fluid())
+                    .signum() == 0,
+                "final fluid was not debited");
+        }
+        Network network = new Network();
+        network.store(item(), BigInteger.ONE);
+        Input input = new Input(network, StockingInputLogic.Kind.ITEMS);
+        input.setMark(0, item());
+        input.begin();
+        input.itemView(0).stackSize = -1;
+        check(
+            !input.end()
+                .wasSuccessful() && network.count(item())
+                    .equals(BigInteger.ONE),
+            "invalid negative debit lost its protection");
+    }
+
+    /** Uses TST's real custom reader and GT's complete recipe transaction, including repeated empty checks. */
+    private static void verifyLauncherExhaustion() {
+        try {
+            Class<?> launcherClass = Class
+                .forName("com.Nxer.TwistSpaceTechnology.system.DysonSphereProgram.machines.TST_DSPLauncher");
+            Class<?> cellClass = Class
+                .forName("com.Nxer.TwistSpaceTechnology.system.DysonSphereProgram.logic.DSP_DataCell");
+            Class<?> saveClass = Class
+                .forName("com.Nxer.TwistSpaceTechnology.system.DysonSphereProgram.logic.DSP_WorldSavedData");
+            Class<?> itemsClass = Class.forName("com.Nxer.TwistSpaceTechnology.common.GTCMItemList");
+            java.lang.reflect.Field saveField = saveClass.getField("INSTANCE");
+            Object originalSave = saveField.get(null);
+            try {
+                saveField.set(
+                    null,
+                    saveClass.getConstructor()
+                        .newInstance());
+                launcherClass.getMethod("initStatics")
+                    .invoke(null);
+                for (String name : new String[] { "SolarSail", "SmallLaunchVehicle" }) {
+                    ItemStack stack = (ItemStack) itemsClass.getMethod("get", int.class, Object[].class)
+                        .invoke(
+                            itemsClass.getField(name)
+                                .get(null),
+                            1,
+                            new Object[0]);
+                    IAEItemStack type = AEItemStack.create(stack);
+                    java.lang.reflect.Method count = cellClass
+                        .getMethod(name.equals("SolarSail") ? "getDSPSolarSail" : "getDSPNode");
+                    for (boolean mixed : new boolean[] { false, true }) {
+                        for (boolean automatic : new boolean[] { false, true }) {
+                            Network network = new Network();
+                            network.store(type, BigInteger.valueOf(2));
+                            Input input = new Input(
+                                network,
+                                mixed ? StockingInputLogic.Kind.MIXED : StockingInputLogic.Kind.ITEMS);
+                            if (automatic) input.setAutoPull(true);
+                            else input.setMark(0, type);
+                            MTEInfiniteStorageInputBus bus = mixed ? new Assembly(input) : new Bus(input);
+                            MTEMultiBlockBase machine = (MTEMultiBlockBase) launcherClass.getConstructor(String.class)
+                                .newInstance("apeiron.verification.stocking_launcher");
+                            machine.setBaseMetaTileEntity(new BaseMetaTileEntity());
+                            Object cell = cellClass.getConstructor()
+                                .newInstance();
+                            for (String field : new String[] { "wirelessMode", "motorTier", "dspDataCell" }) {
+                                java.lang.reflect.Field setting = launcherClass.getDeclaredField(field);
+                                setting.setAccessible(true);
+                                setting.set(
+                                    machine,
+                                    field.equals("wirelessMode") ? false : field.equals("motorTier") ? 1 : cell);
+                            }
+                            check(
+                                machine.addInputBusToMachineList(bus.getBaseMetaTileEntity(), 0),
+                                "launcher input registration");
+                            com.silvia.apeiron.mixin.gregtech.output.MultiBlockProcessingAccessor cycle = (com.silvia.apeiron.mixin.gregtech.output.MultiBlockProcessingAccessor) machine;
+                            for (int sent = 1; sent <= 2; sent++) {
+                                check(cycle.apeiron$checkRecipe(), "launcher rejected stocked " + name);
+                                check(
+                                    network.count(type)
+                                        .intValueExact() == 2 - sent,
+                                    "launcher debit mismatch");
+                            }
+                            for (int retry = 0; retry < 3; retry++) {
+                                check(!cycle.apeiron$checkRecipe(), "launcher started without " + name);
+                                check(
+                                    machine.getCheckRecipeResult()
+                                        .equals(CheckRecipeResultRegistry.NO_RECIPE),
+                                    "exhausted launcher reported extraction failure");
+                                check(
+                                    ((Number) count.invoke(cell)).longValue() == 2,
+                                    "launcher created a phantom launch");
+                            }
+                            network.store(type, BigInteger.ONE);
+                            input.refresh();
+                            check(cycle.apeiron$checkRecipe(), "launcher did not resume after restocking");
+                            check(
+                                network.count(type)
+                                    .signum() == 0 && ((Number) count.invoke(cell)).longValue() == 3,
+                                "restocked launcher debit or launch count mismatch");
+                            machine.endRecipeProcessing();
+                            check(
+                                !input.isProcessing() && network.count(type)
+                                    .signum() == 0,
+                                "launcher left an open or repeated transaction");
+                        }
+                    }
+                }
+            } finally {
+                saveField.set(null, originalSave);
+            }
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("TST launcher stocking verification failed", error);
+        }
+        Apeiron.LOG.info(
+            "TST launcher stocking verification passed: solar sails and nodes, separate/mixed inputs, manual/automatic selection, empty retries and restocking");
     }
 
     private static final class Assembly
