@@ -43,6 +43,7 @@ import com.silvia.apeiron.common.machine.me.input.pattern.MultipliedPatternDetai
 import com.silvia.apeiron.common.machine.me.input.pattern.PatternInsertionCache;
 import com.silvia.apeiron.common.machine.me.input.storage.BigPatternBuffer;
 import com.silvia.apeiron.common.machine.registration.ApeironMachines;
+import com.silvia.apeiron.compat.InterfaceTerminalNames;
 import com.silvia.apeiron.math.AdaptiveInteger;
 import com.silvia.apeiron.math.BigNumberFormatter;
 import com.silvia.apeiron.math.BigValueCodec;
@@ -87,7 +88,6 @@ import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTSplit;
 import gregtech.common.gui.modularui.util.MTEItemStackHandler;
 import gregtech.common.tileentities.machines.IDualInputInventory;
-import gregtech.crossmod.ae2.ChatComponentNonConsumedItemsSuffix;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
@@ -781,7 +781,10 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
 
     @Override
     public String getRawName() {
-        return hasCustomName() ? customName : terminalMachineName(true);
+        if (hasCustomName()) return customName;
+        // Legacy AE calls its String-returning default suffix method, so include the suffix
+        // in the raw name there. Modern AE receives the separate localized chat component.
+        return InterfaceTerminalNames.hasComponentSuffix() ? terminalMachineName(true) : getName();
     }
 
     private String terminalMachineName(boolean raw) {
@@ -806,7 +809,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
             .next() instanceof gregtech.api.metatileentity.implementations.MTEMultiBlockBase controller)
             mRecipeMap = controller.getRecipeMap();
         IChatComponent suffix = getBaseMetaTileEntity() instanceof IInterfaceNameProvider provider
-            ? provider.getInterfaceNameSuffix()
+            ? InterfaceTerminalNames.suffix(provider)
             : null;
         List<ItemStack> catalysts = new ArrayList<>();
         for (int i = 0; i < CATALYST_SLOTS; i++) {
@@ -814,7 +817,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
             if (stack != null) catalysts.add(stack.copy());
         }
         if (!catalysts.isEmpty()) {
-            IChatComponent manual = new ChatComponentNonConsumedItemsSuffix(catalysts);
+            IChatComponent manual = InterfaceTerminalNames.sharedItems(catalysts);
             suffix = suffix == null ? manual : suffix.appendSibling(manual);
         }
         return suffix;

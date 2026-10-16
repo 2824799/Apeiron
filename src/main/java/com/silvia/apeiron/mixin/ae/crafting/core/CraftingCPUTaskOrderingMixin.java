@@ -64,11 +64,13 @@ public abstract class CraftingCPUTaskOrderingMixin {
         method = "mergeJob",
         at = @At(
             value = "INVOKE",
-            target = "Lappeng/me/cluster/implementations/CraftingCPUCluster$TaskProgress;copyDiagnosticSessionsFrom(Lappeng/me/cluster/implementations/CraftingCPUCluster$TaskProgress;)V"))
-    private void apeiron$copyExactBackupProgress(CraftingCPUCluster.TaskProgress backup,
-        CraftingCPUCluster.TaskProgress original, Operation<Void> operation) {
-        operation.call(backup, original);
-        // The native backup copies only the saturated long value before copying diagnostics.
-        ((BigTaskProgress) backup).setValueBig(((BigTaskProgress) original).getValueBig());
+            target = "Ljava/util/Map;put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+            ordinal = 0))
+    private Object apeiron$copyExactBackupProgress(Map<Object, Object> backup, Object pattern, Object progress,
+        Operation<Object> operation) {
+        // Every supported AE version inserts its completed backup here. Older versions call
+        // diagnostics through a synthetic accessor, so that callback is not a stable anchor.
+        ((BigTaskProgress) progress).setValueBig(((BigTaskProgress) tasks.get(pattern)).getValueBig());
+        return operation.call(backup, pattern, progress);
     }
 }

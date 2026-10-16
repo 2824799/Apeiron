@@ -74,7 +74,8 @@ public final class MixinContractCheck {
                             boolean shadow = hook.equals("org.spongepowered.asm.mixin.Shadow");
                             if (!overwrite && !shadow
                                 && ((!hook.startsWith("org.spongepowered.asm.mixin.injection.")
-                                    && !hook.equals("com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod"))
+                                    && !hook.equals("com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod")
+                                    && !hook.equals("com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation"))
                                     || hook.endsWith(".Group")))
                                 continue;
                             Object selectors = (overwrite || shadow)

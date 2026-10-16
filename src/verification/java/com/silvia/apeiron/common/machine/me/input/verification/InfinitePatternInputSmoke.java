@@ -211,15 +211,13 @@ public final class InfinitePatternInputSmoke {
         nativeInput.setInventorySlotContents(nativeInput.getCircuitSlot() + 1, catalyst.copy());
         check(
             source.getRawName()
-                .equals(nativeInput.getRawName()),
+                .equals(
+                    com.silvia.apeiron.compat.InterfaceTerminalNames.hasComponentSuffix() ? nativeInput.getRawName()
+                        : source.getName()),
             "raw terminal name differs from native GT");
         String suffix = source.getNameSuffix()
             .getUnformattedText();
-        check(
-            suffix.equals(
-                nativeInput.getNameSuffix()
-                    .getUnformattedText()),
-            "mode/circuit/catalyst suffix differs from native GT");
+        check(suffix.equals(nativeNameSuffix(nativeInput)), "mode/circuit/catalyst suffix differs from native GT");
         String encodedSuffix = net.minecraft.util.IChatComponent.Serializer.func_150696_a(source.getNameSuffix());
         check(
             net.minecraft.util.IChatComponent.Serializer.func_150699_a(encodedSuffix)
@@ -231,11 +229,15 @@ public final class InfinitePatternInputSmoke {
             !encodedSuffix.equals(net.minecraft.util.IChatComponent.Serializer.func_150696_a(source.getNameSuffix())),
             "circuit name did not update");
         source.mRecipeMap = gregtech.api.recipe.RecipeMaps.compressorRecipes;
+        nativeInput.setInventorySlotContents(
+            nativeInput.getCircuitSlot(),
+            gregtech.api.util.GTUtility.getIntegratedCircuit(8));
+        nativeInput.mRecipeMap = source.mRecipeMap;
         check(
-            !source.getNameSuffix()
+            source.getNameSuffix()
                 .getUnformattedText()
-                .equals(suffix),
-            "mode name did not update");
+                .equals(nativeNameSuffix(nativeInput)),
+            "mode name differs from native GT after changing recipes");
         source.setCustomName("Named machine");
         check(
             source.getNameSuffix() == null && source.getRawName()
@@ -324,6 +326,18 @@ public final class InfinitePatternInputSmoke {
             "circuit-only machine item lost settings");
         Apeiron.LOG.info(
             "Global pattern circuit verification passed: native terminal suffix, mode/name updates, native/exact matching, buffer edits and world/item persistence");
+    }
+
+    private static String nativeNameSuffix(Object machine) {
+        try {
+            Object suffix = machine.getClass()
+                .getMethod("getNameSuffix")
+                .invoke(machine);
+            return suffix instanceof net.minecraft.util.IChatComponent component ? component.getUnformattedText()
+                : suffix == null ? "" : suffix.toString();
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot read native terminal suffix", error);
+        }
     }
 
     public static void verify() {

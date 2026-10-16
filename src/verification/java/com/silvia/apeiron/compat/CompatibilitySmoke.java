@@ -57,11 +57,13 @@ public final class CompatibilitySmoke {
             com.silvia.apeiron.common.machine.tst.verification.DysonSphereMachineSmoke.verify();
         }
         com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verify();
+        com.silvia.apeiron.common.machine.me.input.verification.InfinitePatternInputSmoke.verifyGlobalCircuit();
         com.silvia.apeiron.common.machine.tectech.verification.EnergyInfuserPatternSmoke.verify();
         if (cpw.mods.fml.common.FMLCommonHandler.instance()
             .getSide()
             .isClient()) com.silvia.apeiron.ae.smoke.InterfaceTerminalRowsSmoke.verify();
         com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verify();
+        com.silvia.apeiron.common.machine.me.stocking.verification.StockingInputsSmoke.verifyGlobalCircuits();
         com.silvia.apeiron.common.machine.energy.verification.InfiniteEnergySmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.PcbFactoryEnergySmoke.verify();
         com.silvia.apeiron.common.machine.energy.verification.SolarFactoryEnergySmoke.verify();
