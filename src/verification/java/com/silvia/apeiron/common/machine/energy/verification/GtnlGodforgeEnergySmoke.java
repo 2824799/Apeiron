@@ -20,7 +20,12 @@ import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.silvia.apeiron.Apeiron;
+import com.silvia.apeiron.common.machine.energy.InfiniteEnergyHatches;
+import com.silvia.apeiron.common.machine.energy.MachineRecipeDisplay;
+import com.silvia.apeiron.common.machine.energy.WirelessControllerEnergy;
 import com.silvia.apeiron.common.machine.me.input.MTEInfinitePatternInputAssembly;
+import com.silvia.apeiron.common.machine.me.output.MTEInfiniteMEOutputAssembly;
+import com.silvia.apeiron.common.machine.output.BigMachineOutputQueue;
 import com.silvia.apeiron.common.machine.parallel.WirelessRecipeState;
 
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
@@ -102,6 +107,11 @@ public final class GtnlGodforgeEnergySmoke {
 
     private static MTEBaseModule gtnlModule(int kind, UUID owner, boolean upgrades)
         throws ReflectiveOperationException {
+        return gtnlModule(kind, owner, upgrades, 3, 1000);
+    }
+
+    private static MTEBaseModule gtnlModule(int kind, UUID owner, boolean upgrades, int items, int fluids)
+        throws ReflectiveOperationException {
         MTEBaseModule module = kind == 0 ? new GtnlFusion()
             : kind == 1 ? new GtnlAlloy() : kind == 2 ? new GtnlExtractor() : new GtnlCatalyst();
         configure(module, owner, upgrades);
@@ -110,8 +120,8 @@ public final class GtnlGodforgeEnergySmoke {
             .addRecipe(
                 GTRecipeBuilder.builder()
                     .itemInputs(new ItemStack(Items.diamond))
-                    .itemOutputs(new ItemStack(Items.emerald, 3))
-                    .fluidOutputs(new FluidStack(FluidRegistry.WATER, 1000))
+                    .itemOutputs(new ItemStack(Items.emerald, items))
+                    .fluidOutputs(new FluidStack(FluidRegistry.WATER, fluids))
                     .duration(300)
                     .eut(6)
                     .build()
@@ -217,7 +227,8 @@ public final class GtnlGodforgeEnergySmoke {
 
     private static void verifyGtnlNativeOutput(int kind) throws ReflectiveOperationException {
         UUID owner = UUID.randomUUID();
-        MTEBaseModule module = gtnlModule(kind, owner, false);
+        int perRecipe = Integer.MAX_VALUE - 5;
+        MTEBaseModule module = gtnlModule(kind, owner, false, perRecipe, perRecipe);
         int parallel = 1_000_000_000;
         module.setCalculatedMaxParallel(parallel);
         module.setPowerPanelMaxParallel(parallel);
@@ -225,23 +236,100 @@ public final class GtnlGodforgeEnergySmoke {
         addItem(input, BigInteger.valueOf(parallel));
         WirelessNetworkManager.setUserEU(owner, BALANCE);
         process(module, input);
-        check(!state(module).isRunning(), "native GTNL module changed energy mode");
         check(module.getRecipeTally() == parallel, "native GTNL parallel cap changed");
-        module.addItemOutputs(module.mOutputItems);
-        java.lang.reflect.Method fluids = MTEMultiBlockBase.class
-            .getDeclaredMethod("addFluidOutputs", FluidStack[].class);
-        fluids.setAccessible(true);
-        fluids.invoke(module, (Object) module.mOutputFluids);
+        verifyNativeCompletion(
+            module,
+            BigInteger.valueOf(perRecipe)
+                .multiply(BigInteger.valueOf(parallel)),
+            BigInteger.valueOf(perRecipe)
+                .multiply(BigInteger.valueOf(parallel)),
+            owner);
+    }
+
+    static void verifyNativeCompletion(MTEBaseModule module, BigInteger items, BigInteger fluids, UUID owner)
+        throws ReflectiveOperationException {
+        WirelessRecipeState state = state(module);
+        check(InfiniteEnergyHatches.find(module) == null && state.usesNativeEnergy(), "native power mode changed");
+        check(state.isRunning() && !state.hasPreparedRecipe(), "native outputs were not committed by controller");
         check(
-            output(module).getProvider()
+            module.mOutputItems.length == 0 && module.mOutputFluids.length == 0,
+            "native outputs expanded into int chunks");
+        MTEInfiniteMEOutputAssembly port = output(module);
+        check(
+            port.getProvider()
                 .getCachedAmountBig()
-                .equals(BigInteger.valueOf(3L * parallel)),
+                .signum() == 0
+                && port.getFluidProvider()
+                    .getCachedAmountBig()
+                    .signum() == 0,
+            "native products delivered before completion");
+        BigInteger paidBalance = WirelessNetworkManager.getUserEU(owner);
+        check(
+            state.getTotalEUBig()
+                .equals(module.getPowerTally()) && state.getDuration() == module.mMaxProgresstime,
+            "native cost or duration changed");
+        check(
+            module.onRunningTick(null) && WirelessNetworkManager.getUserEU(owner)
+                .equals(paidBalance),
+            "prepaid module charged twice");
+        BigMachineOutputQueue display = new BigMachineOutputQueue();
+        display.load(MachineRecipeDisplay.snapshot(module));
+        check(
+            display.getItemAmountBig()
+                .equals(items)
+                && display.getFluidAmountBig()
+                    .equals(fluids),
+            "native preview lost exact products");
+
+        NBTTagCompound saved = new NBTTagCompound();
+        module.saveNBTData(saved);
+        state.cancelRecipe();
+        module.loadNBTData(saved);
+        check(state.isRunning() && state.usesNativeEnergy(), "native in-flight reload changed power mode");
+        module.mOutputBusses.clear();
+        module.mOutputHatches.clear();
+        // Match the real controller: native arrays are delivered first, then outputAfterRecipe.
+        java.lang.reflect.Method complete = MTEMultiBlockBase.class.getDeclaredMethod("outputAfterRecipe");
+        complete.setAccessible(true);
+        complete.invoke(module);
+        complete.invoke(module);
+        check(
+            !state.isRunning() && state.pending()
+                .getItemAmountBig()
+                .equals(items)
+                && state.pending()
+                    .getFluidAmountBig()
+                    .equals(fluids),
+            "disconnected completion lost or duplicated products");
+        saved = new NBTTagCompound();
+        module.saveNBTData(saved);
+        module.loadNBTData(saved);
+        check(module.addClassicToMachineList(port.getBaseMetaTileEntity(), 0), "output reconnection failed");
+        WirelessControllerEnergy.complete(module);
+        WirelessControllerEnergy.complete(module);
+        check(
+            port.getProvider()
+                .getCachedAmountBig()
+                .equals(items),
             "native GTNL item output truncated");
         check(
-            output(module).getFluidProvider()
+            port.getFluidProvider()
                 .getCachedAmountBig()
-                .equals(BigInteger.valueOf(1000L * parallel)),
+                .equals(fluids)
+                && state.pending()
+                    .isEmpty(),
             "native GTNL fluid output truncated");
+
+        BigMachineOutputQueue cancelled = new BigMachineOutputQueue();
+        cancelled.addItem(new ItemStack(Items.emerald), BigInteger.ONE);
+        state.startNativePowered(BigInteger.ONE, BigInteger.ZERO, 5, cancelled);
+        module.stopMachine(gregtech.api.util.shutdown.ShutDownReasonRegistry.STRUCTURE_INCOMPLETE);
+        complete.invoke(module);
+        check(
+            !state.isRunning() && port.getProvider()
+                .getCachedAmountBig()
+                .equals(items),
+            "stopped recipe produced unearned output");
     }
 
     private static void check(boolean value, String message) {

@@ -19,8 +19,10 @@ public abstract class TecTechWirelessRunningMixin {
 
     @Inject(method = "onRunningTick", at = @At("HEAD"), cancellable = true, require = 1)
     private void apeiron$debit(ItemStack slot, CallbackInfoReturnable<Boolean> cir) {
-        if (((BigWirelessController) this).getWirelessRecipeState()
-            .isRunning()) cir.setReturnValue(WirelessControllerEnergy.debitTick((MTEMultiBlockBase) (Object) this));
+        com.silvia.apeiron.common.machine.parallel.WirelessRecipeState state = ((BigWirelessController) this)
+            .getWirelessRecipeState();
+        if (state.isRunning() && !state.usesNativeEnergy())
+            cir.setReturnValue(WirelessControllerEnergy.debitTick((MTEMultiBlockBase) (Object) this));
     }
 
     @Inject(method = "addClassicOutputs_EM", at = @At("HEAD"), require = 1)

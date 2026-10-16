@@ -117,6 +117,9 @@ public final class GodforgeEnergySmoke {
             GlobalVariableStorage.GlobalEnergy = new HashMap<>();
             SpaceProjectManager.spaceTeams = new HashMap<>();
             GlobalEnergyWorldSavedData.INSTANCE = new GlobalEnergyWorldSavedData();
+            verifyNativeOutputPolicies();
+            for (int kind = 0; kind < 3; kind++) verifyNativeOutput(kind);
+            for (boolean magmatter : new boolean[] { false, true }) verifyNativeExoticOutput(magmatter);
             for (int kind = 0; kind < 3; kind++) for (boolean ultimate : new boolean[] { false, true })
                 for (boolean upgrades : new boolean[] { false, true }) verifyModule(kind, ultimate, upgrades);
             for (boolean ultimate : new boolean[] { false, true })
@@ -147,6 +150,118 @@ public final class GodforgeEnergySmoke {
                     .build()
                     .get());
         return module;
+    }
+
+    private static void verifyNativeOutput(int kind) throws ReflectiveOperationException {
+        UUID owner = UUID.randomUUID();
+        MTEBaseModule module = module(kind, owner, true);
+        int parallel = 1_000_000_000;
+        module.setAlwaysMaxParallel(false);
+        module.setCalculatedMaxParallel(parallel);
+        module.setPowerPanelMaxParallel(parallel);
+        MTEInfinitePatternInputAssembly input = attach(module, owner, null);
+        addItem(input, BigInteger.valueOf(parallel));
+        WirelessNetworkManager.setUserEU(owner, BALANCE);
+        process(module, input);
+        check(module.getRecipeTally() == parallel, "native GT module parallel changed");
+        GtnlGodforgeEnergySmoke
+            .verifyNativeCompletion(module, BigInteger.valueOf(3L * parallel), BigInteger.ZERO, owner);
+    }
+
+    private static void verifyNativeOutputPolicies() throws ReflectiveOperationException {
+        UUID owner = UUID.randomUUID();
+        MTEBaseModule module = module(0, owner, false);
+        attach(module, owner, null);
+        GTRecipe recipe = GTRecipeBuilder.builder()
+            .itemInputs(new ItemStack(Items.diamond))
+            .itemOutputs(new ItemStack(Items.emerald, 3))
+            .outputChances(10000)
+            .fluidOutputs(new FluidStack(FluidRegistry.WATER, 7))
+            .fluidOutputChances(10000)
+            .duration(80)
+            .eut(6)
+            .build()
+            .get();
+        for (int variant = 0; variant < 3; variant++) {
+            BigInteger[] expected = null;
+            for (boolean exact : new boolean[] { false, true }) {
+                gregtech.api.util.ParallelHelper helper = new gregtech.api.util.ParallelHelper().setRecipe(recipe)
+                    .setMachine(module, false, false)
+                    .setItemInputs(new ItemStack(Items.diamond, 1000))
+                    .setAvailableEUt(6000)
+                    .setMaxParallel(1000)
+                    .setChanceMultiplier(2)
+                    .setConsumption(true)
+                    .setOutputCalculation(true);
+                int[] callbacks = { 0, 0 };
+                if (variant > 0) helper.setCustomItemOutputCalculation(count -> {
+                    callbacks[0]++;
+                    return new ItemStack[] { new ItemStack(Items.emerald, 23) };
+                });
+                if (variant > 1) helper.setCustomFluidOutputCalculation(count -> {
+                    callbacks[1]++;
+                    return new FluidStack[] { new FluidStack(FluidRegistry.WATER, 29) };
+                });
+                if (exact) com.silvia.apeiron.common.machine.output.NativeOutputBatches.prepareHelper(module, helper);
+                helper.build();
+                check(
+                    helper.getResult()
+                        .wasSuccessful() && helper.getCurrentParallel() == 1000,
+                    "native helper changed parallels");
+                com.silvia.apeiron.common.machine.output.BigMachineOutputQueue products = ((com.silvia.apeiron.api.machine.output.NativeRecipeOutputHelper) helper)
+                    .getNativeRecipeOutputsBig();
+                if (products == null) products = new com.silvia.apeiron.common.machine.output.BigMachineOutputQueue();
+                if (helper.getItemOutputs() != null) for (ItemStack stack : helper.getItemOutputs())
+                    products.addItem(stack, BigInteger.valueOf(stack.stackSize));
+                if (helper.getFluidOutputs() != null) for (FluidStack stack : helper.getFluidOutputs())
+                    products.addFluid(stack, BigInteger.valueOf(stack.amount));
+                BigInteger[] actual = { products.getItemAmountBig(), products.getFluidAmountBig() };
+                if (exact) check(
+                    Arrays.equals(expected, actual),
+                    "native chance multiplier or custom callbacks changed: variant=" + variant
+                        + " expected="
+                        + Arrays.toString(expected)
+                        + " actual="
+                        + Arrays.toString(actual));
+                else expected = actual;
+                check(
+                    callbacks[0] == (variant > 0 ? 1 : 0) && callbacks[1] == (variant > 1 ? 1 : 0),
+                    "custom callbacks repeated");
+            }
+        }
+    }
+
+    private static void verifyNativeExoticOutput(boolean magmatter) throws ReflectiveOperationException {
+        UUID owner = UUID.randomUUID();
+        MTEExoticModule module = new MTEExoticModule("apeiron.verify.exotic.native_output");
+        configure(module, owner, true);
+        module.setMagmatterMode(magmatter);
+        module.setProcessingVoltage(Integer.MAX_VALUE);
+        MTEInfinitePatternInputAssembly input = attach(module, owner, null);
+        long parallel = 1_000_000_000L;
+        field(MTEExoticModule.class, "actualParallel").setLong(module, parallel);
+        GTRecipe recipe = GTRecipeBuilder.builder()
+            .fluidInputs(new FluidStack(FluidRegistry.WATER, 128))
+            .fluidOutputs(
+                magmatter ? gregtech.api.enums.Materials.MagMatter.getMolten(Integer.MAX_VALUE)
+                    : gregtech.api.enums.Materials.QuarkGluonPlasma.getFluid(Integer.MAX_VALUE))
+            .duration(200)
+            .eut(120)
+            .build()
+            .get();
+        method(MTEExoticModule.class, "setPlasmaRecipe", GTRecipe.class).invoke(module, recipe);
+        field(MTEExoticModule.class, "recipeInProgress").setBoolean(module, true);
+        check(
+            input.addToBufferBig(0, java.util.Collections.singletonList(AEFluidStack.create(recipe.mFluidInputs[0]))),
+            "native exotic inputs");
+        WirelessNetworkManager.setUserEU(owner, BALANCE);
+        process(module, input);
+        GtnlGodforgeEnergySmoke.verifyNativeCompletion(
+            module,
+            BigInteger.ZERO,
+            BigInteger.valueOf(parallel)
+                .multiply(BigInteger.valueOf(magmatter ? 576 : 1000)),
+            owner);
     }
 
     static void configure(MTEBaseModule module, UUID owner, boolean upgrades) throws ReflectiveOperationException {

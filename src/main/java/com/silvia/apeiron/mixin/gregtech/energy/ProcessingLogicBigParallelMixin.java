@@ -107,6 +107,7 @@ public abstract class ProcessingLogicBigParallelMixin {
         MTEMultiBlockBase controller = (MTEMultiBlockBase) machine;
         if (!com.silvia.apeiron.common.integration.messtech.MessTechAccess.permitsSharedProcessing(controller))
             return nativeHelper;
+        com.silvia.apeiron.common.machine.output.NativeOutputBatches.prepareHelper(controller, nativeHelper, this);
         MTEInfiniteEnergyHatch hatch = InfiniteEnergyHatches.find(controller);
         if (hatch == null || InfiniteEnergyHatches.isNativeWirelessController(controller)) return nativeHelper;
         BigRecipeOutputProvider provider = this instanceof BigRecipeOutputProvider

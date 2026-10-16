@@ -98,6 +98,8 @@
     "gregtech.output.PendingBigOutputDropMixin",
     "gregtech.output.MultiBlockProcessingAccessor",
     "gregtech.output.NativeOutputBatchMixin",
+    "gregtech.output.NativeParallelOutputMixin",
+    "gregtech.output.NativeProcessingOutputMixin",
     "gregtech.output.ModernNativeFluidOutputBatchMixin",
     "gregtech.output.LegacyNativeFluidOutputBatchMixin",
     "tst.output.ItemStackLongBigMixin",

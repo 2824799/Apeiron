@@ -40,7 +40,7 @@ public abstract class GodforgeExoticRecipeMixin extends ProcessingLogic
         at = @At(value = "FIELD", target = "Lnet/minecraftforge/fluids/FluidStack;amount:I", ordinal = 0),
         require = 1)
     private int apeiron$availableInput(FluidStack input, GTRecipe recipe) {
-        if (hasExactRecipeOutputs()) {
+        if (machine instanceof MTEExoticModule && InfiniteEnergyHatches.find((MTEExoticModule) machine) != null) {
             for (FluidStack required : recipe.mFluidInputs)
                 if (required != null && input.isFluidEqual(required)) return Math.min(input.amount, required.amount);
         }
@@ -49,7 +49,8 @@ public abstract class GodforgeExoticRecipeMixin extends ProcessingLogic
 
     @Override
     public boolean hasExactRecipeOutputs() {
-        return machine instanceof MTEExoticModule && InfiniteEnergyHatches.find((MTEExoticModule) machine) != null;
+        return machine instanceof MTEExoticModule && (InfiniteEnergyHatches.find((MTEExoticModule) machine) != null
+            || com.silvia.apeiron.common.machine.output.NativeOutputBatches.hasExactFluids((MTEExoticModule) machine));
     }
 
     @Override

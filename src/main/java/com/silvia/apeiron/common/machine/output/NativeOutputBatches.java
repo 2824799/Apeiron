@@ -5,16 +5,36 @@ import java.math.BigInteger;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
+import com.silvia.apeiron.api.machine.output.NativeRecipeOutputHelper;
 import com.silvia.apeiron.api.machine.parallel.BigWirelessController;
 import com.silvia.apeiron.compat.OutputTransactions;
 
 import gregtech.api.interfaces.IOutputBus;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
+import gregtech.api.util.ParallelHelper;
+import tectech.thing.metaTileEntity.multi.godforge.MTEBaseModule;
 
 /** Native power and recipe logic can use exact output transactions without an Apeiron energy hatch. */
 public final class NativeOutputBatches {
 
     private NativeOutputBatches() {}
+
+    public static void prepareHelper(MTEMultiBlockBase machine, ParallelHelper helper) {
+        prepareHelper(machine, helper, null);
+    }
+
+    public static void prepareHelper(MTEMultiBlockBase machine, ParallelHelper helper, Object logic) {
+        // Forge modules share standard output calculation. Specialized helpers and controllers may
+        // transform native arrays later, so keep their existing adapters in charge.
+        if (!(machine instanceof MTEBaseModule) || helper.getClass() != ParallelHelper.class) return;
+        NativeRecipeOutputHelper outputHelper = (NativeRecipeOutputHelper) helper;
+        outputHelper.enableExactNativeOutputs(hasExactItems(machine), hasExactFluids(machine));
+        if (machine instanceof tectech.thing.metaTileEntity.multi.godforge.MTEExoticModule
+            && logic instanceof com.silvia.apeiron.api.machine.parallel.BigRecipeOutputProvider
+            && ((com.silvia.apeiron.api.machine.parallel.BigRecipeOutputProvider) logic).hasExactRecipeOutputs())
+            outputHelper
+                .setNativeFluidOutputProvider((com.silvia.apeiron.api.machine.parallel.BigRecipeOutputProvider) logic);
+    }
 
     public static boolean hasExactItems(MTEMultiBlockBase machine) {
         for (IOutputBus bus : machine.getOutputBusses()) if (OutputTransactions.items(bus)
