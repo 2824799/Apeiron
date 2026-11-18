@@ -17,6 +17,11 @@ on:
 jobs:
   build-and-test:
     if: ${{ !startsWith(github.ref, 'refs/tags/') && !inputs.full_compatibility }}
+    permissions:
+      contents: read
+      packages: read
+      statuses: write
+      pull-requests: write
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
     with:
       timeout: 180

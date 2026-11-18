@@ -35,6 +35,7 @@ import appeng.api.networking.crafting.ICraftingPatternDetails;
 import appeng.api.storage.data.IAEStack;
 import appeng.container.ContainerNull;
 import appeng.core.sync.packets.PacketInterfaceTerminalUpdate;
+import appeng.me.cache.CraftingGridCache;
 import appeng.util.inv.MEInventoryCrafting;
 import appeng.util.item.AEFluidStack;
 import appeng.util.item.AEItemStack;
@@ -707,7 +708,7 @@ public final class InfinitePatternInputSmoke {
             check(dispatch != null, "native CPU batch hook missing");
             dispatch.setAccessible(true);
             check(
-                (Boolean) dispatch.invoke(cpu, cpuMachine, cpuPattern, table, energy),
+                (Boolean) dispatch.invoke(cpu, cpuMachine, cpuPattern, table, energy, new CraftingGridCache(null)),
                 "native CPU batch hook rejected complete inputs");
             com.silvia.apeiron.ae.crafting.core.BigTaskProgress progress = (com.silvia.apeiron.ae.crafting.core.BigTaskProgress) ((com.silvia.apeiron.ae.crafting.core.BigCraftingCPU) cpu)
                 .getTaskEntriesBig()
