@@ -2,6 +2,7 @@ package com.silvia.apeiron.mixin.ae.crafting.core;
 
 import java.math.BigInteger;
 import java.util.Map;
+import java.util.UUID;
 
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,8 +14,11 @@ import com.silvia.apeiron.ae.crafting.core.BigFinalOutput;
 import com.silvia.apeiron.ae.crafting.core.BigTaskProgress;
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.crafting.CraftingPatternMath;
+import com.silvia.apeiron.crafting.TunnelPatternInputs;
 
 import appeng.api.config.Actionable;
+import appeng.api.networking.IGrid;
+import appeng.api.networking.crafting.ICraftingGrid;
 import appeng.api.networking.crafting.ICraftingPatternDetails;
 import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IItemList;
@@ -47,8 +51,9 @@ public abstract class CraftingCPUFinalOutputMixin implements BigFinalOutput {
     protected void addOutputs(final IAEStack<?> output) {
         ICraftingPatternDetails details = null;
         BigInteger multiplier = BigInteger.ZERO;
-        boolean selfRecursive = false;
+        BigInteger recycled = BigInteger.ZERO;
         final BigCraftingCPU cpu = (BigCraftingCPU) this.this$0;
+        final Map<UUID, ICraftingPatternDetails> tunnels = apeiron$tunnels();
 
         outer: for (final Map.Entry<ICraftingPatternDetails, CraftingCPUCluster.TaskProgress> entry : cpu
             .getTaskEntriesBig()
@@ -57,8 +62,12 @@ public abstract class CraftingCPUFinalOutputMixin implements BigFinalOutput {
                 .getCondensedAEOutputs()) {
                 if (candidate.equals(output)) {
                     details = entry.getKey();
-                    selfRecursive = CraftingPatternMath.isPositiveSelfRecursive(details, output);
-                    final BigInteger denominator = selfRecursive ? CraftingPatternMath.netOutputAmount(details, output)
+                    final IAEStack<?>[] inputs = TunnelPatternInputs.condensed(details, tunnels);
+                    final BigInteger recursive = inputs == null ? BigInteger.ZERO
+                        : CraftingPatternMath.recursiveInputAmount(inputs, output);
+                    final BigInteger gross = CraftingPatternMath.outputAmount(details, output);
+                    if (CraftingPatternMath.isPositiveSelfRecursive(gross, recursive)) recycled = recursive;
+                    final BigInteger denominator = recycled.signum() > 0 ? gross.subtract(recycled)
                         : BigAEStackValues.get(candidate);
                     final BigInteger numerator = BigAEStackValues.get(output);
                     multiplier = denominator.signum() <= 0 ? BigInteger.ZERO
@@ -84,8 +93,9 @@ public abstract class CraftingCPUFinalOutputMixin implements BigFinalOutput {
             final IAEStack<?> copy = stack.copy();
             // Match the planner's whole-round net yield. Recycled inputs are not deliveries; returning the original
             // seed through the normal CPU/network inventory path must not add another completion obligation.
-            final BigInteger perCraft = selfRecursive && stack.equals(output)
-                ? CraftingPatternMath.netOutputAmount(details, output)
+            final BigInteger perCraft = stack.equals(output) && recycled.signum() > 0
+                ? CraftingPatternMath.outputAmount(details, output)
+                    .subtract(recycled)
                 : BigAEStackValues.get(copy);
             BigAEStackValues.set(copy, perCraft.multiply(multiplier));
             this.outputs.add(copy);
@@ -100,13 +110,15 @@ public abstract class CraftingCPUFinalOutputMixin implements BigFinalOutput {
     @Override
     public BigInteger getRemainingIngredientAmountBig(final IAEStack<?> output) {
         final BigCraftingCPU cpu = (BigCraftingCPU) this.this$0;
+        final Map<UUID, ICraftingPatternDetails> tunnels = apeiron$tunnels();
         BigInteger required = BigInteger.ZERO;
         for (final Map.Entry<ICraftingPatternDetails, CraftingCPUCluster.TaskProgress> entry : cpu.getTaskEntriesBig()
             .entrySet()) {
             if (((BigTaskProgress) entry.getValue()).getValueBig()
                 .signum() <= 0) continue;
-            for (final IAEStack<?> input : entry.getKey()
-                .getCondensedAEInputs()) {
+            final IAEStack<?>[] inputs = TunnelPatternInputs.condensed(entry.getKey(), tunnels);
+            if (inputs == null) continue;
+            for (final IAEStack<?> input : inputs) {
                 if (input.equals(output)) {
                     required = required.add(
                         BigAEStackValues.get(input)
@@ -121,6 +133,11 @@ public abstract class CraftingCPUFinalOutputMixin implements BigFinalOutput {
         if (available != null) required = required.subtract(BigAEStackValues.get(available));
         if (required.signum() < 0) required = BigInteger.ZERO;
         return required.min(BigAEStackValues.get(output));
+    }
+
+    private Map<UUID, ICraftingPatternDetails> apeiron$tunnels() {
+        final IGrid grid = this.this$0.getGrid();
+        return TunnelPatternInputs.definitions(grid == null ? null : grid.getCache(ICraftingGrid.class));
     }
 
     @Override

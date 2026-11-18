@@ -62,6 +62,7 @@ public abstract class CraftingJobFastTreeMixin implements CraftingTreeSource {
             errorMsg,
             patterns,
             counts,
-            stored);
+            stored,
+            ICraftingPatternDetails::getCondensedAEInputs);
     }
 }

@@ -3,11 +3,13 @@ package com.silvia.apeiron.crafting;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
@@ -54,6 +56,8 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
     private final Map<IAEStack<?>, BigInteger> ingredients = new Object2ObjectOpenHashMap<>();
     private final Map<IAEStack<?>, BigInteger> missingIngredients = new Object2ObjectOpenHashMap<>();
     private final Map<IAEStack<?>, ICraftingPatternDetails> treePatterns = new Object2ObjectOpenHashMap<>();
+    private final Map<UUID, ICraftingPatternDetails> tunnelPatterns;
+    private final Map<ICraftingPatternDetails, IAEStack<?>[]> patternInputs = new HashMap<>();
     private boolean calculated;
     private boolean simulated;
     private BigInteger byteCost = BigInteger.ZERO;
@@ -65,7 +69,9 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
         this.output = output;
         this.craftingMode = craftingMode;
         this.callback = callback;
-        if (!requiresSelfRecursivePlanner(grid, output)) this.context.itemModel.ignore(output);
+        this.tunnelPatterns = TunnelPatternInputs.definitions(context.craftingGrid);
+        if (!requiresSelfRecursivePlanner(context.craftingGrid, output, tunnelPatterns))
+            this.context.itemModel.ignore(output);
     }
 
     public CraftingContext getContext() {
@@ -76,12 +82,22 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
         if (!com.silvia.apeiron.config.ApeironConfig.isAeSelfRecursiveCraftingEnabled() || grid == null
             || stack == null) return false;
         final ICraftingGrid crafting = grid.getCache(ICraftingGrid.class);
-        if (crafting == null) return false;
+        return requiresSelfRecursivePlanner(crafting, stack, TunnelPatternInputs.definitions(crafting));
+    }
+
+    private static boolean requiresSelfRecursivePlanner(ICraftingGrid crafting, IAEStack<?> stack,
+        Map<UUID, ICraftingPatternDetails> tunnels) {
+        if (crafting == null || !com.silvia.apeiron.config.ApeironConfig.isAeSelfRecursiveCraftingEnabled())
+            return false;
         final List<ICraftingPatternDetails> patterns = crafting.getCraftingMultiPatterns()
             .get(stack);
         if (patterns == null) return false;
-        for (final ICraftingPatternDetails pattern : patterns)
-            if (CraftingPatternMath.isPositiveSelfRecursive(pattern, stack)) return true;
+        for (final ICraftingPatternDetails pattern : patterns) {
+            IAEStack<?>[] inputs = TunnelPatternInputs.condensed(pattern, tunnels);
+            if (inputs != null && CraftingPatternMath.isPositiveSelfRecursive(
+                CraftingPatternMath.outputAmount(pattern, stack),
+                CraftingPatternMath.recursiveInputAmount(inputs, stack))) return true;
+        }
         return false;
     }
 
@@ -93,8 +109,16 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
     @Override
     public BigCraftingTree getJobTree() {
         calculate();
-        return BigCraftingTree
-            .create(context, output, craftingMode, byteCost, errorMessage, treePatterns, tasks, ingredients);
+        return BigCraftingTree.create(
+            context,
+            output,
+            craftingMode,
+            byteCost,
+            errorMessage,
+            treePatterns,
+            tasks,
+            ingredients,
+            patternInputs::get);
     }
 
     private void calculate() {
@@ -115,6 +139,9 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
             final List<ICraftingPatternDetails> patterns = this.context.getPrecisePatternsFor(stack);
             if (patterns.isEmpty()) return null;
             for (final ICraftingPatternDetails pattern : patterns) {
+                if (!patternInputs.containsKey(pattern))
+                    patternInputs.put(pattern, TunnelPatternInputs.condensed(pattern, tunnelPatterns));
+                if (patternInputs.get(pattern) == null) continue;
                 for (final IAEStack<?> candidate : pattern.getCondensedAEOutputs()) {
                     if (candidate.equals(stack)) return new it.unimi.dsi.fastutil.longs.LongObjectImmutablePair<>(
                         candidate.getStackSize(),
@@ -122,7 +149,7 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
                 }
             }
             return null;
-        });
+        }, patternInputs::get);
         final BigSccResult result = (BigSccResult) (Object) raw;
         final AbstractObject2ObjectMap<IAEStack<?>, LongObjectPair<ICraftingPatternDetails>> patterns = result
             .getPatternsBig();
@@ -144,8 +171,7 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
 
             final LongObjectPair<ICraftingPatternDetails> pair = patterns.get(current);
             if (pair != null) {
-                for (final IAEStack<?> input : pair.right()
-                    .getCondensedAEInputs()) {
+                for (final IAEStack<?> input : patternInputs.get(pair.right())) {
                     if (addLegacyCount(inDegree, input, -1L) == 0) toTraverse.add(input);
                     if (looping.contains(input)) loopCandidates.add(input);
                 }
@@ -166,34 +192,32 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
         final BigInteger requested = this.missingIngredients.getOrDefault(current, BigInteger.ZERO);
         if (requested.signum() <= 0) return;
         final ICraftingPatternDetails pattern = pair.right();
-        final BigInteger recursiveInput = CraftingPatternMath.recursiveInputAmount(pattern, current);
-        if (CraftingPatternMath.isPositiveSelfRecursive(pattern, current)) {
+        final IAEStack<?>[] inputs = patternInputs.get(pattern);
+        final BigInteger recursiveInput = CraftingPatternMath.recursiveInputAmount(inputs, current);
+        final BigInteger output = CraftingPatternMath.outputAmount(pattern, current);
+        if (CraftingPatternMath.isPositiveSelfRecursive(output, recursiveInput)) {
             final BigInteger seedMissing = extractExact(current, recursiveInput);
             if (seedMissing.signum() > 0) addCount(this.missingIngredients, current, seedMissing);
-            final BigInteger outputPerPattern = CraftingPatternMath.netOutputAmount(pattern, current);
+            final BigInteger outputPerPattern = output.subtract(recursiveInput);
             final BigInteger multiplier = ceilDiv(requested, outputPerPattern);
-            for (final IAEStack<?> input : CraftingPatternMath.externalInputs(pattern, current)) {
+            for (final IAEStack<?> input : CraftingPatternMath.externalInputs(inputs, current)) {
                 final BigInteger inputAmount = BigAEStackValues.get(input);
                 if (inputAmount.signum() < 0) throw new IllegalStateException("Pattern has negative inputs");
                 addCount(this.missingIngredients, input, inputAmount.multiply(multiplier));
             }
             addCount(this.tasks, pattern, multiplier);
             this.treePatterns.put(current, pattern);
-            addByteCost(
-                current,
-                CraftingPatternMath.outputAmount(pattern, current)
-                    .multiply(multiplier));
+            addByteCost(current, output.multiply(multiplier));
             addCount(this.missingIngredients, current, requested.negate());
             return;
         }
 
         final BigInteger count = moveMissingByExtract(current);
         if (count.signum() == 0) return;
-        final BigInteger outputPerPattern = outputPerPattern(current, pair);
+        final BigInteger outputPerPattern = output.signum() > 0 ? output : BigInteger.valueOf(pair.leftLong());
         if (outputPerPattern.signum() <= 0) throw new IllegalStateException("Pattern has no output");
         final BigInteger multiplier = ceilDiv(count, outputPerPattern);
-        for (final IAEStack<?> input : pair.right()
-            .getCondensedAEInputs()) {
+        for (final IAEStack<?> input : inputs) {
             final BigInteger inputAmount = BigAEStackValues.get(input);
             if (inputAmount.signum() < 0) throw new IllegalStateException("Pattern has negative inputs");
             addCount(this.missingIngredients, input, inputAmount.multiply(multiplier));
@@ -202,15 +226,6 @@ public final class BigCraftingJobFast<StackType extends IAEStack<StackType>>
         this.treePatterns.put(current, pair.right());
         addByteCost(current, multiplier.multiply(outputPerPattern));
         addCount(this.missingIngredients, current, count.negate());
-    }
-
-    private static BigInteger outputPerPattern(final IAEStack<?> current,
-        final LongObjectPair<ICraftingPatternDetails> pair) {
-        final BigInteger output = CraftingPatternMath.outputAmount(pair.right(), current);
-        if (CraftingPatternMath.isPositiveSelfRecursive(pair.right(), current))
-            return output.subtract(CraftingPatternMath.recursiveInputAmount(pair.right(), current));
-        if (output.signum() > 0) return output;
-        return BigInteger.valueOf(pair.leftLong());
     }
 
     private BigInteger extractExact(final IAEStack<?> stack, final BigInteger requested) {

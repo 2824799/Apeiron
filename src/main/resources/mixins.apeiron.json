@@ -155,6 +155,7 @@
     "ae.crafting.core.MECraftingInventoryMixin",
     "ae.crafting.core.SccResolverResultMixin",
     "ae.crafting.core.CraftingGridCacheMixin",
+    "ae.crafting.core.TunnelPatternDefinitionsMixin",
     "ae.crafting.core.CraftingJobFastTreeMixin",
     "ae.crafting.core.CraftingTreeSerializerBigMixin",
     "ae.flow.FlowRateMixin",

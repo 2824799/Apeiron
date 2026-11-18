@@ -483,7 +483,7 @@ public class MTEInfinitePatternInputAssembly extends MTEHatchInputBus implements
     @Override
     public boolean pushPatternBig(ICraftingPatternDetails pattern, List<IAEStack<?>> input, BigInteger batches,
         boolean simulate) {
-        if (batches.signum() <= 0 || !isActive() || processing) return false;
+        if (batches.signum() <= 0 || pattern.isInputOnly() || !isActive() || processing) return false;
         int index = findPattern(pattern);
         if (index < 0) return false;
         List<IAEStack<?>> consumables = new ArrayList<>();

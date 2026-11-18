@@ -3,11 +3,16 @@ package com.silvia.apeiron.ae.crafting.core;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import net.minecraft.inventory.InventoryCrafting;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
+import com.silvia.apeiron.crafting.TunnelPatternInputs;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
@@ -23,18 +28,28 @@ public final class PatternBatchDispatch {
 
     private PatternBatchDispatch() {}
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     public static BigInteger dispatch(PatternBatchMedium machine, ICraftingPatternDetails pattern,
         InventoryCrafting table, MECraftingInventory inventory, BigInteger limit, IEnergyGrid energy) {
-        IAEStack<?>[] declared = pattern.getAEInputs();
+        return dispatch(machine, pattern, table, inventory, limit, energy, Collections.emptyMap());
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    public static BigInteger dispatch(PatternBatchMedium machine, ICraftingPatternDetails pattern,
+        InventoryCrafting table, MECraftingInventory inventory, BigInteger limit, IEnergyGrid energy,
+        Map<UUID, ICraftingPatternDetails> tunnels) {
+        IAEStack<?>[] rawInputs = pattern.getAEInputs();
+        boolean hasTunnels = TunnelPatternInputs.hasReferences(pattern, rawInputs);
+        List<IAEStack<?>> declared = hasTunnels ? TunnelPatternInputs.expand(rawInputs, tunnels)
+            : Arrays.asList(rawInputs);
+        if (declared == null || hasTunnels && declared.size() != table.getSizeInventory()) return BigInteger.ZERO;
         List<IAEStack<?>> inputs = new ArrayList<>();
         for (int slot = 0; slot < table.getSizeInventory(); slot++) {
             IAEStack<?> input = table instanceof MEInventoryCrafting
                 ? ((MEInventoryCrafting) table).getAEStackInSlot(slot)
                 : null;
             if (input == null) input = Platform.convertStackPacket(table.getStackInSlot(slot));
-            if (declared.length == table.getSizeInventory() && !BigAEStackValues.get(input)
-                .equals(BigAEStackValues.get(declared[slot]))) return BigInteger.ZERO;
+            if (declared.size() == table.getSizeInventory() && !BigAEStackValues.get(input)
+                .equals(BigAEStackValues.get(declared.get(slot)))) return BigInteger.ZERO;
             if (input != null && BigAEStackValues.get(input)
                 .signum() > 0) {
                 boolean merged = false;
@@ -52,18 +67,19 @@ public final class PatternBatchDispatch {
         }
         // Native long comparisons can mistake two saturated values for equal quantities.
         // Only dispatch a complete exact table; otherwise the CPU returns the first extraction.
-        if (!pattern.canSubstitute()) for (IAEStack<?> required : pattern.getCondensedAEInputs()) {
-            if (required == null || BigAEStackValues.get(required)
-                .signum() <= 0) continue;
-            IAEStack<?> supplied = null;
-            for (IAEStack candidate : inputs)
-                if (candidate.getStackType() == required.getStackType() && candidate.isSameType(required)) {
-                    supplied = candidate;
-                    break;
-                }
-            if (!BigAEStackValues.get(required)
-                .equals(BigAEStackValues.get(supplied))) return BigInteger.ZERO;
-        }
+        if (!pattern.canSubstitute()) for (IAEStack<?> required : hasTunnels ? TunnelPatternInputs.condense(declared)
+            : pattern.getCondensedAEInputs()) {
+                if (required == null || BigAEStackValues.get(required)
+                    .signum() <= 0) continue;
+                IAEStack<?> supplied = null;
+                for (IAEStack candidate : inputs)
+                    if (candidate.getStackType() == required.getStackType() && candidate.isSameType(required)) {
+                        supplied = candidate;
+                        break;
+                    }
+                if (!BigAEStackValues.get(required)
+                    .equals(BigAEStackValues.get(supplied))) return BigInteger.ZERO;
+            }
         BigInteger batches = limit.max(BigInteger.ONE);
         BigDecimal cost = BigDecimal.ZERO;
         for (IAEStack input : inputs) {

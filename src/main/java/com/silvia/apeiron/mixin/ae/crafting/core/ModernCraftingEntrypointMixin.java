@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.silvia.apeiron.ae.stack.BigAEStackValues;
 import com.silvia.apeiron.crafting.BigCraftingJobFast;
+import com.silvia.apeiron.crafting.TunnelPatternInputs;
 
 import appeng.api.config.CraftingMode;
 import appeng.api.networking.IGrid;
@@ -30,8 +31,8 @@ public abstract class ModernCraftingEntrypointMixin {
         require = 1)
     private void apeiron$beginExactJob(World world, IGrid grid, BaseActionSource source, IAEStack<?> stack,
         CraftingMode mode, boolean lite, ICraftingCallback callback, CallbackInfoReturnable<Future<ICraftingJob>> cir) {
-        if (stack == null
-            || !BigAEStackValues.isBig(stack) && !BigCraftingJobFast.requiresSelfRecursivePlanner(grid, stack)) return;
+        if (stack == null || !BigAEStackValues.isBig(stack) && !(lite && !TunnelPatternInputs.definitions(this)
+            .isEmpty()) && !BigCraftingJobFast.requiresSelfRecursivePlanner(grid, stack)) return;
         BigCraftingJobFast<?> job = new BigCraftingJobFast(world, grid, source, (IAEStack) stack, mode, callback);
         cir.setReturnValue((Future) job.schedule());
     }

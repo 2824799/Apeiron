@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import net.minecraft.world.World;
 
@@ -81,7 +82,8 @@ public final class BigCraftingTree extends CraftingJobV2 {
 
     public static BigCraftingTree create(CraftingContext context, IAEStack<?> output, CraftingMode mode,
         BigInteger bytes, String error, Map<IAEStack<?>, ICraftingPatternDetails> patterns,
-        Map<ICraftingPatternDetails, BigInteger> plannedCrafts, Map<IAEStack<?>, BigInteger> ingredients) {
+        Map<ICraftingPatternDetails, BigInteger> plannedCrafts, Map<IAEStack<?>, BigInteger> ingredients,
+        Function<ICraftingPatternDetails, IAEStack<?>[]> patternInputs) {
         final CraftingRequest root = request(output, BigAEStackValues.get(output), mode);
         final Map<IAEStack<?>, BigInteger> stored = new HashMap<>(ingredients);
         final Map<IAEStack<?>, BigInteger> byproducts = new HashMap<>();
@@ -98,18 +100,21 @@ public final class BigCraftingTree extends CraftingJobV2 {
                 continue;
             }
             final ICraftingPatternDetails pattern = patterns.get(current.stack);
-            final boolean selfRecursive = pattern != null
-                && CraftingPatternMath.isPositiveSelfRecursive(pattern, current.stack);
+            final IAEStack<?>[] declared = pattern == null ? null : patternInputs.apply(pattern);
+            final BigInteger recursive = declared == null ? BigInteger.ZERO
+                : CraftingPatternMath.recursiveInputAmount(declared, current.stack);
+            final BigInteger producedPerCraft = pattern == null ? BigInteger.ZERO
+                : outputAmount(pattern, current.stack);
+            final boolean selfRecursive = CraftingPatternMath.isPositiveSelfRecursive(producedPerCraft, recursive);
             BigInteger remaining = BigAEStackValues.get(current.stack);
             if (selfRecursive) {
-                extract(current, stored, CraftingPatternMath.recursiveInputAmount(pattern, current.stack), false);
+                extract(current, stored, recursive, false);
             } else {
                 remaining = extract(current, stored, remaining, false);
             }
             remaining = extract(current, byproducts, remaining, true);
-            if (remaining.signum() > 0 && pattern != null) {
-                final BigInteger perCraft = selfRecursive ? CraftingPatternMath.netOutputAmount(pattern, current.stack)
-                    : outputAmount(pattern, current.stack);
+            if (remaining.signum() > 0 && declared != null) {
+                final BigInteger perCraft = selfRecursive ? producedPerCraft.subtract(recursive) : producedPerCraft;
                 final BigInteger count = remaining.add(perCraft)
                     .subtract(BigInteger.ONE)
                     .divide(perCraft)
@@ -133,7 +138,9 @@ public final class BigCraftingTree extends CraftingJobV2 {
                     remaining = remaining.subtract(resolved);
                     final Set<IAEStack<?>> parents = new HashSet<>(branch.parents);
                     parents.add(current.stack);
-                    final IAEStack<?>[] inputs = CraftingPatternMath.externalInputs(pattern, current.stack);
+                    final IAEStack<?>[] inputs = selfRecursive
+                        ? CraftingPatternMath.externalInputs(declared, current.stack)
+                        : declared;
                     for (int i = inputs.length - 1; i >= 0; i--) {
                         final IAEStack<?> input = inputs[i];
                         final CraftingRequest child = request(

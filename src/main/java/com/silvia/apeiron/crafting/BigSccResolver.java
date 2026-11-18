@@ -66,19 +66,23 @@ public final class BigSccResolver {
     }
 
     private final Function<IAEStack<?>, @Nullable LongObjectPair<ICraftingPatternDetails>> resolver;
+    private final Function<ICraftingPatternDetails, IAEStack<?>[]> inputs;
     private final Result result = new Result();
 
     private long timer = 0;
     private final AbstractObject2ObjectMap<IAEStack<?>, NodeInfo> nodeInfo = new Object2ObjectOpenHashMap<>();
     private final Stack<NodeInfo> stack = new Stack<>();
 
-    private BigSccResolver(Function<IAEStack<?>, LongObjectPair<ICraftingPatternDetails>> resolver) {
+    private BigSccResolver(Function<IAEStack<?>, LongObjectPair<ICraftingPatternDetails>> resolver,
+        Function<ICraftingPatternDetails, IAEStack<?>[]> inputs) {
         this.resolver = resolver;
+        this.inputs = inputs;
     }
 
     public static Result compute(IAEStack<?> target,
-        Function<IAEStack<?>, @Nullable LongObjectPair<ICraftingPatternDetails>> resolver) {
-        BigSccResolver sccResolver = new BigSccResolver(resolver);
+        Function<IAEStack<?>, @Nullable LongObjectPair<ICraftingPatternDetails>> resolver,
+        Function<ICraftingPatternDetails, IAEStack<?>[]> inputs) {
+        BigSccResolver sccResolver = new BigSccResolver(resolver, inputs);
         sccResolver.computeImpl(target);
         return sccResolver.result;
     }
@@ -94,8 +98,7 @@ public final class BigSccResolver {
         currentInfo.inStack = true;
         if (pattern != null) {
             result.patterns.put(current, pattern);
-            for (IAEStack<?> child : pattern.right()
-                .getCondensedAEInputs()) {
+            for (IAEStack<?> child : inputs.apply(pattern.right())) {
                 final NodeInfo childInfo = nodeInfo.get(child);
                 if (childInfo == null) {
                     currentInfo.sccGroup = Math.min(currentInfo.sccGroup, computeImpl(child).sccGroup);

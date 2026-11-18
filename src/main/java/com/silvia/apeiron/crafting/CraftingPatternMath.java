@@ -23,31 +23,23 @@ public final class CraftingPatternMath {
         return amount;
     }
 
-    public static BigInteger recursiveInputAmount(final ICraftingPatternDetails pattern, final IAEStack<?> requested) {
+    public static BigInteger recursiveInputAmount(final IAEStack<?>[] inputs, final IAEStack<?> requested) {
         BigInteger amount = BigInteger.ZERO;
-        for (final IAEStack<?> input : pattern.getCondensedAEInputs()) {
+        for (final IAEStack<?> input : inputs) {
             if (input.equals(requested)) amount = amount.add(BigAEStackValues.get(input));
         }
         return amount;
     }
 
-    public static BigInteger netOutputAmount(final ICraftingPatternDetails pattern, final IAEStack<?> requested) {
-        final BigInteger output = outputAmount(pattern, requested);
-        final BigInteger recursiveInput = recursiveInputAmount(pattern, requested);
-        if (!ApeironConfig.isAeSelfRecursiveCraftingEnabled() || recursiveInput.signum() <= 0) return output;
-        return output.subtract(recursiveInput);
-    }
-
-    public static boolean isPositiveSelfRecursive(final ICraftingPatternDetails pattern, final IAEStack<?> requested) {
-        return ApeironConfig.isAeSelfRecursiveCraftingEnabled() && recursiveInputAmount(pattern, requested).signum() > 0
-            && netOutputAmount(pattern, requested).signum() > 0;
+    public static boolean isPositiveSelfRecursive(final BigInteger output, final BigInteger recursiveInput) {
+        return ApeironConfig.isAeSelfRecursiveCraftingEnabled() && recursiveInput.signum() > 0
+            && output.compareTo(recursiveInput) > 0;
     }
 
     /** Returns the inputs that must come from outside a profitable self-recursive pattern. */
-    public static IAEStack<?>[] externalInputs(final ICraftingPatternDetails pattern, final IAEStack<?> requested) {
-        if (!isPositiveSelfRecursive(pattern, requested)) return pattern.getCondensedAEInputs();
+    public static IAEStack<?>[] externalInputs(final IAEStack<?>[] source, final IAEStack<?> requested) {
         final List<IAEStack<?>> inputs = new ArrayList<>();
-        for (final IAEStack<?> input : pattern.getCondensedAEInputs()) {
+        for (final IAEStack<?> input : source) {
             if (!input.equals(requested)) inputs.add(input);
         }
         return inputs.toArray(new IAEStack<?>[0]);

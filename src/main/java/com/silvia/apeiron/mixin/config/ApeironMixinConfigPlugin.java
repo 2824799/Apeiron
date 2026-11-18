@@ -133,6 +133,9 @@ public final class ApeironMixinConfigPlugin implements IMixinConfigPlugin {
             case "ModernCraftingEntrypointMixin":
                 return DependencyCapabilities.hasClass("appeng.crafting.fast.CraftingJobFast")
                     == name.startsWith("Modern");
+            case "TunnelPatternDefinitionsMixin":
+                return DependencyCapabilities.hasDeclaredField(targetClassName, "inputOnlyPatterns", "Ljava/util/Map;")
+                    && DependencyCapabilities.hasMethod(targetClassName, "setPatternsFromCraftingMethods", "()V");
             case "NativeInputWatcherMixin":
                 return DependencyCapabilities.hasMethod(targetClassName, "addWatcher", null)
                     && DependencyCapabilities.hasMethod(targetClassName, "removeWatcher", null);
